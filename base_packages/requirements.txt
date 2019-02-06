@@ -1,0 +1,18 @@
+# Requires the PREFIX is set as well as PATH to include proper tools directory
+
+# Best if PKG_CONFIG_PATH is set before running - but we handle
+# PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PREFIX/packages/openbabel/lib/pkgconfig 
+openbabel --global-option=build_ext --global-option="-L${TOOLS_DIR}/packages/openbabel-2.3.2/lib"   --global-option='-I${TOOLS_DIR}/packages/openbabel-2.3.2/include/openbabel-2.0' --global-option='--rpath=${TOOLS_DIR}/packages/openbabel-2.3.2/lib'
+  
+
+# Install OpenEye toolkit
+OpenEye-toolkits-python2.7-ucs2-linux-x64 == 2016.6.1; python_version == '2.7' and sys_platform=='linux2'
+OpenEye-toolkits-python3-linux-x64 ; python_version >= '3' and sys_platform=='linux2'
+OpenEye-toolkits-python3-osx-x64 ; python_version >= '3' and sys_platform=='darwin'
+
+# We need to peg mysqlclient to 1.3 series as mysqlclient 1.4 breaks with Django 1.9.5 (cannot create new deposition)
+# Deposition package sets this as well - but install early
+mysqlclient ~= 1.3.14
+
+# For watermarks for validation reports
+fakepdftk

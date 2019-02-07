@@ -25,13 +25,13 @@ kiwisolver==1.0.1
 lxml==4.3.0
 Markdown==3.0.1
 matplotlib==2.2.3
-mmcif==0.31
+mmcif==0.33
 mmcif.utils==0.14
 monotonic==1.5
 mysqlclient==1.3.14
 netaddr==0.7.19
 netifaces==0.10.9
-numpy==1.16.1
+numpy==1.15.4
 onedep-biocuration-api==0.1
 openbabel==2.4.1
 OpenEye-toolkits-python2.7-ucs2-linux-x64==2016.6.1

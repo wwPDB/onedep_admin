@@ -16,3 +16,8 @@ mysqlclient ~= 1.3.14
 
 # For watermarks for validation reports
 fakepdftk
+
+# Newer version of numpy (1.16) having issues with random wsgi import failures switching added annotation/validation/status
+# Maybe reimport?
+numpy == 1.15.4
+

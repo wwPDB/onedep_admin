@@ -96,7 +96,7 @@ wwpdb.utils.markdown-wrapper==0.1
 wwpdb.utils.message-queue==0.2
 wwpdb.utils.nmr==0.1
 wwpdb.utils.oe-util==0.3
-wwpdb.utils.seqdb-v2==0.2
+wwpdb.utils.seqdb-v2==0.3
 wwpdb.utils.session==0.4
 wwpdb.utils.testing==0.11
 wwpdb.utils.wf==0.8.1

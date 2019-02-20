@@ -77,7 +77,7 @@ wwpdb.apps.deposit==0.7.3
 wwpdb.apps.editormodule==0.2
 wwpdb.apps.entity-transform==0.3
 wwpdb.apps.msgmodule==0.3
-wwpdb.apps.releasemodule==0.3.1
+wwpdb.apps.releasemodule==0.3.2
 wwpdb.apps.seqmodule==0.5.1
 wwpdb.apps.site-admin==0.3
 wwpdb.apps.testfixture==0.1
@@ -90,7 +90,7 @@ wwpdb.utils.cc-dict-util==0.1
 wwpdb.utils.config==0.5
 wwpdb.utils.db==0.11
 wwpdb.utils.detach==0.1
-wwpdb.utils.dp==0.16
+wwpdb.utils.dp==0.16.1
 wwpdb.utils.emdb==0.5
 wwpdb.utils.markdown-wrapper==0.1
 wwpdb.utils.message-queue==0.2

@@ -93,6 +93,7 @@ wwpdb.utils.db==0.11
 wwpdb.utils.detach==0.1
 wwpdb.utils.dp==0.16.1
 wwpdb.utils.emdb==0.5
+wwpdb.utils.letters==0.1
 wwpdb.utils.markdown-wrapper==0.1
 wwpdb.utils.message-queue==0.2
 wwpdb.utils.nmr==0.1

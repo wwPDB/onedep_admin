@@ -10,7 +10,7 @@ webapps/htdocs/entity_transform_ui==1.1
 webapps/htdocs/msgmodule==1.0
 webapps/htdocs/releasemodule==1.0
 webapps/htdocs/review_v2==1.0
-webapps/htdocs/seqmodule==1.1
+webapps/htdocs/seqmodule==1.2
 webapps/htdocs/status_update_tasks_v2==1.0
 webapps/htdocs/testfixture==1.0
 webapps/htdocs/validation_tasks_v2==1.2

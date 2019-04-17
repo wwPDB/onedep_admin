@@ -59,6 +59,7 @@ class WebFEVersions(object):
             self.__writerequirements(fout)
 
     def check(self, requirements):
+        ok = True
         ref = {}
         with open(requirements, 'r') as fin:
             for line in fin:
@@ -71,6 +72,7 @@ class WebFEVersions(object):
 
         if len(extrakeys) > 0:
             print("The following subdirs are missing")
+            ok = False
             for k in extrakeys:
                 print("%s   %s" % (k, ref[k]))
 
@@ -83,7 +85,13 @@ class WebFEVersions(object):
                 if not head:
                     print("The following versions are incorrect")
                     head = True
+                    ok = False
                 print("Mismatch %s   %s != %s" % (k, ref[k], self._versions[k]))
+
+        if ok:
+            sys.exit(0)
+        else:
+            sys.exit(1)
 
 
 def main():

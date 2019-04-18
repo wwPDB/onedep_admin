@@ -21,3 +21,5 @@ fakepdftk
 # Maybe reimport?
 numpy == 1.15.4
 
+# A number of analysis programs are using pandas
+pandas

@@ -40,6 +40,7 @@ oslo.concurrency==3.29.1
 oslo.config==6.8.1
 oslo.i18n==3.23.1
 oslo.utils==3.40.3
+pandas==0.24.2
 paramiko==2.4.2
 pbr==5.1.2
 pdfrw==0.4

@@ -91,7 +91,7 @@ wwpdb.apps.workmanager==0.4
 wwpdb.io==0.4.1
 wwpdb.utils.align==0.10
 wwpdb.utils.cc-dict-util==0.1
-wwpdb.utils.config==0.6
+wwpdb.utils.config==0.7
 wwpdb.utils.db==0.11
 wwpdb.utils.detach==0.2
 wwpdb.utils.dp==0.17

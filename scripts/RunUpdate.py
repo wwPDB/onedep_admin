@@ -83,6 +83,10 @@ class UpdateManager(object):
     def updatetaxdb(self):
         # Checks the number of rows in db and decides if to update
         taxdbsize = int(self.__cparser.get('DEFAULT', 'taxdbminsize'))
+        if self.__cparser.has_option('DEFAULT', 'taxdbmaxsize'):
+            maxsize = int(self.__cparser.get('DEFAULT', 'taxdbmaxsize'))
+        else:
+            maxsize = 999999999
         taxresource = self.__ci.get('TAXONOMY_FILE_NAME')
 
         mydb = MyConnectionBase()
@@ -101,7 +105,7 @@ class UpdateManager(object):
 
         mydb.closeConnection()
 
-        if count >= taxdbsize:
+        if count >= taxdbsize and count < maxsize:
             print("Taxdb at least as big as expected")
             return
 

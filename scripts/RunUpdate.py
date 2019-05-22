@@ -19,6 +19,68 @@ from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
 from wwpdb.utils.db.MyDbUtil import MyDbQuery
 
 
+class DbSchemaManager(object):
+    """A class to manage updates to the various schemas"""
+    def __init__(self, noop):
+        self.__noop = noop
+        self.__ci = ConfigInfo()
+        self.__configuration = [
+            # name, resource, table,       approvefunc, 
+            ['V3.6 depui', 'STATUS', 'deposition', '_notexists', 
+             #  colname,  command_to_add
+             [['post_rel_status', 'ADD COLUMN `post_rel_status` VARCHAR(6) NULL DEFAULT NULL AFTER `status_code_other`'],
+              ['post_rel_recvd_coord', 'ADD COLUMN `post_rel_recvd_coord` VARCHAR(1) NULL DEFAULT NULL AFTER `post_rel_status`'],
+              ['post_rel_recvd_coord_date', 'ADD COLUMN `post_rel_recvd_coord_date` DATE NULL DEFAULT NULL AFTER `post_rel_recvd_coord`']]
+             ]
+            ]
+
+        #ALTER TABLE `status`.`deposition` 
+    def updateschema(self):
+        """Updates the schema configurations"""
+
+        print("")
+        print("Checking/Updating DB schema")
+
+        for upd in self.__configuration:
+            name = upd[0]
+            resource = upd[1]
+            table = upd[2]
+            func = upd[3]
+            #getattr(self, upd[3], None)
+            mth = getattr(self, func, None)
+            coldata = upd[4]
+            #print name, resource, table, func, mth
+
+            mydb = MyConnectionBase()
+            mydb.setResource(resourceName=resource)
+            ok = mydb.openConnection()
+            if not ok:
+                print("ERROR: Could not open resource %s" % resource)
+                return
+
+            for row in coldata:
+                colname = row[0]
+                cmd = row[1]
+                rc = mth(mydb._dbCon, table, colname)
+                if rc:
+                    myq = MyDbQuery(dbcon=mydb._dbCon)
+                    query = "ALTER TABLE `{}` {}".format(table, cmd)
+                    print(query)
+                    if not self.__noop:
+                        ret = myq.sqlCommand([query])
+                        if not ret:
+                            print("ERROR UPDATING SCHEMA %s" % query)
+                    
+            mydb.closeConnection()
+
+    def _notexists(self, dbconn, table, colname):
+        myq = MyDbQuery(dbcon=dbconn)
+        query = "show columns from `{}` LIKE '{}'".format(table, colname)
+        rows = myq.selectRows(queryString=query)
+        if len(rows) == 0:
+            return True
+        return False
+
 class UpdateManager(object):
     def __init__(self, config_file, noop):
         self.__configfile = config_file
@@ -115,6 +177,10 @@ class UpdateManager(object):
         command = "python -m wwpdb.apps.deposit.depui.taxonomy.loadData"
         self.__exec(command)
 
+    def updateschema(self):
+        dbs = DbSchemaManager(self.__noop)
+        dbs.updateschema()
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -124,6 +190,7 @@ def main():
     parser.add_argument("--skip-resources", default=False, action='store_true', help='Skip resources update')
     parser.add_argument("--skip-webfe", default=False, action='store_true', help='Skip webfe update')
     parser.add_argument("--skip-taxdb", default=False, action='store_true', help='Skip update of taxdb if needed')
+    parser.add_argument("--skip-schema", default=False, action='store_true', help='Skip update of DB schemas if needed')
 
     args = parser.parse_args()
     print(args)
@@ -145,6 +212,10 @@ def main():
     # update taxonomy
     if not args.skip_taxdb:
         um.updatetaxdb()
+
+    # update db schemas
+    if not args.skip_schema:
+        um.updateschema()
 
 
 if __name__ == '__main__':

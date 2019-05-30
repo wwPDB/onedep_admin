@@ -83,7 +83,7 @@ class WebFEVersions(object):
                 continue
             if ref[k] != self._versions[k]:
                 if not head:
-                    print("The following versions are incorrect")
+                    print("The following webfe versions are incorrect")
                     head = True
                     ok = False
                 print("Mismatch %s   %s != %s" % (k, ref[k], self._versions[k]))

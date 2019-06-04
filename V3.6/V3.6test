@@ -88,7 +88,7 @@ wwpdb.apps.val-ws-server==0.1
 wwpdb.apps.validation==2.3.1.dev1
 wwpdb.apps.wf-engine==0.7
 wwpdb.apps.workmanager==0.4
-wwpdb.io==0.5
+wwpdb.io==0.5.1
 wwpdb.utils.align==0.10
 wwpdb.utils.cc-dict-util==0.1
 wwpdb.utils.config==0.8

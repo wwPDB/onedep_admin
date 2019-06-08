@@ -122,7 +122,7 @@ class UpdateManager(object):
         restag = self.__cparser.get('DEFAULT', 'resourcestag')
         resdir = self.__ci.get('RO_RESOURCE_PATH')
 
-        command = 'cd {}; git pull; git checkout {}; git pull'.format(resdir, restag)
+        command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(resdir, restag, restag)
         self.__exec(command)
 
     def checkwebfe(self, overridenoop = False):
@@ -143,7 +143,7 @@ class UpdateManager(object):
         webdir = os.path.abspath(os.path.join(webappsdir, '..'))
         webfetag = self.__cparser.get('DEFAULT', 'webfetag')
 
-        command = 'cd {}; git pull; git checkout {}; git pull ; git submodule init; git submodule update'.format(webdir, webfetag)
+        command = 'cd {}; git pull; git checkout {}; git pull origin {}; git submodule init; git submodule update'.format(webdir, webfetag, webfetag)
         self.__exec(command)
 
         # Now check the results

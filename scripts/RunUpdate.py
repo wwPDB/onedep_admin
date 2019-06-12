@@ -18,13 +18,15 @@ import json
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
 from wwpdb.utils.db.MyDbUtil import MyDbQuery
-
+from mmcif.io.PdbxReader import PdbxReader
 
 class DbSchemaManager(object):
     """A class to manage updates to the various schemas"""
     def __init__(self, noop):
         self.__noop = noop
         self.__ci = ConfigInfo()
+        self.__daintschema = []
+
         self.__configuration = [
             # name, resource, table,       approvefunc, 
             ['V3.6 depui', 'STATUS', 'deposition', '_notexists', 
@@ -35,6 +37,10 @@ class DbSchemaManager(object):
             ['V3.7 depui', 'STATUS', 'user_data', '_colwidth',
              # colname, command to alter, expected width
              [['country', "CHANGE COLUMN `country` `country` VARCHAR(100) NOT NULL DEFAULT ''", 100]]],
+            ['V3.7 da_internal', 'DA_INTERNAL', 'rcsb_status', '_daintnotexists',
+             [['post_rel_status', 'ADD COLUMN `post_rel_status` VARCHAR(10) NULL AFTER `pdb_format_compatible`'],
+              ['post_rel_recvd_coord', 'ADD COLUMN `post_rel_recvd_coord` VARCHAR(1) NULL AFTER `post_rel_status`'],
+              ['post_rel_recvd_coord_date', 'ADD COLUMN `post_rel_recvd_coord_date` DATE NULL AFTER `post_rel_recvd_coord`']]],
         ]
 
     def updateschema(self):
@@ -90,7 +96,6 @@ class DbSchemaManager(object):
 
     def _colwidth(self, dbconn, table, colname, width):
         """Returns True if colname is not width characters"""
-        print("Checking %s %s %s" % (table, colname, width))
         myq = MyDbQuery(dbcon=dbconn)
         query = "select character_maximum_length from information_schema.columns where table_schema=Database() and table_name='{}' and column_name='{}'".format(table,colname);
         rows = myq.selectRows(queryString=query)
@@ -102,6 +107,47 @@ class DbSchemaManager(object):
         if size != width:
             return True
         return False
+
+    def _daintnotexists(self, dbconn, table, colname):
+        """Return True if _rcsb_attribute_def.table_name == table and
+        _rcsb_attribute_def.attribute_name == colname is present in 
+        SITE_DA_INTERNAL_SCHEMA_PATH and colname is not present in table my da_internal"""
+
+        schemapath = self.__ci.get('SITE_DA_INTERNAL_SCHEMA_PATH')
+        if not schemapath:
+            print("ERROR: SITE_DA_INTERNAL_SCHEMA_PATH not in site-config")
+            return False
+
+        if not len(self.__daintschema):
+            with open(schemapath, 'r') as fin:
+                prd = PdbxReader(fin)
+                self.__daintschema = []
+                prd.read(containerList = self.__daintschema, selectList=['rcsb_attribute_def'])
+
+        block = self.__daintschema[0]
+        tb = block.getObj('rcsb_attribute_def')
+        if not tb:
+            print("ERROR: Schema file does not contain rcsb_attribute_def")
+            return False
+        #print dir(tb)
+        #block.printIt()
+        found = False
+        for row in range(tb.getRowCount()):
+            table_name = tb.getValue('table_name', row)
+            attr_name = tb.getValue('attribute_name', row)
+            if table_name == table and attr_name == colname:
+                found = True
+                break
+
+        if not found:
+            print("{}.{} not found -- skipping".format(table, colname))
+            return False
+
+        # Ok exists in schema file. See if in database
+        ret = self._notexists(dbconn, table, colname)
+
+        return ret
+
 
 class UpdateManager(object):
     def __init__(self, config_file, noop):

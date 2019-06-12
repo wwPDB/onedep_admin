@@ -31,11 +31,12 @@ class DbSchemaManager(object):
              #  colname,  command_to_add
              [['post_rel_status', 'ADD COLUMN `post_rel_status` VARCHAR(6) NULL DEFAULT NULL AFTER `status_code_other`'],
               ['post_rel_recvd_coord', 'ADD COLUMN `post_rel_recvd_coord` VARCHAR(1) NULL DEFAULT NULL AFTER `post_rel_status`'],
-              ['post_rel_recvd_coord_date', 'ADD COLUMN `post_rel_recvd_coord_date` DATE NULL DEFAULT NULL AFTER `post_rel_recvd_coord`']]
-             ]
-            ]
+              ['post_rel_recvd_coord_date', 'ADD COLUMN `post_rel_recvd_coord_date` DATE NULL DEFAULT NULL AFTER `post_rel_recvd_coord`']]],
+            ['V3.7 depui', 'STATUS', 'user_data', '_colwidth',
+             # colname, command to alter, expected width
+             [['country', "CHANGE COLUMN `country` `country` VARCHAR(100) NOT NULL DEFAULT ''", 100]]],
+        ]
 
-        #ALTER TABLE `status`.`deposition` 
     def updateschema(self):
         """Updates the schema configurations"""
 
@@ -62,7 +63,11 @@ class DbSchemaManager(object):
             for row in coldata:
                 colname = row[0]
                 cmd = row[1]
-                rc = mth(mydb._dbCon, table, colname)
+                if len(row) == 3:
+                    opt = row[2]
+                    rc = mth(mydb._dbCon, table, colname, opt)
+                else:
+                    rc = mth(mydb._dbCon, table, colname)
                 if rc:
                     myq = MyDbQuery(dbcon=mydb._dbCon)
                     query = "ALTER TABLE `{}` {}".format(table, cmd)
@@ -75,10 +80,26 @@ class DbSchemaManager(object):
             mydb.closeConnection()
 
     def _notexists(self, dbconn, table, colname):
+        """Checks if colname exists in table. Returns True if does not exist"""
         myq = MyDbQuery(dbcon=dbconn)
         query = "show columns from `{}` LIKE '{}'".format(table, colname)
         rows = myq.selectRows(queryString=query)
         if len(rows) == 0:
+            return True
+        return False
+
+    def _colwidth(self, dbconn, table, colname, width):
+        """Returns True if colname is not width characters"""
+        print("Checking %s %s %s" % (table, colname, width))
+        myq = MyDbQuery(dbcon=dbconn)
+        query = "select character_maximum_length from information_schema.columns where table_schema=Database() and table_name='{}' and column_name='{}'".format(table,colname);
+        rows = myq.selectRows(queryString=query)
+        if len(rows) == 0:
+            print("ERROR  {}.{} does not exist!!!!!!!".format(table,colname))
+            return False
+
+        size = rows[0][0]
+        if size != width:
             return True
         return False
 

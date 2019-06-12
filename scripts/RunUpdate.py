@@ -140,7 +140,8 @@ class DbSchemaManager(object):
                 break
 
         if not found:
-            print("{}.{} not found -- skipping".format(table, colname))
+            # schema mapping file does not list - we should not need to add
+            #print("{}.{} not found -- skipping".format(table, colname))
             return False
 
         # Ok exists in schema file. See if in database

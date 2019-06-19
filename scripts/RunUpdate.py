@@ -291,10 +291,10 @@ class UpdateManager(object):
             return
 
 
-        oelicfile = self.__ci.get('OE_LICENSE')
+        oelicfile = self.__ci.get('SITE_CC_OE_LICENSE')
         # Might be in OS_ENVIRONMENT
         if not oelicfile:
-            oelicfile = os.getenv('OE_LICENSE')
+            oelicfile = os.getenv('SITE_CC_OE_LICENSE')
         if not oelicfile:
             print ("ERROR: Cannot determine open eye license from config")
             return

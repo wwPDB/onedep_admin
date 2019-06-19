@@ -282,6 +282,34 @@ class UpdateManager(object):
                 # Option not in config file - continue
                 pass
 
+    def checkoelicense(self):
+        try:
+            # If not in config will fall through
+            expdate = self.__cparser.get('DEFAULT', 'openeyeexp')
+        except NoOptionError as e:
+            # Option not in config file - continue
+            return
+
+
+        oelicfile = self.__ci.get('OE_LICENSE')
+        # Might be in OS_ENVIRONMENT
+        if not oelicfile:
+            oelicfile = os.getenv('OE_LICENSE')
+        if not oelicfile:
+            print ("ERROR: Cannot determine open eye license from config")
+            return
+
+        with open(oelicfile, 'r') as fin:
+            data = fin.readlines()
+            for d in data:
+                if "#EXP_DATE:" not in d:
+                    continue
+                edate = d.split(':')[1].strip()
+                if edate != expdate:
+                    print("ERROR: Openeye Licence expiration wrong  %s vs %s" % (edate, expdate))
+                    # Only need single report
+                    return
+
 
 #        pass
 
@@ -323,6 +351,7 @@ def main():
 
     if not args.skip_toolvers:
         um.checktoolvers()
+        um.checkoelicense()
 
     # Final check on webfe
     if not args.skip_webfe:

@@ -259,6 +259,8 @@ class UpdateManager(object):
     def checktoolvers(self):
         #  vers_config_var,  configinfovar,             relative path
         confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json'],
+                 ['webfever', 'TOP_WWPDB_WEBAPPS_DIR', 'version.json'],
+                 ['resourcever', 'RO_RESOURCE_PATH', 'version.json'],
                  ]
 
         for c in confs:
@@ -277,7 +279,7 @@ class UpdateManager(object):
                     jdata = json.load(fin)
                     vstring = jdata['Version']
                     if vstring != tvers:
-                        print("WARNING: Tool version mismatch %s != %s in %s" % (tvers, vstring, fname))
+                        print("***ERROR: Version mismatch %s != %s in %s" % (tvers, vstring, fname))
             except NoOptionError as e:
                 # Option not in config file - continue
                 pass
@@ -296,7 +298,7 @@ class UpdateManager(object):
         if not oelicfile:
             oelicfile = os.getenv('SITE_CC_OE_LICENSE')
         if not oelicfile:
-            print ("ERROR: Cannot determine open eye license from config")
+            print ("***ERROR: Cannot determine open eye license from config")
             return
 
         with open(oelicfile, 'r') as fin:

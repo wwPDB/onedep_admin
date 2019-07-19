@@ -21,5 +21,6 @@ fakepdftk
 # Maybe reimport?
 numpy == 1.15.4
 
-# A number of analysis programs are using pandas
-pandas
+# A number of analysis programs are using pandas - will be pulled in separately as doing at base - numpy is not installed initially. Tries to pull in newer version of numpy to build
+# wheel before installing. Newer numpy requires python 3.
+# pandas

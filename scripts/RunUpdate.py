@@ -85,6 +85,24 @@ class DbSchemaManager(object):
                     
             mydb.closeConnection()
 
+    def checkviews(self):
+        """Checks that views are loaded and updated"""
+
+        print("")
+        print("Checking views in status DB")
+        mydb = MyConnectionBase()
+        mydb.setResource(resourceName="STATUS")
+        ok = mydb.openConnection()
+        if not ok:
+            print("ERROR: Could not open resource %s" % resource)
+            return
+
+        if self._notexists(mydb._dbCon, 'dep_last_instance', 'dep_post_rel_status'):
+            print("ERROR: You need to load latest views with something like: mysql -uroot -pxxxx -hxxxx status < %s/dep-views.sql" 
+                  % os.path.dirname(__file__))
+
+        mydb.closeConnection()
+
     def _notexists(self, dbconn, table, colname):
         """Checks if colname exists in table. Returns True if does not exist"""
         myq = MyDbQuery(dbcon=dbconn)
@@ -256,11 +274,17 @@ class UpdateManager(object):
         dbs = DbSchemaManager(self.__noop)
         dbs.updateschema()
 
+    def postflightdbcheck(self):
+        dbs = DbSchemaManager(self.__noop)
+        dbs.checkviews()
+        
+
     def checktoolvers(self):
         #  vers_config_var,  configinfovar,             relative path
         confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json'],
                  ['webfever', 'TOP_WWPDB_WEBAPPS_DIR', 'version.json'],
                  ['resourcever', 'RO_RESOURCE_PATH', 'version.json'],
+                 ['cctoolsver', 'SITE_CC_APPS_PATH', 'etc/bundleversion.json']
                  ]
 
         for c in confs:
@@ -354,6 +378,7 @@ def main():
     if not args.skip_toolvers:
         um.checktoolvers()
         um.checkoelicense()
+        um.postflightdbcheck()
 
     # Final check on webfe
     if not args.skip_webfe:

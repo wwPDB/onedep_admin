@@ -80,7 +80,7 @@ wwpdb.apps.deposit==0.11
 wwpdb.apps.editormodule==0.2
 wwpdb.apps.entity-transform==0.5
 wwpdb.apps.msgmodule==0.5
-wwpdb.apps.releasemodule==0.6
+wwpdb.apps.releasemodule==0.6.1
 wwpdb.apps.seqmodule==0.9
 wwpdb.apps.site-admin==0.4.1
 wwpdb.apps.testfixture==0.1

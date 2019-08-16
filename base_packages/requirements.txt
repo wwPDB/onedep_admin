@@ -7,7 +7,7 @@ openbabel --global-option=build_ext --global-option="-L${TOOLS_DIR}/packages/ope
 
 # Install OpenEye toolkit
 OpenEye-toolkits-python2.7-ucs2-linux-x64 == 2016.6.1; python_version == '2.7' and sys_platform=='linux2'
-OpenEye-toolkits-python3-linux-x64 ; python_version >= '3' and sys_platform=='linux2'
+OpenEye-toolkits-python3-linux-x64 == 2018.10.1 ; python_version >= '3' and sys_platform=='linux'
 OpenEye-toolkits-python3-osx-x64 ; python_version >= '3' and sys_platform=='darwin'
 
 # We need to peg mysqlclient to 1.3 series as mysqlclient 1.4 breaks with Django 1.9.5 (cannot create new deposition)

@@ -43,6 +43,13 @@ class DbSchemaManager(object):
               ['post_rel_recvd_coord_date', 'ADD COLUMN `post_rel_recvd_coord_date` DATE NULL AFTER `post_rel_recvd_coord`']]],
         ]
 
+        self.__wftasks = [
+            # idname     filename
+            [ 'SeqModUI', 'SequenceModuleUI.xml'],
+            [ 'LigModUI', 'LigandModuleUI.xml']
+        ]
+
+
     def updateschema(self):
         """Updates the schema configurations"""
 
@@ -84,6 +91,48 @@ class DbSchemaManager(object):
                             print("ERROR UPDATING SCHEMA %s" % query)
                     
             mydb.closeConnection()
+
+
+    def updatewftasks(self):
+        """ Handles the addition of new WF tasks """
+
+        print("")
+        print("Checking WF scheme status DB")
+
+        mydb = MyConnectionBase()
+        mydb.setResource(resourceName="STATUS")
+        ok = mydb.openConnection()
+        if not ok:
+                print("ERROR: Could not open resource %s" % resource)
+                return
+
+        defpath = self.__ci.get('SITE_WF_XML_PATH')
+
+        for taskid, fname in self.__wftasks:
+
+            fpath = os.path.join(defpath, fname)
+
+            if not os.path.exists(fpath):
+                #print("Skipping %s as does not exist" % fname)
+                continue
+
+            myq = MyDbQuery(dbcon=mydb._dbCon)
+            query = "select wf_class_id from wf_class_dict where wf_class_id='{}'".format(taskid)
+
+            rows = myq.selectRows(queryString=query)
+            if len(rows) == 0:
+                print("About to install WF schema %s with name %s" % (taskid, fname))
+                cmd = 'python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --verbose --load_wf_def_file={}'.format(fname)
+                self.__exec(cmd)
+                
+        mydb.closeConnection()
+
+    def __exec(self, cmd, overridenoop = False):
+        print(cmd)
+        ret = 0
+        if not self.__noop or overridenoop:
+            ret = subprocess.call(cmd, shell=True)
+        return ret
 
     def checkviews(self):
         """Checks that views are loaded and updated"""
@@ -273,6 +322,7 @@ class UpdateManager(object):
     def updateschema(self):
         dbs = DbSchemaManager(self.__noop)
         dbs.updateschema()
+        dbs.updatewftasks()
 
     def postflightdbcheck(self):
         dbs = DbSchemaManager(self.__noop)

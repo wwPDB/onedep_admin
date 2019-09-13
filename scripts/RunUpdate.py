@@ -46,7 +46,7 @@ class DbSchemaManager(object):
         self.__wftasks = [
             # idname     filename
             [ 'SeqModUI', 'SequenceModuleUI.xml'],
-            [ 'LigModUI', 'LigandModuleUI.xml']
+            # [ 'LigModUI', 'LigandModuleUI.xml']
         ]
 
 

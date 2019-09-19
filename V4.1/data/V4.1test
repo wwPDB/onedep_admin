@@ -81,7 +81,7 @@ wwpdb.apps.editormodule==0.2
 wwpdb.apps.entity-transform==0.6.dev2
 wwpdb.apps.msgmodule==0.6.dev2
 wwpdb.apps.releasemodule==0.6.1
-wwpdb.apps.seqmodule==0.10.dev2
+wwpdb.apps.seqmodule==0.10.dev3
 wwpdb.apps.site-admin==0.4.1
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-ws-server==0.2

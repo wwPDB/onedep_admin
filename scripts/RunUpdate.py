@@ -143,7 +143,7 @@ class DbSchemaManager(object):
         mydb.setResource(resourceName="STATUS")
         ok = mydb.openConnection()
         if not ok:
-            print("ERROR: Could not open resource %s" % resource)
+            print("ERROR: Could not open resource %s" % 'STATUS')
             return
 
         if self._notexists(mydb._dbCon, 'dep_last_instance', 'dep_post_rel_status'):

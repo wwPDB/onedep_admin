@@ -103,7 +103,7 @@ class DbSchemaManager(object):
         mydb.setResource(resourceName="STATUS")
         ok = mydb.openConnection()
         if not ok:
-                print("ERROR: Could not open resource %s" % resource)
+                print("ERROR: Could not open resource %s" % 'STATUS')
                 return
 
         defpath = self.__ci.get('SITE_WF_XML_PATH')

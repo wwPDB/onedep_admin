@@ -123,30 +123,18 @@ class UpdateManager(object):
             maxsize = 999999999
         taxresource = self.__ci.get('TAXONOMY_FILE_NAME')
 
-        mydb = MyConnectionBase()
-        mydb.setResource(resourceName="STATUS")
-        ok = mydb.openConnection()
-        if not ok:
-            print("ERROR: Could not open status db")
-            return
-
-        myq = MyDbQuery(dbcon=mydb._dbCon)
-        query = "select count(ordinal) from taxonomy "
-
-        rows = myq.selectRows(queryString=query)
-
-        count = rows[0][0]
-
-        mydb.closeConnection()
-
-        if count >= taxdbsize and count < maxsize:
-            print("Taxdb at least as big as expected")
-            return
 
         if not taxresource:
             print("ERROR: TAXONOMY_FILE_NAME is not set in site-config")
             return
-        command = "python -m wwpdb.apps.deposit.depui.taxonomy.loadData"
+
+        curdir = os.path.dirname(__file__)
+        checkscript = os.path.join(curdir, 'ManageTaxDB.py')
+
+        if self.__noop:
+            command = 'python {} --noop update --maxsize {} --taxdbsize {}'.format(checkscript, maxsize, taxdbsize)
+        else:
+            command = 'python {} --maxsize {} --taxdbsize {}'.format(checkscript,  maxsize, taxdbsize)
         self.__exec(command)
 
     def updateschema(self):

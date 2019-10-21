@@ -76,12 +76,17 @@ class UpdateManager(object):
         cs_user = instenv['CS_USER']
         cs_pass = instenv['CS_PW']
         cs_url = instenv['CS_URL']
+        opt_req = instenv.get('PIP_EXTRA_REQS')
 
         urlreq = urlparse(cs_url)
         urlpath = "{}://{}:{}@{}{}/dist/simple/".format(urlreq.scheme, cs_user, cs_pass, urlreq.netloc, urlreq.path)
 
         command = 'pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(urlpath, urlreq.netloc, reqfile)
         self.__exec(command)
+        if opt_req:
+            command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(
+                cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, urlpath, urlreq.netloc, opt_req)
+            self.__exec(command)
 
     def updateresources(self):
         restag = self.__cparser.get('DEFAULT', 'resourcestag')

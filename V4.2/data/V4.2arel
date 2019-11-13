@@ -84,7 +84,7 @@ wwpdb.apps.ccmodule==0.9
 wwpdb.apps.chem-ref-data==0.6
 wwpdb.apps.chemeditor==0.4
 wwpdb.apps.content-ws-server==0.1.2
-wwpdb.apps.deposit==0.13.1
+wwpdb.apps.deposit==0.13.2
 wwpdb.apps.editormodule==0.3.1
 wwpdb.apps.entity-transform==0.7
 wwpdb.apps.msgmodule==0.6

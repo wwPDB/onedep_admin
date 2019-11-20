@@ -23,3 +23,6 @@ numpy == 1.15.4
 
 # We put this in here - as we need a newer mmcif_utils than on pypi for the moment. Pull in
 mmcif.utils
+
+# For validation - installing developent tree needs this
+wwpdb-TEMPy

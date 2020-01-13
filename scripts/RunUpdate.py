@@ -156,8 +156,9 @@ class UpdateManager(object):
         confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json'],
                  ['webfever', 'TOP_WWPDB_WEBAPPS_DIR', 'version.json'],
                  ['resourcever', 'RO_RESOURCE_PATH', 'version.json'],
-                 ['cctoolsver', 'SITE_CC_APPS_PATH', 'etc/bundleversion.json']
-                 ]
+                 ['cctoolsver', 'SITE_CC_APPS_PATH', 'etc/bundleversion.json'],
+                 ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json']
+             ]
 
         for c in confs:
             varname = c[0]

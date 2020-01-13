@@ -29,7 +29,7 @@ Markdown==3.1.1
 matplotlib==2.2.4
 memory-profiler==0.55.0
 mmcif==0.50
-mmcif.utils==0.19
+mmcif.utils==0.20
 monotonic==1.5
 mrcfile==1.1.2
 multiprocess==0.70.9
@@ -101,7 +101,7 @@ wwpdb.apps.workmanager==0.8
 wwpdb.io==0.10.dev2
 wwpdb.utils.align==0.10
 wwpdb.utils.cc-dict-util==0.2
-wwpdb.utils.config==0.13.dev2
+wwpdb.utils.config==0.13.dev3
 wwpdb.utils.db==0.13.dev1
 wwpdb.utils.detach==0.3
 wwpdb.utils.dp==0.22.dev1

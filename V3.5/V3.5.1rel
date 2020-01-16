@@ -76,17 +76,14 @@ wwpdb.apps.ccmodule==0.6.1
 wwpdb.apps.chem-ref-data==0.2
 wwpdb.apps.chemeditor==0.2
 wwpdb.apps.content-ws-server==0.1.2
-wwpdb.apps.deposit==0.8.2
 wwpdb.apps.editormodule==0.2
 wwpdb.apps.entity-transform==0.4
-wwpdb.apps.msgmodule==0.3
 wwpdb.apps.releasemodule==0.4
 wwpdb.apps.seqmodule==0.6
 wwpdb.apps.site-admin==0.3
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-ws-server==0.1
 wwpdb.apps.validation==2.2
-wwpdb.apps.wf-engine==0.6
 wwpdb.apps.workmanager==0.4
 wwpdb.io==0.4.1
 wwpdb.utils.align==0.10
@@ -106,3 +103,8 @@ wwpdb.utils.session==0.4
 wwpdb.utils.testing==0.11
 wwpdb.utils.wf==0.10
 wwpdb.utils.ws-utils==0.1
+# Updates
+wwpdb.apps.deposit==0.8.3.post1
+wwpdb.apps.wf-engine==0.6.post1
+wwpdb.apps.msgmodule==0.3.post1
+

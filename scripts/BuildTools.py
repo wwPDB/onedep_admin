@@ -35,7 +35,7 @@ class BuildTools(object):
         for pack in packs:
             p = pack.strip()
             pbuild = "pkg_build_{}".format(p)
-            if self.noop:
+            if self.__noop:
                 print("Would build %s" % pbuild)
             else:
                 print("About to build %s" % pbuild)

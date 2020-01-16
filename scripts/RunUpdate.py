@@ -18,6 +18,7 @@ import json
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
 from wwpdb.utils.db.MyDbUtil import MyDbQuery
+from BuildTools import BuildTools
 
 class DbSchemaManager(object):
     def __init__(self, noop):
@@ -210,6 +211,11 @@ class UpdateManager(object):
                     return
 
 
+    def build_tools(self):
+        bt = BuildTools(self.__configfile, self.__noop)
+        bt.build()
+
+
 #        pass
 
 def main():
@@ -222,6 +228,7 @@ def main():
     parser.add_argument("--skip-taxdb", default=False, action='store_true', help='Skip update of taxdb if needed')
     parser.add_argument("--skip-schema", default=False, action='store_true', help='Skip update of DB schemas if needed')
     parser.add_argument("--skip-toolvers", default=False, action='store_true', help='Skip checking versions of tools')
+    parser.add_argument("--build_tools", default=False, action='store_true', help='Build tools packages for this update')
 
     args = parser.parse_args()
     print(args)
@@ -247,6 +254,9 @@ def main():
     # update db schemas
     if not args.skip_schema:
         um.updateschema()
+
+    if args.build_tools:
+        um.build_tools()
 
     if not args.skip_toolvers:
         um.checktoolvers()

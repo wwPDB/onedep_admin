@@ -112,7 +112,7 @@ wwpdb.utils.message-queue==0.4
 wwpdb.utils.nmr==0.1
 wwpdb.utils.oe-util==0.4
 wwpdb.utils.seqdb-v2==0.5
-wwpdb.utils.session==0.8.dev2
+wwpdb.utils.session==0.8.dev3
 wwpdb.utils.testing==0.15.1
 wwpdb.utils.wf==0.15
 wwpdb.utils.ws-utils==0.2.dev2

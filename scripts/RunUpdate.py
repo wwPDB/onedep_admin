@@ -182,6 +182,19 @@ class UpdateManager(object):
                 # Option not in config file - continue
                 pass
 
+    def buildtools(self):
+        webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
+        webdir = os.path.abspath(os.path.join(webappsdir, '..'))
+        curdir = os.path.dirname(__file__)
+        buildscript = os.path.join(curdir, 'BuildTools.py')
+
+        command = 'python {} --config {}'.format(buildscript, self.__configfile)
+
+        ret = self.__exec(command)
+        if ret:
+            print("ERROR: buildtools failed")
+        pass
+
     def checkoelicense(self):
         try:
             # If not in config will fall through
@@ -210,12 +223,6 @@ class UpdateManager(object):
                     # Only need single report
                     return
 
-
-    def build_tools(self):
-        bt = BuildTools(self.__configfile, self.__noop)
-        bt.build()
-
-
 #        pass
 
 def main():
@@ -228,7 +235,7 @@ def main():
     parser.add_argument("--skip-taxdb", default=False, action='store_true', help='Skip update of taxdb if needed')
     parser.add_argument("--skip-schema", default=False, action='store_true', help='Skip update of DB schemas if needed')
     parser.add_argument("--skip-toolvers", default=False, action='store_true', help='Skip checking versions of tools')
-    parser.add_argument("--build_tools", default=False, action='store_true', help='Build tools packages for this update')
+    parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
 
     args = parser.parse_args()
     print(args)
@@ -256,7 +263,7 @@ def main():
         um.updateschema()
 
     if args.build_tools:
-        um.build_tools()
+        um.buildtools()
 
     if not args.skip_toolvers:
         um.checktoolvers()

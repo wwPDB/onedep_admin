@@ -183,8 +183,8 @@ class UpdateManager(object):
                 pass
 
     def buildtools(self):
-        webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
-        webdir = os.path.abspath(os.path.join(webappsdir, '..'))
+        # webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
+        # webdir = os.path.abspath(os.path.join(webappsdir, '..'))
         curdir = os.path.dirname(__file__)
         buildscript = os.path.join(curdir, 'BuildTools.py')
 

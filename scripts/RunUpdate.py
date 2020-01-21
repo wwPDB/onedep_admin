@@ -18,7 +18,6 @@ import json
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
 from wwpdb.utils.db.MyDbUtil import MyDbQuery
-from BuildTools import BuildTools
 
 class DbSchemaManager(object):
     def __init__(self, noop):
@@ -183,8 +182,6 @@ class UpdateManager(object):
                 pass
 
     def buildtools(self):
-        # webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
-        # webdir = os.path.abspath(os.path.join(webappsdir, '..'))
         curdir = os.path.dirname(__file__)
         buildscript = os.path.join(curdir, 'BuildTools.py')
 

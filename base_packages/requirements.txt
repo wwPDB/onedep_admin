@@ -5,7 +5,7 @@
 openbabel --global-option=build_ext --global-option="-L${TOOLS_DIR}/packages/openbabel-2.3.2/lib"   --global-option='-I${TOOLS_DIR}/packages/openbabel-2.3.2/include/openbabel-2.0' --global-option='--rpath=${TOOLS_DIR}/packages/openbabel-2.3.2/lib'
   
 
-# Install OpenEye toolkit
+# Install OpenEye toolkit - should be in the wwpdb.utils.oe.
 OpenEye-toolkits-python2.7-ucs2-linux-x64 == 2016.6.1; python_version == '2.7' and sys_platform=='linux2'
 OpenEye-toolkits-python3-linux-x64 == 2018.10.1 ; python_version >= '3' and sys_platform=='linux'
 OpenEye-toolkits-python3-osx-x64 ; python_version >= '3' and sys_platform=='darwin'
@@ -14,17 +14,8 @@ OpenEye-toolkits-python3-osx-x64 ; python_version >= '3' and sys_platform=='darw
 fakepdftk
 
 # Newer version of numpy (1.16) having issues with random wsgi import failures switching added annotation/validation/status
-# This problem is mod_wsgi - and needs a configuration change - will be done for python 3
-numpy == 1.15.4
-
-## for apache 
-mod_wsgi
-# A number of analysis programs are using pandas - will be pulled in separately as doing at base - numpy is not installed initially. Tries to pull in newer version of numpy to build
-# wheel before installing. Newer numpy requires python 3.
-# pandas
-
-# We put this in here - as we need a newer mmcif_utils than on pypi for the moment. Pull in
-mmcif.utils
+# This problem is mod_wsgi - and needs a configuration change - will be done for python 3 - so only install for python-2
+numpy == 1.15.4; python_version == '2.7'
 
 # For validation - installing developent tree needs this
 wwpdb-TEMPy

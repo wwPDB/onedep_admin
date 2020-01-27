@@ -49,11 +49,8 @@ class BuildTools(object):
         for pack in packs:
             p = pack.strip()
             pbuild = "pkg_build_{}".format(p)
-            if self.__noop:
-                print("Would build %s" % pbuild)
-            else:
-                print("About to build %s" % pbuild)
-                self.run_build_command(pbuild=pbuild)
+            print("About to build %s" % pbuild)
+            self.run_build_command(pbuild=pbuild)
 
     def run_build_command(self, pbuild, build_version='v-3300'):
         onedep_build_dir = self.__ci.get('WWPDB_ONEDEP_BUILD')

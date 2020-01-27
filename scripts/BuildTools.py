@@ -83,7 +83,9 @@ class BuildTools(object):
         print('writing out commands to: {}'.format(temp_file))
 
         with open(temp_file, 'w') as outFile:
-            outFile.writelines(cmd)
+            for command in cmd:
+                outFile.write(command)
+            #outFile.writelines(cmd)
 
         #cmd_string = '; '.join(cmd)
         #return self.__exec(cmd_string)

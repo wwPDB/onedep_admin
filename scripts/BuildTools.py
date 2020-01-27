@@ -72,6 +72,7 @@ class BuildTools(object):
             sys.exit(1)
 
         cmd.append('cd {}'.format(onedep_build_dir))
+        cmd.append('git pull')
         cmd.append('. ${}/utils/pkg-utils-v2.sh'.format(onedep_build_dir))
         cmd.append('get_environment')
         cmd.append('export FORCE_REBUILD="YES"')

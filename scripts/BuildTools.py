@@ -6,10 +6,16 @@ import argparse
 import json
 import os
 import sys
+import shutil
+import subprocess
+import time
 try:
     from ConfigParser import ConfigParser, NoOptionError
 except ImportError:
     from configparser import ConfigParser, NoOptionError
+
+from wwpdb.utils.config.ConfigInfo import ConfigInfo
+
 
 class BuildTools(object):
     def __init__(self, config_file, noop):
@@ -22,7 +28,15 @@ class BuildTools(object):
 
         self.__cparser = ConfigParser(cdict)
         self.__cparser.read(self.__configfile)
+        self.__ci = ConfigInfo()
         pass
+
+    def __exec(self, cmd, overridenoop=False):
+        print(cmd)
+        ret = 0
+        if not self.__noop or overridenoop:
+            ret = subprocess.call(cmd, shell=True)
+        return ret
 
     def build(self):
         try:
@@ -39,7 +53,36 @@ class BuildTools(object):
                 print("Would build %s" % pbuild)
             else:
                 print("About to build %s" % pbuild)
-                # XXXXX
+                self.run_build_command(pbuild=pbuild)
+
+    def run_build_command(self, pbuild, build_version='v-3300'):
+        onedep_build_dir = self.__ci.get('WWPDB_ONEDEP_BUILD')
+        onedep_build_dir_version = os.path.join(onedep_build_dir, build_version)
+        distrib_dir = os.environ.get('DISTRIB_DIR', None)
+
+        cmd = []
+
+        if distrib_dir:
+            if os.path.exists(distrib_dir):
+                cmd.append('rm -rf ${DISTRIB_DIR}/*')
+            else:
+                os.makedirs(distrib_dir)
+        else:
+            print('DISTRIB_DIR not defined - exiting')
+            sys.exit(1)
+
+        cmd.append('cd {}'.format(onedep_build_dir))
+        cmd.append('. ${}/utils/pkg-utils-v2.sh'.format(onedep_build_dir))
+        cmd.append('get_environment')
+        cmd.append('export FORCE_REBUILD="YES"')
+        cmd.append('. {}/packages/all-packages.sh'.format(onedep_build_dir_version))
+
+        cmd.append(pbuild)
+
+        cmd_string = '; '.join(cmd)
+
+        return self.__exec(cmd_string)
+
 
 
 def main():

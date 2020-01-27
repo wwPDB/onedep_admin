@@ -89,8 +89,11 @@ class BuildTools(object):
         with open(temp_file, 'w') as outFile:
             outFile.write('\n'.join(cmd))
 
+        print('commands to run')
+        print('\n'.join(cmd))
+
         # run the temp file
-        cmd_string = 'chmod +x {0}; {0}; rm -f {0}'.format(temp_file)
+        cmd_string = 'chmod +x {0}; {0}; rm -rf {1}'.format(temp_file, working_dir)
         return self.__exec(cmd_string)
 
 

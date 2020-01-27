@@ -55,18 +55,18 @@ class BuildTools(object):
     def run_build_command(self, pbuild, build_version='v-3300'):
         onedep_build_dir = self.__ci.get('WWPDB_ONEDEP_BUILD')
         onedep_build_dir_version = os.path.join(onedep_build_dir, build_version)
-        distrib_dir = os.environ.get('DISTRIB_DIR', None)
+        #distrib_dir = os.environ.get('DISTRIB_DIR', None)
 
         cmd = []
 
-        if distrib_dir:
-            if os.path.exists(distrib_dir):
-                cmd.append('rm -rf ${DISTRIB_DIR}/*')
-            else:
-                os.makedirs(distrib_dir)
-        else:
-            print('DISTRIB_DIR not defined - exiting')
-            sys.exit(1)
+        #if distrib_dir:
+        #    if os.path.exists(distrib_dir):
+        #        cmd.append('rm -rf ${DISTRIB_DIR}/*')
+        #    else:
+        #        os.makedirs(distrib_dir)
+        #else:
+        #    print('DISTRIB_DIR not defined - exiting')
+        #    sys.exit(1)
 
         cmd.append('cd {}'.format(onedep_build_dir))
         cmd.append('git pull')

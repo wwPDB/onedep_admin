@@ -69,7 +69,7 @@ class BuildTools(object):
         cmd.append('. {}/packages/all-packages.sh'.format(onedep_build_dir_version))
 
         # clear out the existing distrib dir so files are re-fetched
-        cmd.append('if [ -z "$DISTRIB_DIR"]')
+        cmd.append('if [ -z "$DISTRIB_DIR" ]')
         cmd.append('then')
         cmd.append('echo "DISTRIB_DIR not defined - exiting"')
         cmd.append('exit 1')

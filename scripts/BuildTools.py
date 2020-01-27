@@ -8,6 +8,7 @@ import os
 import sys
 import shutil
 import subprocess
+import tempfile
 import time
 try:
     from ConfigParser import ConfigParser, NoOptionError
@@ -57,7 +58,7 @@ class BuildTools(object):
         onedep_build_dir_version = os.path.join(onedep_build_dir, build_version)
         #distrib_dir = os.environ.get('DISTRIB_DIR', None)
 
-        cmd = []
+        cmd = ['#!/bin/bash']
 
         #if distrib_dir:
         #    if os.path.exists(distrib_dir):
@@ -77,9 +78,15 @@ class BuildTools(object):
 
         cmd.append(pbuild)
 
-        cmd_string = '; '.join(cmd)
+        working_dir = tempfile.mkdtemp()
+        temp_file = os.path.join(working_dir, 'cmd.sh')
+        print('writing out commands to: {}'.format(temp_file))
 
-        return self.__exec(cmd_string)
+        with open(temp_file, 'w') as outFile:
+            outFile.writelines(cmd)
+
+        #cmd_string = '; '.join(cmd)
+        #return self.__exec(cmd_string)
 
 
 

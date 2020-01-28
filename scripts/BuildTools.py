@@ -105,7 +105,7 @@ def main():
     parser.add_argument("--noop", "-n", default=False, action='store_true', help='Do not carry out actions')
 
     args = parser.parse_args()
-    bt = BuildTools(config_file=args.config, noop=args.noop, build_version=args.build-version)
+    bt = BuildTools(config_file=args.config, noop=args.noop, build_version=args.build_version)
     bt.build()
     return 0
 

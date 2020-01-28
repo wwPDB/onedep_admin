@@ -261,7 +261,7 @@ def main():
         um.updateschema()
 
     if args.build_tools:
-        um.buildtools(args.build-version)
+        um.buildtools(args.build_version)
 
     if not args.skip_toolvers:
         um.checktoolvers()

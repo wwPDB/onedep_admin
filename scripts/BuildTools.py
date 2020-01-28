@@ -101,10 +101,11 @@ class BuildTools(object):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True, help='Configuration file for release')
+    parser.add_argument("--build_version", help='Version of tools to build from', default='v-3300')
     parser.add_argument("--noop", "-n", default=False, action='store_true', help='Do not carry out actions')
 
     args = parser.parse_args()
-    bt = BuildTools(args.config, args.noop)
+    bt = BuildTools(config_file=args.config, noop=args.noop, build_version=args.build_version)
     bt.build()
     return 0
 

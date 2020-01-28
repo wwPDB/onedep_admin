@@ -181,11 +181,11 @@ class UpdateManager(object):
                 # Option not in config file - continue
                 pass
 
-    def buildtools(self):
+    def buildtools(self, build_version='v-3300'):
         curdir = os.path.dirname(__file__)
         buildscript = os.path.join(curdir, 'BuildTools.py')
 
-        command = 'python {} --config {}'.format(buildscript, self.__configfile)
+        command = 'python {} --config {} --build_version {}'.format(buildscript, self.__configfile, build_version)
 
         ret = self.__exec(command)
         if ret:
@@ -233,6 +233,7 @@ def main():
     parser.add_argument("--skip-schema", default=False, action='store_true', help='Skip update of DB schemas if needed')
     parser.add_argument("--skip-toolvers", default=False, action='store_true', help='Skip checking versions of tools')
     parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
+    parser.add_argument("--build_version", default='v-3300', help='Version of tools to build from')
 
     args = parser.parse_args()
     print(args)
@@ -260,7 +261,7 @@ def main():
         um.updateschema()
 
     if args.build_tools:
-        um.buildtools()
+        um.buildtools(args.build_version)
 
     if not args.skip_toolvers:
         um.checktoolvers()

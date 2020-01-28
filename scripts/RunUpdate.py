@@ -233,7 +233,7 @@ def main():
     parser.add_argument("--skip-schema", default=False, action='store_true', help='Skip update of DB schemas if needed')
     parser.add_argument("--skip-toolvers", default=False, action='store_true', help='Skip checking versions of tools')
     parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
-    parser.add_argument("--build_version", default='v-3300', help='Version of tools to build from')
+    parser.add_argument("--build-version", default='v-3300', help='Version of tools to build from')
 
     args = parser.parse_args()
     print(args)
@@ -261,7 +261,7 @@ def main():
         um.updateschema()
 
     if args.build_tools:
-        um.buildtools(args.build_version)
+        um.buildtools(args.build-version)
 
     if not args.skip_toolvers:
         um.checktoolvers()

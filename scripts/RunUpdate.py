@@ -186,7 +186,7 @@ class UpdateManager(object):
         curdir = os.path.dirname(__file__)
         buildscript = os.path.join(curdir, 'BuildTools.py')
 
-        command = 'python {} --config {} --build_version {}'.format(buildscript, self.__configfile, build_version)
+        command = 'python {} --config {} --build-version {}'.format(buildscript, self.__configfile, build_version)
 
         ret = self.__exec(command)
         if ret:

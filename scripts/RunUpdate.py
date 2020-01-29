@@ -14,6 +14,7 @@ import subprocess
 import argparse
 import os.path
 import json
+import sys
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
@@ -237,6 +238,10 @@ def main():
 
     args = parser.parse_args()
     print(args)
+
+    if not os.path.exists(args.config):
+        print('Failed to find config file: {}'.format(args.config))
+        sys.exit(1)
 
     um = UpdateManager(args.config, args.noop)
 

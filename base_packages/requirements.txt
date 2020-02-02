@@ -14,8 +14,13 @@ OpenEye-toolkits-python3-osx-x64 ; python_version >= '3' and sys_platform=='darw
 fakepdftk
 
 # Newer version of numpy (1.16) having issues with random wsgi import failures switching added annotation/validation/status
-# This problem is mod_wsgi - and needs a configuration change - will be done for python 3 - so only install for python-2
+# Maybe reimport? This is still happening in 1.17.2 https://github.com/numpy/numpy/issues/14012 and https://github.com/numpy/numpy/issues/13430
+# https://modwsgi.readthedocs.io/en/develop/user-guides/application-issues.html#multiple-python-sub-interpreters indicates lxml and other third part C code may 
+# have issues with subinterpreters. 
 numpy == 1.15.4; python_version == '2.7'
 
 # For validation - installing developent tree needs this
-wwpdb-TEMPy
+wwpdb-TEMPy; python_version == '2.7'
+
+# BioTEMPy requires a specific version We get in trouble if we install biopython for another depedency first as pip will later not decrease version installed.
+biopython==1.73; python_version >= '3'

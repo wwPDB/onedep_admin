@@ -88,7 +88,7 @@ wwpdb.apps.ccmodule==0.9
 wwpdb.apps.chem-ref-data==0.7.dev1
 wwpdb.apps.chemeditor==0.5
 wwpdb.apps.content-ws-server==0.1.2
-wwpdb.apps.deposit==0.16.dev7
+wwpdb.apps.deposit==0.16.dev10
 wwpdb.apps.editormodule==0.4
 wwpdb.apps.entity-transform==0.8
 wwpdb.apps.msgmodule==0.7.dev1
@@ -111,7 +111,7 @@ wwpdb.utils.emdb==0.12.dev3
 wwpdb.utils.letters==0.7
 wwpdb.utils.markdown-wrapper==0.2
 wwpdb.utils.message-queue==0.4
-wwpdb.utils.nmr==0.2.dev4
+wwpdb.utils.nmr==0.2.dev6
 wwpdb.utils.oe-util==0.4
 wwpdb.utils.seqdb-v2==0.5
 wwpdb.utils.session==0.8

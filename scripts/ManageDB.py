@@ -34,6 +34,13 @@ class DbSchemaManager(object):
              [['post_rel_status', 'ADD COLUMN `post_rel_status` VARCHAR(10) NULL AFTER `pdb_format_compatible`'],
               ['post_rel_recvd_coord', 'ADD COLUMN `post_rel_recvd_coord` VARCHAR(1) NULL AFTER `post_rel_status`'],
               ['post_rel_recvd_coord_date', 'ADD COLUMN `post_rel_recvd_coord_date` DATE NULL AFTER `post_rel_recvd_coord`']]],
+            ['V4.5 da_internal', 'DA_INTERNAL', 'rcsb_status', '_daintnotexists',
+             [['status_code_nmr_data', 'ADD COLUMN `status_code_nmr_data` VARCHAR(10) NULL AFTER `post_rel_recvd_coord_date`'],
+              ['recvd_nmr_data', 'ADD COLUMN `recvd_nmr_data` VARCHAR(1) NULL AFTER `status_code_nmr_data`'],
+              ['date_nmr_data', 'ADD COLUMN `date_nmr_data` DATE NULL AFTER `recvd_nmr_data`'],
+              ['date_hold_nmr_data', 'ADD COLUMN `date_hold_nmr_data` DATE NULL AFTER `date_nmr_data`'],
+              ['dep_release_code_nmr_data', 'ADD COLUMN `dep_release_code_nmr_data` VARCHAR(24) NULL AFTER `date_hold_nmr_data`'],
+              ['date_of_nmr_data_release', 'ADD COLUMN `date_of_nmr_data_release` DATE NULL AFTER `dep_release_code_nmr_data`']]],
         ]
 
         self.__wftasks = [

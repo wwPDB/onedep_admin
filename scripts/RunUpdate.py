@@ -72,7 +72,6 @@ class UpdateManager(object):
         return ret
 
     def updatepyenv(self):
-        reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
         instenv = self.__ci.get('INSTALL_ENVIRONMENT')
         cs_user = instenv['CS_USER']
         cs_pass = instenv['CS_PW']
@@ -82,8 +81,16 @@ class UpdateManager(object):
         urlreq = urlparse(cs_url)
         urlpath = "{}://{}:{}@{}{}/dist/simple/".format(urlreq.scheme, cs_user, cs_pass, urlreq.netloc, urlreq.path)
 
+        # pip installing from requirements.txt in base_packages
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements.txt'))
         command = 'pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(urlpath, urlreq.netloc, reqfile)
         self.__exec(command)
+        
+        reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
+        command = 'pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(urlpath, urlreq.netloc, reqfile)
+        self.__exec(command)
+
         if opt_req:
             command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(
                 cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, urlpath, urlreq.netloc, opt_req)
@@ -111,10 +118,22 @@ class UpdateManager(object):
 
     def updatewebfe(self):
         webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
-        webdir = os.path.abspath(os.path.join(webappsdir, '..'))
+
+        # Checking if source directory exist
+        source_dir = os.path.abspath(os.path.join(webappsdir, '../..'))
+        if not os.path.isdir(source_dir):
+            os.makedirs(source_dir)
+
+        #Check if repo is cloned
+        webfe_repo = os.path.abspath(os.path.join(webappsdir, '..'))
+        if not os.path.isdir(webfe_repo):
+            command = 'git clone --recurse-submodules git@github.com:wwPDB/onedep-webfe.git'
+            self.__exec(command)
+            self.checkwebfe()
+
         webfetag = self.__cparser.get('DEFAULT', 'webfetag')
 
-        command = 'cd {}; git pull; git checkout {}; git pull origin {}; git submodule init; git submodule update'.format(webdir, webfetag, webfetag)
+        command = 'cd {}; git pull; git checkout {}; git pull origin {}; git submodule init; git submodule update'.format(webfe_repo, webfetag, webfetag)
         self.__exec(command)
 
         # Now check the results

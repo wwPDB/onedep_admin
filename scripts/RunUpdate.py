@@ -54,12 +54,25 @@ class UpdateManager(object):
         self.__noop = noop
         self.__ci = ConfigInfo()
 
+        instenv = self.__ci.get('INSTALL_ENVIRONMENT')
+        self.__extraconf = instenv.get("ADMIN_EXTRA_CONF", None)
+        self.__confvars = {}
+        self.__extraconfdir = None
+
+        if self.__extraconf is not None:
+            self.__extraconfdir = os.path.abspath(os.path.dirname(self.__extraconf))
+            self.__confvars["extraconfdir"] = self.__extraconfdir
+
         # Infer topdir from where running from
         topdir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
         cdict = {'topdir': topdir}
 
         self.__cparser = ConfigParser(cdict)
-        self.__cparser.read(self.__configfile)
+
+        cfiles = self.__configfile
+        if self.__extraconf is not None:
+            cfiles = [self.__configfile, self.__extraconf]
+        self.__cparser.read(cfiles)
 
         # print(self.__cparser.defaults())
         # print()
@@ -76,7 +89,6 @@ class UpdateManager(object):
         cs_user = instenv['CS_USER']
         cs_pass = instenv['CS_PW']
         cs_url = instenv['CS_URL']
-        opt_req = instenv.get('PIP_EXTRA_REQS')
 
         urlreq = urlparse(cs_url)
         urlpath = "{}://{}:{}@{}{}/dist/simple/".format(urlreq.scheme, cs_user, cs_pass, urlreq.netloc, urlreq.path)
@@ -91,6 +103,11 @@ class UpdateManager(object):
         command = 'pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(urlpath, urlreq.netloc, reqfile)
         self.__exec(command)
 
+        if self.__cparser.has_option('DEFAULT', 'pip_extra_reqs'):
+            opt_req = self.__cparser.get('DEFAULT', 'pip_extra_reqs', vars = self.__confvars)
+        else:
+            opt_req = None
+            
         if opt_req:
             command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(
                 cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, urlpath, urlreq.netloc, opt_req)

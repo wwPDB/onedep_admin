@@ -111,7 +111,7 @@ class UpdateManager(object):
             opt_req = self.__cparser.get('DEFAULT', 'pip_extra_reqs', vars = self.__confvars)
         else:
             opt_req = None
-            
+
         if dev_build:
             # Clone and do pip edit install
             webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
@@ -123,7 +123,6 @@ class UpdateManager(object):
 
             with open('../base_packages/requirements_wwpdb_dependencies.txt') as list_of_repo:
                 for repo in list_of_repo:
-                    print list_of_repo
                     command = 'git clone git@github.com:wwPDB/{}.git'.format(repo)
                     self.__exec(command, working_directory=source_dir)
                     command = 'pip install --edit {}/'.format(repo)
@@ -296,7 +295,7 @@ def main():
     parser.add_argument("--skip-toolvers", default=False, action='store_true', help='Skip checking versions of tools')
     parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
     parser.add_argument("--build-version", default='v-3300', help='Version of tools to build from')
-    parser.add_argument("--build-dev", default=False, action='store_true', helps='pip installs repos with edit param')
+    parser.add_argument("--build-dev", default=False, action='store_true', help='pip installs repos with edit param')
 
     args = parser.parse_args()
     print(args)

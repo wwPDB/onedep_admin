@@ -13,7 +13,7 @@ py-wwpdb_utils_seqdb_v2
 py-wwpdb_utils_wf
 py-wwpdb_utils_ws_utils
 py-wwpdb_utils_align
-py-wwpdb_wf_engine
+py-wwpdb_apps_wf_engine
 py-wwpdb_apps_deposit
 py-wwpdb_utils_session
 py-wwpdb_apps_validation
@@ -22,7 +22,7 @@ py-wwpdb_apps_ccmodule
 py-wwpdb_apps_chemeditor
 py-wwpdb_apps_chem_ref_data
 py-wwpdb_apps_content_ws_server
-py-wwpdb_apps_editor_module
+py-wwpdb_apps_editormodule
 py-wwpdb_apps_msgmodule
 py-wwpdb_apps_releasemodule
 py-wwpdb_apps_seqmodule

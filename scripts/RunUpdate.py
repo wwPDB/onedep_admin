@@ -123,7 +123,7 @@ class UpdateManager(object):
 
             with open('../base_packages/requirements_wwpdb_dependencies.txt') as list_of_repo:
                 for repo in list_of_repo:
-                    command = 'git clone git@github.com:wwPDB/{}.git'.format(repo)
+                    command = 'git clone git@github.com:wwPDB/{}.git'.format(repo.rstrip())
                     self.__exec(command, working_directory=source_dir)
                     command = 'pip install --edit {}/'.format(repo)
                     self.__exec(command, working_directory=source_dir)

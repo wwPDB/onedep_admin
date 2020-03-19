@@ -121,7 +121,8 @@ class UpdateManager(object):
             if not os.path.isdir(source_dir):
                 os.makedirs(source_dir)
 
-            with open('../base_packages/requirements_wwpdb_dependencies.txt') as list_of_repo:
+            path_to_list_of_repo = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements_wwpdb_dependencies.txt'))
+            with open(path_to_list_of_repo) as list_of_repo:
                 for repo in list_of_repo:
                     command = 'git clone git@github.com:wwPDB/{}.git'.format(repo.rstrip())
                     self.__exec(command, working_directory=source_dir)

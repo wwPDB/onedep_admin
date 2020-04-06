@@ -105,7 +105,7 @@ wwpdb.io==0.10
 wwpdb.utils.align==0.10
 wwpdb.utils.cc-dict-util==0.3
 wwpdb.utils.config==0.13
-wwpdb.utils.db==0.15.1.dev1
+wwpdb.utils.db==0.15.1.dev2
 wwpdb.utils.detach==0.3
 wwpdb.utils.dp==0.23
 wwpdb.utils.emdb==0.12

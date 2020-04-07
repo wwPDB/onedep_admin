@@ -84,7 +84,7 @@ weave==0.17.0
 WebOb==1.8.6
 wrapt==1.11.2
 wwpdb-TEMPy==1.1
-wwpdb.apps.ann-tasks-v2==0.7.2.dev1
+wwpdb.apps.ann-tasks-v2==0.7.2
 wwpdb.apps.ccmodule==0.9
 wwpdb.apps.chem-ref-data==0.7
 wwpdb.apps.chemeditor==0.5
@@ -92,7 +92,7 @@ wwpdb.apps.content-ws-server==0.1.2
 wwpdb.apps.deposit==0.16.1
 wwpdb.apps.editormodule==0.4
 wwpdb.apps.entity-transform==0.8
-wwpdb.apps.msgmodule==0.7.1dev1
+wwpdb.apps.msgmodule==0.7.1
 wwpdb.apps.releasemodule==0.8
 wwpdb.apps.seqmodule==0.12
 wwpdb.apps.site-admin==0.5
@@ -105,7 +105,7 @@ wwpdb.io==0.10
 wwpdb.utils.align==0.10
 wwpdb.utils.cc-dict-util==0.3
 wwpdb.utils.config==0.13
-wwpdb.utils.db==0.15.1.dev2
+wwpdb.utils.db==0.15.1
 wwpdb.utils.detach==0.3
 wwpdb.utils.dp==0.23
 wwpdb.utils.emdb==0.12

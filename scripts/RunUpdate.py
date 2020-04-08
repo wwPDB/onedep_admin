@@ -101,7 +101,7 @@ class UpdateManager(object):
 
         #Installing scipy
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/pre-requirements.txt'))
-        command = 'pip install -r {}'.format(urlpath, urlreq.netloc, reqfile)
+        command = 'pip install -r {}'.format(reqfile)
         self.__exec(command)
 
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements.txt'))

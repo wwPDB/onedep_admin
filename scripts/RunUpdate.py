@@ -100,7 +100,8 @@ class UpdateManager(object):
         script_dir = os.path.dirname(os.path.realpath(__file__))
 
         #Installing scipy
-        command = 'pip install scipy==1.2.2'
+        reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/pre-requirements.txt'))
+        command = 'pip install -r {}'.format(urlpath, urlreq.netloc, reqfile)
         self.__exec(command)
 
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements.txt'))

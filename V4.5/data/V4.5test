@@ -109,7 +109,7 @@ wwpdb.utils.db==0.16.dev4
 wwpdb.utils.detach==0.3
 wwpdb.utils.dp==0.23
 wwpdb.utils.emdb==0.12
-wwpdb.utils.letters==0.8.dev1
+wwpdb.utils.letters==0.8.dev2
 wwpdb.utils.markdown-wrapper==0.2
 wwpdb.utils.message-queue==0.4
 wwpdb.utils.nmr==0.3.dev19

@@ -89,12 +89,12 @@ wwpdb.apps.ccmodule==0.9
 wwpdb.apps.chem-ref-data==0.8.dev1
 wwpdb.apps.chemeditor==0.5
 wwpdb.apps.content-ws-server==0.1.2
-wwpdb.apps.deposit==0.17.dev16
+wwpdb.apps.deposit==0.17.dev17
 wwpdb.apps.editormodule==0.5.dev2
 wwpdb.apps.entity-transform==0.8
 wwpdb.apps.msgmodule==0.8.dev4
 wwpdb.apps.releasemodule==0.9.dev3
-wwpdb.apps.seqmodule==0.13.dev2
+wwpdb.apps.seqmodule==0.13.dev3
 wwpdb.apps.site-admin==0.6.dev2
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-ws-server==0.3

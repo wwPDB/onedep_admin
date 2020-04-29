@@ -45,6 +45,7 @@ oslo.concurrency==3.31.0
 oslo.config==7.0.0
 oslo.i18n==3.25.1
 oslo.utils==3.42.1
+packaging==20.3
 pandas==0.24.2
 paramiko==2.7.1
 pbr==5.4.5
@@ -89,7 +90,7 @@ wwpdb.apps.ccmodule==0.9
 wwpdb.apps.chem-ref-data==0.8.dev1
 wwpdb.apps.chemeditor==0.5
 wwpdb.apps.content-ws-server==0.1.2
-wwpdb.apps.deposit==0.17.dev18
+wwpdb.apps.deposit==0.17.dev19
 wwpdb.apps.editormodule==0.5.dev2
 wwpdb.apps.entity-transform==0.8
 wwpdb.apps.msgmodule==0.8.dev4
@@ -112,7 +113,7 @@ wwpdb.utils.emdb==0.12
 wwpdb.utils.letters==0.8.dev2
 wwpdb.utils.markdown-wrapper==0.2
 wwpdb.utils.message-queue==0.4
-wwpdb.utils.nmr==0.3.dev25
+wwpdb.utils.nmr==0.3.dev27
 wwpdb.utils.oe-util==0.4
 wwpdb.utils.seqdb-v2==0.6.dev1
 wwpdb.utils.session==0.9.dev1

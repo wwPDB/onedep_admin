@@ -2,12 +2,12 @@
 
 # Best if PKG_CONFIG_PATH is set before running - but we handle
 # PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PREFIX/packages/openbabel/lib/pkgconfig 
-openbabel --global-option=build_ext --global-option="-L${TOOLS_DIR}/packages/openbabel-2.3.2/lib"   --global-option='-I${TOOLS_DIR}/packages/openbabel-2.3.2/include/openbabel-2.0' --global-option='--rpath=${TOOLS_DIR}/packages/openbabel-2.3.2/lib'
+openbabel == 2.4.1 --global-option=build_ext --global-option="-L${TOOLS_DIR}/packages/openbabel-2.3.2/lib"   --global-option='-I${TOOLS_DIR}/packages/openbabel-2.3.2/include/openbabel-2.0' --global-option='--rpath=${TOOLS_DIR}/packages/openbabel-2.3.2/lib'
   
 
 # Install OpenEye toolkit - should be in the wwpdb.utils.oe.
 OpenEye-toolkits-python2.7-ucs2-linux-x64 == 2016.6.1; python_version == '2.7' and sys_platform=='linux2'
-OpenEye-toolkits-python3-linux-x64 == 2018.10.1 ; python_version >= '3' and sys_platform=='linux'
+OpenEye-toolkits-python3-linux-x64 ; python_version >= '3' and sys_platform=='linux'
 OpenEye-toolkits-python3-osx-x64 ; python_version >= '3' and sys_platform=='darwin'
 
 # For watermarks for validation reports

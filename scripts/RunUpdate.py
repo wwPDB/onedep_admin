@@ -145,7 +145,7 @@ class UpdateManager(object):
         if resdir:
             if not os.path.exists(resdir):
                 os.makedirs(resdir)
-                command = 'cd {}; git clone git@github.com:wwPDB/onedep-resources_ro.git'
+                command = 'cd {}; git clone git@github.com:wwPDB/onedep-resources_ro.git'.format(resdir)
                 self.__exec(command)
 
             command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(resdir, restag, restag)

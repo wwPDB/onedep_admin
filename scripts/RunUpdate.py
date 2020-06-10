@@ -144,8 +144,7 @@ class UpdateManager(object):
         resdir = self.__ci.get('RO_RESOURCE_PATH')
         if resdir:
             if not os.path.exists(resdir):
-                parent_dir = os.path.dirname(resdir)
-                command = 'cd {}; git clone git@github.com:wwPDB/onedep-resources_ro.git'.format(parent_dir)
+                command = 'git clone git@github.com:wwPDB/onedep-resources_ro.git {}'.format(resdir)
                 self.__exec(command)
 
             command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(resdir, restag, restag)

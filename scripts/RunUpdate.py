@@ -142,9 +142,14 @@ class UpdateManager(object):
     def updateresources(self):
         restag = self.__cparser.get('DEFAULT', 'resourcestag')
         resdir = self.__ci.get('RO_RESOURCE_PATH')
+        if resdir:
+            if not os.path.exists(resdir):
+                os.makedirs(resdir)
+                command = 'cd {}; git clone git@github.com:wwPDB/onedep-resources_ro.git'
+                self.__exec(command)
 
-        command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(resdir, restag, restag)
-        self.__exec(command)
+            command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(resdir, restag, restag)
+            self.__exec(command)
 
     def checkwebfe(self, overridenoop = False):
         webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')

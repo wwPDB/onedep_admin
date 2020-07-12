@@ -24,3 +24,4 @@ wwpdb-TEMPy; python_version == '2.7'
 
 # BioTEMPy requires a specific version We get in trouble if we install biopython for another depedency first as pip will later not decrease version installed.
 biopython==1.73; python_version >= '3'
+biopython==1.73; python_version == '2.7'

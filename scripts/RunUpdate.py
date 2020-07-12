@@ -16,9 +16,8 @@ import os.path
 import json
 import sys
 
+import os
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
-from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
-from wwpdb.utils.db.MyDbUtil import MyDbQuery
 
 class DbSchemaManager(object):
     def __init__(self, noop):
@@ -74,17 +73,21 @@ class UpdateManager(object):
             cfiles = [self.__configfile, self.__extraconf]
         self.__cparser.read(cfiles)
 
-        # print(self.__cparser.defaults())
-        # print()
-
-    def __exec(self, cmd, overridenoop = False):
+    def __exec(self, cmd, overridenoop = False, working_directory=False):
         print(cmd)
         ret = 0
         if not self.__noop or overridenoop:
-            ret = subprocess.call(cmd, shell=True)
+            if working_directory:
+                print('Working Directory= {}'.format(working_directory))
+                original_wd = os.getcwd()
+                os.chdir(working_directory)
+                ret = subprocess.call(cmd, shell=True)
+                os.chdir(original_wd)
+            else:
+                ret = subprocess.call(cmd, shell=True)
         return ret
 
-    def updatepyenv(self):
+    def updatepyenv(self, dev_build):
         instenv = self.__ci.get('INSTALL_ENVIRONMENT')
         cs_user = instenv['CS_USER']
         cs_pass = instenv['CS_PW']
@@ -95,11 +98,13 @@ class UpdateManager(object):
 
         # pip installing from requirements.txt in base_packages
         script_dir = os.path.dirname(os.path.realpath(__file__))
-        reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements.txt'))
-        command = 'pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(urlpath, urlreq.netloc, reqfile)
+
+        #Installing scipy
+        reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/pre-requirements.txt'))
+        command = 'pip install -r {}'.format(reqfile)
         self.__exec(command)
-        
-        reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
+
+        reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements.txt'))
         command = 'pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(urlpath, urlreq.netloc, reqfile)
         self.__exec(command)
 
@@ -107,7 +112,28 @@ class UpdateManager(object):
             opt_req = self.__cparser.get('DEFAULT', 'pip_extra_reqs', vars = self.__confvars)
         else:
             opt_req = None
-            
+
+        if dev_build:
+            # Clone and do pip edit install
+            webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
+
+            # Checking if source directory exist
+            source_dir = os.path.abspath(os.path.join(webappsdir, '../..'))
+            if not os.path.isdir(source_dir):
+                os.makedirs(source_dir)
+
+            path_to_list_of_repo = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements_wwpdb_dependencies.txt'))
+            with open(path_to_list_of_repo) as list_of_repo:
+                for repo in list_of_repo:
+                    command = 'git clone --recurse git@github.com:wwPDB/{}.git'.format(repo.rstrip())
+                    self.__exec(command, working_directory=source_dir)
+                    command = 'pip install --edit {}/'.format(repo)
+                    self.__exec(command, working_directory=source_dir)
+        else:
+            reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
+            command = 'pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(urlpath, urlreq.netloc, reqfile)
+            self.__exec(command)
+
         if opt_req:
             command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(
                 cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, urlpath, urlreq.netloc, opt_req)
@@ -116,9 +142,13 @@ class UpdateManager(object):
     def updateresources(self):
         restag = self.__cparser.get('DEFAULT', 'resourcestag')
         resdir = self.__ci.get('RO_RESOURCE_PATH')
+        if resdir:
+            if not os.path.exists(resdir):
+                command = 'git clone git@github.com:wwPDB/onedep-resources_ro.git {}'.format(resdir)
+                self.__exec(command)
 
-        command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(resdir, restag, restag)
-        self.__exec(command)
+            command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(resdir, restag, restag)
+            self.__exec(command)
 
     def checkwebfe(self, overridenoop = False):
         webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
@@ -131,7 +161,7 @@ class UpdateManager(object):
         ret = self.__exec(command, overridenoop = overridenoop)
         if ret:
             print("ERROR: check of webfe directory failed")
-        
+
 
     def updatewebfe(self):
         webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
@@ -145,7 +175,7 @@ class UpdateManager(object):
         webfe_repo = os.path.abspath(os.path.join(webappsdir, '..'))
         if not os.path.isdir(webfe_repo):
             command = 'git clone --recurse-submodules git@github.com:wwPDB/onedep-webfe.git'
-            self.__exec(command)
+            self.__exec(command, working_directory=source_dir)
             self.checkwebfe()
 
         webfetag = self.__cparser.get('DEFAULT', 'webfetag')
@@ -271,6 +301,7 @@ def main():
     parser.add_argument("--skip-toolvers", default=False, action='store_true', help='Skip checking versions of tools')
     parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
     parser.add_argument("--build-version", default='v-3300', help='Version of tools to build from')
+    parser.add_argument("--build-dev", default=False, action='store_true', help='pip installs repos with edit param')
 
     args = parser.parse_args()
     print(args)
@@ -285,13 +316,13 @@ def main():
     if not args.skip_resources:
         um.updateresources()
 
+    # update python
+    if not args.skip_pip:
+            um.updatepyenv(args.build_dev)
+
     # update webfe
     if not args.skip_webfe:
         um.updatewebfe()
-
-    # update python
-    if not args.skip_pip:
-        um.updatepyenv()
 
     # update taxonomy
     if not args.skip_taxdb:

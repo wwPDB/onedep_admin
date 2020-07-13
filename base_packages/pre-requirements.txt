@@ -1,1 +1,4 @@
 scipy
+# We need to pre-install cryptography for ansible
+# Ansible -> cryptography -> cffi issue otherwise
+cryptography

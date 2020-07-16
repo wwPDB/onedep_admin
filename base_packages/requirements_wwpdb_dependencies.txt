@@ -29,3 +29,4 @@ py-wwpdb_apps_seqmodule
 py-wwpdb_apps_site_admin
 py-wwpdb_apps_val_ws_server
 py-wwpdb_apps_workmanager
+py-wwpdb_apps_val_rel

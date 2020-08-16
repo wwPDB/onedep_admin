@@ -22,9 +22,9 @@ numpy == 1.15.4; python_version == '2.7'
 # For validation - installing developent tree needs this
 wwpdb-TEMPy; python_version == '2.7'
 
-# BioTEMPy requires a specific version We get in trouble if we install biopython for another depedency first as pip will later not decrease version installed.
-biopython==1.73; python_version >= '3'
-biopython==1.73; python_version == '2.7'
+# TEMPy requires biopython.  biopython 1.76 is last python 2 compatible version and they did not provide proper metadata in 1.77. Handle this way until "fix" in wwpdb-TEMPy
+#biopython==1.73; python_version >= '3'
+biopython==1.76; python_version == '2.7'
 
 # Ansible requested by PDBe
 Ansible

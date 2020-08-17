@@ -4,19 +4,15 @@
 # PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PREFIX/packages/openbabel/lib/pkgconfig 
 openbabel == 2.4.1 --global-option=build_ext --global-option="-L${TOOLS_DIR}/packages/openbabel-2.3.2/lib"   --global-option='-I${TOOLS_DIR}/packages/openbabel-2.3.2/include/openbabel-2.0' --global-option='--rpath=${TOOLS_DIR}/packages/openbabel-2.3.2/lib'
 
-# Install OpenEye toolkit - should be in the wwpdb.utils.oe.
-OpenEye-toolkits-python2.7-ucs2-linux-x64 == 2016.6.1; python_version == '2.7' and sys_platform=='linux2'
-OpenEye-toolkits-python3-linux-x64 ; python_version >= '3' and sys_platform=='linux'
-OpenEye-toolkits-python3-osx-x64 ; python_version >= '3' and sys_platform=='darwin'
-
 # For watermarks for validation reports
 fakepdftk
 
 # For validation - installing developent tree needs this
 wwpdb-TEMPy; python_version == '2.7'
 
-# TEMPy requires biopython.  biopython 1.76 is last python 2 compatible version and they did not provide proper metadata in 1.77. Handle this way until "fix" in wwpdb-TEMPy
-#biopython==1.73; python_version >= '3'
+# TEMPy requires biopython.  biopython 1.76 is last python 2 compatible version and they did not provide proper metadata in 1.77.
+# biotempy pins version at 1.73 as well
+biopython==1.73; python_version >= '3'
 biopython==1.73; python_version == '2.7'
 
 # Ansible requested by PDBe

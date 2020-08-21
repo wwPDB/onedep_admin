@@ -105,7 +105,7 @@ class UpdateManager(object):
         self.__exec(command)
 
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements.txt'))
-        command = 'pip install -U --extra-index-url {} --trusted-host {} -r {}'.format(urlpath, urlreq.netloc, reqfile)
+        command = 'pip install --extra-index-url {} --trusted-host {} -r {}'.format(urlpath, urlreq.netloc, reqfile)
         self.__exec(command)
 
         if self.__cparser.has_option('DEFAULT', 'pip_extra_reqs'):

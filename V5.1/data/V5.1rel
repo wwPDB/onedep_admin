@@ -108,9 +108,9 @@ wwpdb.apps.releasemodule==0.9.1
 wwpdb.apps.seqmodule==0.13
 wwpdb.apps.site-admin==0.6
 wwpdb.apps.testfixture==0.1
-wwpdb.apps.val-rel==0.5
+wwpdb.apps.val-rel==0.5.1
 wwpdb.apps.val-ws-server==0.5.1
-wwpdb.apps.validation==2.13.1
+wwpdb.apps.validation==2.14.1
 wwpdb.apps.wf-engine==0.11
 wwpdb.apps.workmanager==0.10
 wwpdb.io==0.14.1

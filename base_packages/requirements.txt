@@ -15,5 +15,10 @@ wwpdb-TEMPy; python_version == '2.7'
 biopython==1.73; python_version >= '3'
 biopython==1.73; python_version == '2.7'
 
+# emda package has pinned pandas - a dependency installs pandas so then we have conflicting needs. We pin here.
+# We cannot install pandas as a pre-requirements as numpy will not be installed
+pandas==0.23.4
+
+
 # Ansible requested by PDBe
 ansible

@@ -110,7 +110,7 @@ wwpdb.apps.site-admin==0.7
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.5.2
 wwpdb.apps.val-ws-server==0.5.1
-wwpdb.apps.validation==2.14.5
+wwpdb.apps.validation==2.14.6
 wwpdb.apps.wf-engine==0.11
 wwpdb.apps.workmanager==0.10
 wwpdb.io==0.14.1

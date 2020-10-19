@@ -50,9 +50,10 @@ class BuildTools(object):
         packs = packages.split(',')
         for pack in packs:
             p = pack.strip()
-            pbuild = "pkg_build_{}".format(p)
-            print("About to build %s" % pbuild)
-            self.run_build_command(pbuild=pbuild)
+            if p:
+                pbuild = "pkg_build_{}".format(p)
+                print("About to build %s" % pbuild)
+                self.run_build_command(pbuild=pbuild)
 
     def run_build_command(self, pbuild):
         onedep_build_dir = self.__ci.get('WWPDB_ONEDEP_BUILD')

@@ -10,6 +10,8 @@ fakepdftk
 
 # For validation - installing developent tree needs this
 wwpdb-TEMPy; python_version == '2.7'
+# We host biotempy - so easier to install here
+biotempy; python_version >= '3'
 
 # TEMPy requires biopython.  biopython 1.76 is last python 2 compatible version and they did not provide proper metadata in 1.77.
 # biotempy pins version at 1.73 as well

@@ -46,6 +46,7 @@ class DbSchemaManager(object):
         self.__wftasks = [
             # idname     filename
             [ 'SeqModUI', 'SequenceModuleUI.xml'],
+            [ 'AnnModUI', 'AnnotateModuleUI.xml'],
             # [ 'LigModUI', 'LigandModuleUI.xml']
         ]
 
@@ -113,7 +114,7 @@ class DbSchemaManager(object):
             fpath = os.path.join(defpath, fname)
 
             if not os.path.exists(fpath):
-                #print("Skipping %s as does not exist" % fname)
+                # print("Skipping %s as does not exist" % fname)
                 continue
 
             myq = MyDbQuery(dbcon=mydb._dbCon)

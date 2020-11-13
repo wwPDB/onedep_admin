@@ -102,7 +102,7 @@ wwpdb-TEMPy==1.1
 wwpdb.apps.ann-tasks-v2==0.13.dev6
 wwpdb.apps.ccmodule==0.10
 wwpdb.apps.chem-ref-data==0.9
-wwpdb.apps.chemeditor==0.6
+wwpdb.apps.chemeditor==0.7.dev1
 wwpdb.apps.content-ws-server==0.3.dev1
 wwpdb.apps.deposit==0.22.dev8
 wwpdb.apps.editormodule==0.6
@@ -114,7 +114,7 @@ wwpdb.apps.site-admin==0.7
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.6.dev2
 wwpdb.apps.val-ws-server==0.5.1
-wwpdb.apps.validation==2.15.dev7
+wwpdb.apps.validation==2.15.dev8
 wwpdb.apps.wf-engine==0.11
 wwpdb.apps.workmanager==0.12.dev1
 wwpdb.io==0.15.dev1

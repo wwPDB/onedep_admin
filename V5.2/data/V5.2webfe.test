@@ -1,12 +1,12 @@
 .==V5.2
 webapps/htdocs/ann_tasks_v2==1.5.dev2
-webapps/htdocs/ccmodule==1.3
+webapps/htdocs/ccmodule==1.4.dev1
 webapps/htdocs/ccmodule_lite==1.2
 webapps/htdocs/chem_ref_data_ui==1.3
-webapps/htdocs/chemeditor==1.7.dev1
+webapps/htdocs/chemeditor==1.7.dev2
 webapps/htdocs/docs-static==1.1.1
 webapps/htdocs/editormodule==1.0
-webapps/htdocs/entity_transform_ui==1.5
+webapps/htdocs/entity_transform_ui==1.6.dev1
 webapps/htdocs/msgmodule==1.6
 webapps/htdocs/releasemodule==1.5.dev1
 webapps/htdocs/review_v2==1.6.dev1

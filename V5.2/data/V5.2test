@@ -99,12 +99,12 @@ weave==0.17.0
 WebOb==1.8.6
 wrapt==1.12.1
 wwpdb-TEMPy==1.1
-wwpdb.apps.ann-tasks-v2==0.13.dev6
+wwpdb.apps.ann-tasks-v2==0.13.dev7
 wwpdb.apps.ccmodule==0.10
 wwpdb.apps.chem-ref-data==0.9
 wwpdb.apps.chemeditor==0.7.dev1
 wwpdb.apps.content-ws-server==0.3.dev1
-wwpdb.apps.deposit==0.22.dev8
+wwpdb.apps.deposit==0.22.dev9
 wwpdb.apps.editormodule==0.6
 wwpdb.apps.entity-transform==0.10
 wwpdb.apps.msgmodule==0.10
@@ -128,7 +128,7 @@ wwpdb.utils.emdb==0.15.dev1
 wwpdb.utils.letters==0.10
 wwpdb.utils.markdown-wrapper==0.3
 wwpdb.utils.message-queue==0.4
-wwpdb.utils.nmr==0.7.dev7
+wwpdb.utils.nmr==0.7.dev8
 wwpdb.utils.oe-util==0.6.dev1
 wwpdb.utils.seqdb-v2==0.8.dev1
 wwpdb.utils.session==0.10.2

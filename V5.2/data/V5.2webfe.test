@@ -9,7 +9,7 @@ webapps/htdocs/editormodule==1.0
 webapps/htdocs/entity_transform_ui==1.6.dev1
 webapps/htdocs/msgmodule==1.6
 webapps/htdocs/releasemodule==1.5.dev1
-webapps/htdocs/review_v2==1.6.dev1
+webapps/htdocs/review_v2==1.6.dev2
 webapps/htdocs/seqmodule==1.4
 webapps/htdocs/status_update_tasks_v2==1.2.dev2
 webapps/htdocs/testfixture==1.0

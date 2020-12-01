@@ -99,7 +99,7 @@ weave==0.17.0
 WebOb==1.8.6
 wrapt==1.12.1
 wwpdb-TEMPy==1.1
-wwpdb.apps.ann-tasks-v2==0.13
+wwpdb.apps.ann-tasks-v2==0.13.1
 wwpdb.apps.ccmodule==0.10
 wwpdb.apps.chem-ref-data==0.9
 wwpdb.apps.chemeditor==0.7

@@ -99,13 +99,14 @@ class UpdateManager(object):
         # pip installing from requirements.txt in base_packages
         script_dir = os.path.dirname(os.path.realpath(__file__))
 
-        #Installing scipy
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/pre-requirements.txt'))
-        command = 'pip install -r {}'.format(reqfile)
+        constraintfile = os.path.abspath(os.path.join(script_dir, '../base_packages/constraints.txt'))
+
+        command = 'pip install -r {} -c {}'.format(reqfile, constraintfile)
         self.__exec(command)
 
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements.txt'))
-        command = 'pip install --extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple -r {}'.format(urlpath, urlreq.netloc, reqfile)
+        command = 'pip install --extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple -r {} -c {}'.format(urlpath, urlreq.netloc, reqfile, constraintfile)
         self.__exec(command)
 
         if self.__cparser.has_option('DEFAULT', 'pip_extra_reqs'):
@@ -127,16 +128,16 @@ class UpdateManager(object):
                 for repo in list_of_repo:
                     command = 'git clone --recursive git@github.com:wwPDB/{}.git'.format(repo.rstrip())
                     self.__exec(command, working_directory=source_dir)
-                    command = 'pip install --edit {}/'.format(repo)
+                    command = 'pip install --edit {}/ -c {}'.format(repo, constraintfile)
                     self.__exec(command, working_directory=source_dir)
         else:
             reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
-            command = 'pip install -U --extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple -r {}'.format(urlpath, urlreq.netloc, reqfile)
+            command = 'pip install -U --extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple -r {} -c {}'.format(urlpath, urlreq.netloc, reqfile, constraintfile)
             self.__exec(command)
 
         if opt_req:
-            command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U --extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple -r {}'.format(
-                cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, urlpath, urlreq.netloc, opt_req)
+            command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U --extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple -r {} -c {}'.format(
+                cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, urlpath, urlreq.netloc, opt_req, constraintfile)
             self.__exec(command)
 
     def updateresources(self):

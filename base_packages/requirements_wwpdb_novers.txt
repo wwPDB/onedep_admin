@@ -22,6 +22,7 @@ wwpdb.utils.db
 wwpdb.utils.detach
 wwpdb.utils.dp
 wwpdb.utils.emdb
+wwpdb.utils.letters
 wwpdb.utils.markdown-wrapper
 wwpdb.utils.message-queue
 wwpdb.utils.nmr

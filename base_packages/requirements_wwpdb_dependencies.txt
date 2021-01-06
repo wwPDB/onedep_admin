@@ -4,6 +4,7 @@ py-wwpdb_utils_db
 py-wwpdb_utils_detach
 py-wwpdb_utils_dp
 py-wwpdb_utils_emdb
+py-wwpdb_utils_letters
 py-wwpdb_utils_markdown_wrapper
 py-wwpdb_utils_message_queue
 py-wwpdb_utils_nmr

@@ -47,6 +47,7 @@ class DbSchemaManager(object):
             # idname     filename
             [ 'SeqModUI', 'SequenceModuleUI.xml'],
             [ 'AnnModUI', 'AnnotateModuleUI.xml'],
+            [ 'TransModUI', 'TransformerModuleUI.xml'],
             # [ 'LigModUI', 'LigandModuleUI.xml']
         ]
 

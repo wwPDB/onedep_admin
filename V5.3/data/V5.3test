@@ -93,16 +93,16 @@ wwpdb.apps.chemeditor==0.7
 wwpdb.apps.content-ws-server==0.4.dev1
 wwpdb.apps.deposit==0.23.dev5
 wwpdb.apps.editormodule==0.7.dev1
-wwpdb.apps.entity-transform @ git+https://github.com/wwPDB/py-wwpdb_apps_entity_transform.git@ca1dad2a129108adba1549e77aa1dd537cae2fc0
+wwpdb.apps.entity-transform==0.11.1.dev1
 wwpdb.apps.msgmodule==0.10
 wwpdb.apps.releasemodule==0.13.dev1
-wwpdb.apps.seqmodule @ git+https://github.com/wwPDB/py-wwpdb_apps_seqmodule.git@8710731bf52da3692a6b74c291b3bc2ef59dad52
+wwpdb.apps.seqmodule==0.17.dev2
 wwpdb.apps.site-admin==0.8.dev1
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.7.dev1
 wwpdb.apps.validation==2.17.dev6
 wwpdb.apps.wf-engine==0.11
-wwpdb.apps.workmanager @ git+https://github.com/wwPDB/py-wwpdb_apps_workmanager.git@ac135f19598f47f5f2bd236cb8902ce007ebbad7
+wwpdb.apps.workmanager==0.13.2.dev1
 wwpdb.io==0.15
 wwpdb.utils.align==0.11
 wwpdb.utils.cc-dict-util==0.4

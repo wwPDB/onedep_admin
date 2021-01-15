@@ -87,13 +87,13 @@ va==0.0.0.dev61
 WebOb==1.8.6
 wrapt==1.12.1
 wwpdb.apps.ann-tasks-v2==0.15.dev1
-wwpdb.apps.ccmodule==0.11.dev1
+wwpdb.apps.ccmodule==0.11.dev2
 wwpdb.apps.chem-ref-data==0.10.dev3
 wwpdb.apps.chemeditor==0.7
 wwpdb.apps.content-ws-server==0.4.dev1
 wwpdb.apps.deposit==0.23.dev5
 wwpdb.apps.editormodule==0.7.dev1
-wwpdb.apps.entity-transform==0.11.1.dev1
+wwpdb.apps.entity-transform==0.11.2.dev2
 wwpdb.apps.msgmodule==0.10
 wwpdb.apps.releasemodule==0.13.dev1
 wwpdb.apps.seqmodule==0.17.dev2
@@ -102,7 +102,7 @@ wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.7.dev1
 wwpdb.apps.validation==2.17.dev6
 wwpdb.apps.wf-engine==0.11
-wwpdb.apps.workmanager==0.13.2.dev1
+wwpdb.apps.workmanager==0.13.2.dev2
 wwpdb.io==0.15
 wwpdb.utils.align==0.11
 wwpdb.utils.cc-dict-util==0.4

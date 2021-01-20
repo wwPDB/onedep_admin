@@ -114,6 +114,8 @@ class UpdateManager(object):
         else:
             opt_req = None
 
+        reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
+        pip_extra_urls = "--extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple -r {} -c {}".format(urlpath, urlreq.netloc, reqfile, constraintfile)
         if dev_build:
             # Clone and do pip edit install
             webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
@@ -128,11 +130,11 @@ class UpdateManager(object):
                 for repo in list_of_repo:
                     command = 'git clone --recursive git@github.com:wwPDB/{}.git'.format(repo.rstrip())
                     self.__exec(command, working_directory=source_dir)
-                    command = 'pip install --edit {}/ -c {}'.format(repo, constraintfile)
+                    command = 'pip install --edit {}/ {}'.format(repo, pip_extra_urls)
                     self.__exec(command, working_directory=source_dir)
         else:
-            reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
-            command = 'pip install -U --extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple -r {} -c {}'.format(urlpath, urlreq.netloc, reqfile, constraintfile)
+            # reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
+            command = 'pip install -U {}'.format(pip_extra_urls)
             self.__exec(command)
 
         if opt_req:

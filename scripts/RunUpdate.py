@@ -104,11 +104,11 @@ class UpdateManager(object):
         pip_extra_urls = "--extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple -c {}".format(
             urlpath, urlreq.netloc, constraintfile)
 
-        command = 'pip install -r {} -c {}'.format(reqfile, constraintfile)
+        command = 'pip install {} -r {}'.format(pip_extra_urls, reqfile)
         self.__exec(command)
 
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements.txt'))
-        command = 'pip install {} -r {} '.format(urlpath, urlreq.netloc, pip_extra_urls, reqfile)
+        command = 'pip install {} -r {} '.format(pip_extra_urls, reqfile)
         self.__exec(command)
 
         if self.__cparser.has_option('DEFAULT', 'pip_extra_reqs'):

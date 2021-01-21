@@ -8,14 +8,6 @@
 PYTHON2="python2"
 THIS_SCRIPT="${BASH_SOURCE[0]}"
 
-# arguments
-SITE_ID="${WWPDB_SITE_ID}"
-SITE_LOC="${LOC_ID}"
-MACHINE_ENV="development"
-OPT_COMPILE_TOOLS=true
-OPT_SKIP_INSTALL=false
-OPT_SKIP_BUILD=false
-
 # repositories
 SITE_CONFIG_REPO_URL=https://gitlab.ebi.ac.uk/pdbe/onedep-site-config.git
 # SITE_CONFIG_REPO_URL=git@gitlab.ebi.ac.uk:pdbe/onedep-site-config.git
@@ -23,8 +15,6 @@ ONEDEP_BUILD_REPO_URL=git@github.com:wwPDB/onedep-build.git # scripts to build t
 ONEDEP_ADMIN_REPO_URL=git@github.com:wwPDB/onedep_admin.git # OneDep package management
 ONEDEP_MAINTENANCE_REPO_URL=git@github.com:wwPDB/onedep-maintenance.git # scripts to setup and maintain OneDep
 WWPDB_UTILS_CONFIG=git@github.com:wwPDB/py-wwpdb_utils_config.git
-
-USAGE="Usage: ${THIS_SCRIPT} [-e|--env [development]|production] [--no-compile] [--skip-install] [--skip-build]"
 
 # ----------------------------------------------------------------
 # helper functions
@@ -87,6 +77,52 @@ function download_file {
     fi
 }
 
+
+# ----------------------------------------------------------------
+# arguments parsing
+# ----------------------------------------------------------------
+
+# arguments
+ONEDEP_VERSION="latest"
+SITE_ID="${WWPDB_SITE_ID}"
+SITE_LOC="${LOC_ID}"
+MACHINE_ENV="development"
+OPT_COMPILE_TOOLS=true
+OPT_SKIP_INSTALL=false
+OPT_SKIP_BUILD=false
+
+USAGE="Usage: ${THIS_SCRIPT} [--version] [--no-compile] [--skip-install] [--skip-build] [-e|--env] "
+
+while [[ $# > 0 ]]
+do
+    key="$1"
+    case $key in
+        -e|--env)
+        if [[ "$2" != "development" && "$2" != "production" ]]; then
+            show_error_message "env option must be set to either 'development' or 'production'"
+            exit
+        fi
+        MACHINE_ENV="$2"
+        shift # past argument
+        ;;
+        # optional args
+        --version) ONEDEP_VERSION="$2";;
+        --no-compile) OPT_COMPILE_TOOLS=false;;
+        --skip-install) OPT_SKIP_INSTALL=true;;
+        --skip-build) OPT_SKIP_BUILD=true;;
+        --help)
+            echo ${USAGE}
+            OK=1
+        ;;
+        *)
+            # unknown option
+            echo ${USAGE}
+            OK=1
+        ;;
+    esac
+    shift # past argument or value
+done
+
 # ----------------------------------------------------------------
 # checking required environment settings
 # some new ones are created based on them (e.g. ONEDEP_PATH)
@@ -109,39 +145,6 @@ export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
 echo -e "[*] $(highlight_text SITE_CONFIG_DIR) is set to $(highlight_text $SITE_CONFIG_DIR)"
 echo -e "[*] $(highlight_text TOP_WWPDB_SITE_CONFIG_DIR) is set to $(highlight_text $TOP_WWPDB_SITE_CONFIG_DIR)"
 echo -e "----------------------------------------------------------------"
-
-# ----------------------------------------------------------------
-# arguments parsing
-# ----------------------------------------------------------------
-
-while [[ $# > 0 ]]
-do
-    key="$1"
-    case $key in
-        -e|--env)
-        if [[ "$2" != "development" && "$2" != "production" ]]; then
-            show_error_message "env option must be set to either 'development' or 'production'"
-            exit
-        fi
-        MACHINE_ENV="$2"
-        shift # past argument
-        ;;
-        # optional args
-        --no-compile) OPT_COMPILE_TOOLS=false;;
-        --skip-install) OPT_SKIP_INSTALL=true;;
-        --skip-build) OPT_SKIP_BUILD=true;;
-        --help)
-            echo ${USAGE}
-            OK=1
-        ;;
-        *)
-            # unknown option
-            echo ${USAGE}
-            OK=1
-        ;;
-    esac
-    shift # past argument or value
-done
 
 # ----------------------------------------------------------------
 # install required packages
@@ -255,6 +258,13 @@ fi
 
 if [[ ! -d "onedep_admin" ]]; then
     git clone $ONEDEP_ADMIN_REPO_URL
+    
+    cd onedep_admin
+
+    git checkout master
+    git pull
+
+    cd ..
 fi
 
 if [[ ! -d "onedep-maintenance" ]]; then
@@ -294,26 +304,12 @@ if [[ -z "$VENV_PATH" ]]; then
     done <<< "$($COMMAND)"
 fi
 
-# Ezra Peisach:
-#   You should not need to do this. Just do the site-config setup
-#
-# should we do this?
 python3 -m venv $VENV_PATH
-source $VENV_PATH/bin/activate > /dev/null
-
-# show_info_message "installing py-wwpdb_utils_config"
-
-# export SOURCE_DIR=$DEPLOY_DIR/source
-# if [[ ! -d "$SOURCE_DIR/py-wwpdb_utils_config" ]]; then
-
-#     git clone git@github.com:wwPDB/py-wwpdb_utils_config.git $SOURCE_DIR/py-wwpdb_utils_config
-#     cd $SOURCE_DIR/py-wwpdb_utils_config
-#     pip install --edit .
-# fi
 
 show_info_message "checking for updates in onedep_admin"
 
 cd $ONEDEP_PATH/onedep_admin
+git checkout master
 git pull
 
 show_info_message "running RunUpdate.py step"
@@ -342,6 +338,8 @@ else
     svn up --no-auth-cache --username $SVN_USER --password $SVN_PASS
 fi
 
+if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary' failed with exit code $?"; fi
+
 # to checkout / update the taxonomy for annotation
 # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_taxonomy.sh
 
@@ -356,15 +354,21 @@ else
     svn up --username $SVN_USER --password $SVN_PASS
 fi
 
+if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating taxonomy' failed with exit code $?"; fi
+
 # to checkout/ update  the chemical component dictionary (CCD) and PRD - this step can take a while
 # using installed modules
 
 show_info_message "checking out / updating CCD and PRD"
 
 python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db CC --load
-python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db PRD --load
-python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
+if [[ $? != 0 ]]; then show_error_message "step 'checking out CC' failed with exit code $?"; fi
 
+python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db PRD --load
+if [[ $? != 0 ]]; then show_error_message "step 'checking out PRD' failed with exit code $?"; fi
+
+python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
+if [[ $? != 0 ]]; then show_error_message "step 'updating taxonomy' failed with exit code $?"; fi
 
 # checkout / update sequences in OneDep - it now runs from anywhere using RunRemote
 # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/Update-reference-sequences.sh
@@ -378,23 +382,30 @@ then
    do SCRIPT_PATH=`readlink "${SCRIPT_PATH}"`;
    done
 fi
+
 pushd . > /dev/null
 cd `dirname ${SCRIPT_PATH}` > /dev/null
 SCRIPT_PATH=`pwd`;
 
 ${SCRIPT_PATH}/sequence/Fetch-db-unp.sh
+if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-unp.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
+
 ${SCRIPT_PATH}/sequence/Fetch-db-gb.sh
+if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-gb.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
+
 ${SCRIPT_PATH}/sequence/Format-db.sh
+if [[ $? != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
-# ----------------------------------------------------------------
 # get the taxonomy information for the depUI and load it into the OneDep database
-#
-# PDBe specific instruction - 
-# ----------------------------------------------------------------
 
-show_info_message "loading taxonomy information into OneDep db"
-
+# PDBe specific instruction -
 # python -m wwpdb.apps.deposit.depui.taxonomy.getData
 
 # sync taxonomy data from PDBe...
+show_info_message "loading taxonomy information into OneDep db"
 python -m wwpdb.apps.deposit.depui.taxonomy.loadData
+if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
+
+# ----------------------------------------------------------------
+# apache setup
+# ----------------------------------------------------------------

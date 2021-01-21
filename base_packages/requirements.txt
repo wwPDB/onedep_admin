@@ -3,7 +3,7 @@
 # Best if PKG_CONFIG_PATH is set before running - but we handle
 # PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:$PREFIX/packages/openbabel/lib/pkgconfig 
 # openbabel 3.1.1 is available - but python cannot be installed due to assimption of std compiler (nullptr definition). We would need to add flags, etc. 
-openbabel == 2.4.1 --global-option=build_ext --global-option="-L${TOOLS_DIR}/packages/openbabel-2.3.2/lib"   --global-option='-I${TOOLS_DIR}/packages/openbabel-2.3.2/include/openbabel-2.0' --global-option='--rpath=${TOOLS_DIR}/packages/openbabel-2.3.2/lib'
+openbabel==2.4.1 --global-option=build_ext --global-option="-L${TOOLS_DIR}/packages/openbabel-2.3.2/lib"   --global-option="-I${TOOLS_DIR}/packages/openbabel-2.3.2/include/openbabel-2.0" --global-option="--rpath=${TOOLS_DIR}/packages/openbabel-2.3.2/lib"
 
 # For watermarks for validation reports
 fakepdftk
@@ -12,7 +12,7 @@ fakepdftk
 wwpdb-TEMPy; python_version == '2.7'
 # We host biotempy - so easier to install here
 # Leave for later - constraints will ensure proper biopython
-#biotempy; python_version >= '3'
+biotempy; python_version >= '3'
 
 # TEMPy requires biopython.  biopython 1.76 is last python 2 compatible version and they did not provide proper metadata in 1.77.
 # biotempy pins version at 1.73 as well
@@ -30,7 +30,7 @@ pandas==0.23.4; python_version == '2.7'
 # We define OpenEye for python 2 - as building development should not depend on unspecified location
 # Install OpenEye toolkit - should be in the wwpdb.utils.oe.
 OpenEye-toolkits-python2.7-ucs2-linux-x64 == 2016.6.1; python_version == '2.7' and sys_platform=='linux2'
-# Newer OpenEye - we will pull in directoy - instead of content server
+# Newer OpenEye - we will pull in directly - instead of content server
 --extra-index-url https://pypi.anaconda.org/OpenEye/simple
 OpenEye-toolkits ; python_version >= '3'
 

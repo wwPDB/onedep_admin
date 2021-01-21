@@ -130,7 +130,7 @@ class UpdateManager(object):
                 for repo in list_of_repo:
                     command = 'git clone --recursive git@github.com:wwPDB/{}.git'.format(repo.rstrip())
                     self.__exec(command, working_directory=source_dir)
-                    command = 'pip install --edit {}/ {}'.format(repo, pip_extra_urls)
+                    command = 'pip install --edit {} {}'.format(repo, pip_extra_urls)
                     self.__exec(command, working_directory=source_dir)
         else:
             # reqfile = self.__cparser.get('DEFAULT', 'piprequirements')

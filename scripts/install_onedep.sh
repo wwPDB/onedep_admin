@@ -5,6 +5,7 @@
 # ----------------------------------------------------------------
 
 # internal
+HOSTNAME=$(hostname)
 PYTHON2="python2"
 THIS_SCRIPT="${BASH_SOURCE[0]}"
 
@@ -86,30 +87,26 @@ function download_file {
 ONEDEP_VERSION="latest"
 SITE_ID="${WWPDB_SITE_ID}"
 SITE_LOC="${LOC_ID}"
-MACHINE_ENV="development"
+MACHINE_ENV="production"
 OPT_COMPILE_TOOLS=true
 OPT_SKIP_INSTALL=false
 OPT_SKIP_BUILD=false
+OPT_SKIP_RUNUPDATE=false
+OPT_SKIP_MAINTENANCE=false
 
-USAGE="Usage: ${THIS_SCRIPT} [--version] [--no-compile] [--skip-install] [--skip-build] [-e|--env] "
+USAGE="Usage: ${THIS_SCRIPT} [--version] [--no-compile] [--skip-install] [--skip-build] [--skip-runupdate] [--skip-maintenance]"
 
 while [[ $# > 0 ]]
 do
     key="$1"
     case $key in
-        -e|--env)
-        if [[ "$2" != "development" && "$2" != "production" ]]; then
-            show_error_message "env option must be set to either 'development' or 'production'"
-            exit
-        fi
-        MACHINE_ENV="$2"
-        shift # past argument
-        ;;
         # optional args
         --version) ONEDEP_VERSION="$2";;
         --no-compile) OPT_COMPILE_TOOLS=false;;
         --skip-install) OPT_SKIP_INSTALL=true;;
         --skip-build) OPT_SKIP_BUILD=true;;
+        --skip-runupdate) OPT_SKIP_RUNUPDATE=true;;
+        --skip-maintenance) OPT_SKIP_MAINTENANCE=true;;
         --help)
             echo ${USAGE}
             OK=1
@@ -314,8 +311,13 @@ git pull
 
 show_info_message "running RunUpdate.py step"
 
-pip install wwpdb.utils.config
-python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_PATH/onedep_admin/V5.3/V53rel.conf --build-tools --build-version v-5200
+if [[ ! $OPT_SKIP_RUNUPDATE ]]; then
+    pip install wwpdb.utils.config
+    python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_PATH/onedep_admin/V5.3/V53rel.conf --build-tools --build-version v-5200
+else
+    show_warning_message "skipping RunUpdate step"
+fi
+
 pip list
 
 # ----------------------------------------------------------------
@@ -327,85 +329,113 @@ pip list
 # to checkout / update the mmCIF dictionary
 # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_mmcif_dictionary.sh
 
-show_info_message "checking out / updating mmcif dictionary"
+if [[ ! $OPT_SKIP_MAINTENANCE ]]; then
+    show_info_message "checking out / updating mmcif dictionary"
 
-if [[ ! -d $SITE_PDBX_DICT_PATH ]]; then
-    mkdir -p $SITE_PDBX_DICT_PATH
-    cd $SITE_PDBX_DICT_PATH
-    svn co --no-auth-cache --username $SVN_USER --password $SVN_PASS https://svn-dev.wwpdb.org/svn-test/data-dictionary/trunk .
+    if [[ ! -d $SITE_PDBX_DICT_PATH ]]; then
+        mkdir -p $SITE_PDBX_DICT_PATH
+        cd $SITE_PDBX_DICT_PATH
+        svn co --no-auth-cache --username $SVN_USER --password $SVN_PASS https://svn-dev.wwpdb.org/svn-test/data-dictionary/trunk .
+    else
+        cd $SITE_PDBX_DICT_PATH
+        svn up --no-auth-cache --username $SVN_USER --password $SVN_PASS
+    fi
+
+    if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary' failed with exit code $?"; fi
+
+    # to checkout / update the taxonomy for annotation
+    # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_taxonomy.sh
+
+    show_info_message "checking out / updating taxonomy"
+
+    if [[ ! -d $SITE_TAXDUMP_PATH ]]; then
+        mkdir -p $SITE_TAXDUMP_PATH
+        cd $SITE_TAXDUMP_PATH
+        svn co --username $SVN_USER --password $SVN_PASS https://svn-dev.wwpdb.org/svn-test/data-taxdump/trunk .
+    else
+        cd $SITE_TAXDUMP_PATH
+        svn up --username $SVN_USER --password $SVN_PASS
+    fi
+
+    if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating taxonomy' failed with exit code $?"; fi
+
+    # to checkout/ update  the chemical component dictionary (CCD) and PRD - this step can take a while
+    # using installed modules
+
+    show_info_message "checking out / updating CCD and PRD"
+
+    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db CC --load
+    if [[ $? != 0 ]]; then show_error_message "step 'checking out CC' failed with exit code $?"; fi
+
+    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db PRD --load
+    if [[ $? != 0 ]]; then show_error_message "step 'checking out PRD' failed with exit code $?"; fi
+
+    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
+    if [[ $? != 0 ]]; then show_error_message "step 'updating taxonomy' failed with exit code $?"; fi
+
+    # checkout / update sequences in OneDep - it now runs from anywhere using RunRemote
+    # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/Update-reference-sequences.sh
+
+    show_info_message "checking out / updating sequences in OneDep"
+
+    SCRIPT_PATH="${BASH_SOURCE[0]}";
+    if ([ -h "${SCRIPT_PATH}" ]);
+    then
+    while([ -h "${SCRIPT_PATH}" ]);
+    do SCRIPT_PATH=`readlink "${SCRIPT_PATH}"`;
+    done
+    fi
+
+    pushd . > /dev/null
+    cd `dirname ${SCRIPT_PATH}` > /dev/null
+    SCRIPT_PATH=`pwd`;
+
+    ${SCRIPT_PATH}/sequence/Fetch-db-unp.sh
+    if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-unp.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
+
+    ${SCRIPT_PATH}/sequence/Fetch-db-gb.sh
+    if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-gb.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
+
+    ${SCRIPT_PATH}/sequence/Format-db.sh
+    if [[ $? != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
+
+    # get the taxonomy information for the depUI and load it into the OneDep database
+
+    # PDBe specific instruction -
+    # python -m wwpdb.apps.deposit.depui.taxonomy.getData
+
+    # sync taxonomy data from PDBe...
+    show_info_message "loading taxonomy information into OneDep db"
+    python -m wwpdb.apps.deposit.depui.taxonomy.loadData
+    if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
 else
-    cd $SITE_PDBX_DICT_PATH
-    svn up --no-auth-cache --username $SVN_USER --password $SVN_PASS
+    show_warning_message "skipping maintenance tasks"
 fi
-
-if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary' failed with exit code $?"; fi
-
-# to checkout / update the taxonomy for annotation
-# using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_taxonomy.sh
-
-show_info_message "checking out / updating taxonomy"
-
-if [[ ! -d $SITE_TAXDUMP_PATH ]]; then
-    mkdir -p $SITE_TAXDUMP_PATH
-    cd $SITE_TAXDUMP_PATH
-    svn co --username $SVN_USER --password $SVN_PASS https://svn-dev.wwpdb.org/svn-test/data-taxdump/trunk .
-else
-    cd $SITE_TAXDUMP_PATH
-    svn up --username $SVN_USER --password $SVN_PASS
-fi
-
-if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating taxonomy' failed with exit code $?"; fi
-
-# to checkout/ update  the chemical component dictionary (CCD) and PRD - this step can take a while
-# using installed modules
-
-show_info_message "checking out / updating CCD and PRD"
-
-python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db CC --load
-if [[ $? != 0 ]]; then show_error_message "step 'checking out CC' failed with exit code $?"; fi
-
-python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db PRD --load
-if [[ $? != 0 ]]; then show_error_message "step 'checking out PRD' failed with exit code $?"; fi
-
-python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
-if [[ $? != 0 ]]; then show_error_message "step 'updating taxonomy' failed with exit code $?"; fi
-
-# checkout / update sequences in OneDep - it now runs from anywhere using RunRemote
-# using https://github.com/wwPDB/onedep-maintenance/blob/master/common/Update-reference-sequences.sh
-
-show_info_message "checking out / updating sequences in OneDep"
-
-SCRIPT_PATH="${BASH_SOURCE[0]}";
-if ([ -h "${SCRIPT_PATH}" ]);
-then
-  while([ -h "${SCRIPT_PATH}" ]);
-   do SCRIPT_PATH=`readlink "${SCRIPT_PATH}"`;
-   done
-fi
-
-pushd . > /dev/null
-cd `dirname ${SCRIPT_PATH}` > /dev/null
-SCRIPT_PATH=`pwd`;
-
-${SCRIPT_PATH}/sequence/Fetch-db-unp.sh
-if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-unp.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
-
-${SCRIPT_PATH}/sequence/Fetch-db-gb.sh
-if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-gb.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
-
-${SCRIPT_PATH}/sequence/Format-db.sh
-if [[ $? != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
-
-# get the taxonomy information for the depUI and load it into the OneDep database
-
-# PDBe specific instruction -
-# python -m wwpdb.apps.deposit.depui.taxonomy.getData
-
-# sync taxonomy data from PDBe...
-show_info_message "loading taxonomy information into OneDep db"
-python -m wwpdb.apps.deposit.depui.taxonomy.loadData
-if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
 
 # ----------------------------------------------------------------
 # apache setup
 # ----------------------------------------------------------------
+
+show_info_message "copying httpd.conf"
+
+cd $APACHE_PREFIX_DIR/conf
+mv httpd.conf httpd.conf.safe
+ln -s $SITE_CONFIG_DIR/apache_config/httpd.conf httpd.conf
+
+show_info_message "setting up csd"
+
+ln -s $ONEDEP_PATH/resources/csds/latest $DEPLOY_DIR/resources/csd
+
+# ----------------------------------------------------------------
+# service startup
+# ----------------------------------------------------------------
+
+show_info_message "restarting wfe service"
+python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_wfe   # aliased to restart_wfe
+
+show_info_message "restarting apache service"
+python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_apache   # aliased to restart_apache
+
+show_info_message "done..."
+echo "[*] wfm url: $(highlight_text http://$HOSTNAME/wfm)"
+echo "[*] deposition url: $(highlight_text http://$HOSTNAME/deposition)"

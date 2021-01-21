@@ -252,7 +252,7 @@ class UpdateManager(object):
                 # Option not in config file - continue
                 pass
 
-    def buildtools(self, build_version='v-3300'):
+    def buildtools(self, build_version='v-5200'):
         curdir = os.path.dirname(__file__)
         buildscript = os.path.join(curdir, 'BuildTools.py')
 
@@ -304,7 +304,7 @@ def main():
     parser.add_argument("--skip-schema", default=False, action='store_true', help='Skip update of DB schemas if needed')
     parser.add_argument("--skip-toolvers", default=False, action='store_true', help='Skip checking versions of tools')
     parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
-    parser.add_argument("--build-version", default='v-3300', help='Version of tools to build from')
+    parser.add_argument("--build-version", default='v-5200', help='Version of tools to build from')
     parser.add_argument("--build-dev", default=False, action='store_true', help='pip installs repos with edit param')
 
     args = parser.parse_args()

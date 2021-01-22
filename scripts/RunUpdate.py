@@ -13,6 +13,7 @@ except ImportError:
 import subprocess
 import argparse
 import os.path
+import fnmatch
 import json
 import sys
 
@@ -249,9 +250,12 @@ class UpdateManager(object):
                 # Option not in config file - continue
                 pass
 
-    def buildtools(self, build_version='v-5200'):
+    def buildtools(self, build_version='latest'):
         curdir = os.path.dirname(__file__)
         buildscript = os.path.join(curdir, 'BuildTools.py')
+
+        if build_version == 'latest':
+            build_version = self.get_latest_version()
 
         command = 'python {} --config {} --build-version {}'.format(buildscript, self.__configfile, build_version)
 
@@ -290,6 +294,29 @@ class UpdateManager(object):
 
 #        pass
 
+    def get_latest_version(self):
+        """
+        Get the latest build version from the parent directory
+        using the pattern Vx.[x]
+
+        Returns:
+            String -- latest version found in onedep_admin dir
+        """
+        parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        versions = []
+        
+        with os.scandir(parent_dir) as entries:
+            for e in entries:
+                if e.is_dir() and fnmatch.fnmatch(e.name, 'V[0-9]*'):
+                    versions.append(e.name)
+        
+        if len(versions) == 0:
+            # this should never happen
+            return None
+        
+        return sorted(versions)[-1]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True, help='Configuration file for release')
@@ -301,7 +328,7 @@ def main():
     parser.add_argument("--skip-schema", default=False, action='store_true', help='Skip update of DB schemas if needed')
     parser.add_argument("--skip-toolvers", default=False, action='store_true', help='Skip checking versions of tools')
     parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
-    parser.add_argument("--build-version", default='v-5200', help='Version of tools to build from')
+    parser.add_argument("--build-version", default='latest', help='Version of tools to build from')
     parser.add_argument("--build-dev", default=False, action='store_true', help='pip installs repos with edit param')
 
     args = parser.parse_args()

@@ -272,7 +272,7 @@ show_info_message "creating 'resources' folder"
 
 mkdir -p $DEPLOY_DIR/resources
 
-if [[ ! $OPT_SKIP_BUILD ]]; then
+if [[ "$OPT_SKIP_BUILD" == false ]]; then
     show_info_message "now building, this may take a while"
 
     cd $ONEDEP_PATH/onedep-build/v-5200/build-centos-7 # maybe I should put the build version in a variable
@@ -311,7 +311,7 @@ git pull
 
 show_info_message "running RunUpdate.py step"
 
-if [[ ! $OPT_SKIP_RUNUPDATE ]]; then
+if [[ "$OPT_SKIP_RUNUPDATE" == false ]]; then
     pip install wwpdb.utils.config
     python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_PATH/onedep_admin/V5.3/V53rel.conf --build-tools --build-version v-5200
 else
@@ -329,7 +329,7 @@ pip list
 # to checkout / update the mmCIF dictionary
 # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_mmcif_dictionary.sh
 
-if [[ ! $OPT_SKIP_MAINTENANCE ]]; then
+if [[ "$OPT_SKIP_MAINTENANCE" == false ]]; then
     show_info_message "checking out / updating mmcif dictionary"
 
     if [[ ! -d $SITE_PDBX_DICT_PATH ]]; then
@@ -379,11 +379,10 @@ if [[ ! $OPT_SKIP_MAINTENANCE ]]; then
     show_info_message "checking out / updating sequences in OneDep"
 
     SCRIPT_PATH="${BASH_SOURCE[0]}";
-    if ([ -h "${SCRIPT_PATH}" ]);
-    then
-    while([ -h "${SCRIPT_PATH}" ]);
-    do SCRIPT_PATH=`readlink "${SCRIPT_PATH}"`;
-    done
+    if ([ -h "${SCRIPT_PATH}" ]); then
+        while([ -h "${SCRIPT_PATH}" ]); do
+            SCRIPT_PATH=`readlink "${SCRIPT_PATH}"`;
+        done
     fi
 
     pushd . > /dev/null

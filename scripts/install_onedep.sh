@@ -200,9 +200,10 @@ show_info_message "setting up Python virtual env"
 # delete if it already exists
 if [[ -d "/tmp/venv" ]]; then
     rm -rf /tmp/venv
-    unset PYTHONHOME
-    python3 -m venv /tmp/venv
 fi
+
+unset PYTHONHOME
+python3 -m venv /tmp/venv
 
 # ----------------------------------------------------------------
 # setting up directories used by onedep and python venv

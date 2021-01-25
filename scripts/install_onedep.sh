@@ -8,6 +8,7 @@
 HOSTNAME=$(hostname)
 PYTHON2="python2"
 THIS_SCRIPT="${BASH_SOURCE[0]}"
+CENTOS_MAJOR_VER=`cat /etc/redhat-release | cut -d' ' -f4  | cut -d'.' -f1`
 
 # repositories
 ONEDEP_BUILD_REPO_URL=git@github.com:wwPDB/onedep-build.git # scripts to build tools for OneDep
@@ -156,17 +157,22 @@ fi
 
 cd $ONEDEP_PATH
 
-if [[ "$OPT_SKIP_INSTALL" == false ]]; then
+if [[ $CENTOS_MAJOR_VER == 8 ]]; then
+    show_info_message "changing onedep-build to centos8 version"
+
+    cd onedep-build
+    git checkout centos8_mostly_working
+    git pull
+    cd ..
+fi
+
+if [[ $OPT_SKIP_INSTALL == false ]]; then
     show_info_message "installing required packages"
 
     # installing python3
     sudo yum -y install python3
 
-    # we clone the onedep-build to have access to the installation
-    # scripts
-    git clone ONEDEP_BUILD_REPO_URL
-
-    if [[ $OPT_COMPILE_TOOLS ]]; then
+    if [[ $OPT_COMPILE_TOOLS == true ]]; then
         show_info_message "installing packages and compiling tools"
         sudo onedep-build/install-base/centos-7-build-packages.sh
     else
@@ -259,7 +265,7 @@ show_info_message "creating 'resources' folder"
 
 mkdir -p $DEPLOY_DIR/resources
 
-if [[ "$OPT_SKIP_BUILD" == false ]]; then
+if [[ $OPT_SKIP_BUILD == false ]]; then
     show_info_message "now building, this may take a while"
 
     cd $ONEDEP_PATH/onedep-build/v-5200/build-centos-7 # maybe I should put the build version in a variable
@@ -298,7 +304,7 @@ git pull
 
 show_info_message "running RunUpdate.py step"
 
-if [[ "$OPT_SKIP_RUNUPDATE" == false ]]; then
+if [[ $OPT_SKIP_RUNUPDATE == false ]]; then
     pip install wwpdb.utils.config
     python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_PATH/onedep_admin/V5.3/V53rel.conf --build-tools --build-version v-5200
 else
@@ -316,7 +322,7 @@ pip list
 # to checkout / update the mmCIF dictionary
 # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_mmcif_dictionary.sh
 
-if [[ "$OPT_SKIP_MAINTENANCE" == false ]]; then
+if [[ $OPT_SKIP_MAINTENANCE == false ]]; then
     show_info_message "checking out / updating mmcif dictionary"
 
     if [[ ! -d $SITE_PDBX_DICT_PATH ]]; then

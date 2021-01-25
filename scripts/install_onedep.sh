@@ -10,8 +10,6 @@ PYTHON2="python2"
 THIS_SCRIPT="${BASH_SOURCE[0]}"
 
 # repositories
-SITE_CONFIG_REPO_URL=https://gitlab.ebi.ac.uk/pdbe/onedep-site-config.git
-# SITE_CONFIG_REPO_URL=git@gitlab.ebi.ac.uk:pdbe/onedep-site-config.git
 ONEDEP_BUILD_REPO_URL=git@github.com:wwPDB/onedep-build.git # scripts to build tools for OneDep
 ONEDEP_ADMIN_REPO_URL=git@github.com:wwPDB/onedep_admin.git # OneDep package management
 ONEDEP_MAINTENANCE_REPO_URL=git@github.com:wwPDB/onedep-maintenance.git # scripts to setup and maintain OneDep
@@ -182,18 +180,6 @@ fi
 # ----------------------------------------------------------------
 # setting up directories used by onedep and python venv
 # ----------------------------------------------------------------
-
-# checking if there is already a site-config folder
-# assuming ssh keys exist and are added to the ssh-agent
-# I think we could a better check here
-if [[ ! -d "$ONEDEP_PATH/site-config" ]]; then
-    show_warning_message "site-config does not seem to exist, cloning from gitlab..."
-    git clone $SITE_CONFIG_REPO_URL site-config
-else
-    cd $ONEDEP_PATH/site-config
-    git pull
-    cd $ONEDEP_PATH
-fi
 
 show_info_message "setting up Python virtual env"
 

@@ -13,6 +13,7 @@ except ImportError:
 import subprocess
 import argparse
 import os.path
+import fnmatch
 import json
 import sys
 
@@ -290,9 +291,42 @@ class UpdateManager(object):
 
 #        pass
 
+def get_latest_version_filepath():
+    """
+    Get the latest config version from the parent directory
+    using the pattern V[0-9]*
+
+    Returns:
+        String -- latest version found in onedep_admin dir
+    """
+    parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    versions = []
+    
+    if os.scandir:
+        # scandir is only available for python > 3.6
+        with os.scandir(parent_dir) as entries:
+            for e in entries:
+                if e.is_dir() and fnmatch.fnmatch(e.name, 'V[0-9]*'):
+                    versions.append(e.name)
+    else:
+        # fallback for python 2
+        for e in os.listdir(parent_dir):
+            if os.path.isdir(e) and fnmatch.fnmatch(e.name, 'V[0-9]*'):
+                versions.append(e)
+    
+    if len(versions) == 0:
+        # this should never happen
+        return None
+    
+    latest_version = sorted(versions)[-1]
+    version_filepath = os.path.join(parent_dir, latest_version, '{}rel.conf'.format(latest_version.replace('.', '')))
+    
+    return version_filepath
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", required=True, help='Configuration file for release')
+    parser.add_argument("--config", default='latest', help='Configuration file for release')
     parser.add_argument("--noop", "-n", default=False, action='store_true', help='Do not carry out actions')
     parser.add_argument("--skip-pip", default=False, action='store_true', help='Skip pip upgrade')
     parser.add_argument("--skip-resources", default=False, action='store_true', help='Skip resources update')
@@ -307,11 +341,17 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    if not os.path.exists(args.config):
-        print('Failed to find config file: {}'.format(args.config))
+    config_version = args.config
+
+    if config_version == 'latest':
+        # getting the latest config version available
+        config_version = get_latest_version_filepath()
+
+    if not os.path.exists(config_version):
+        print('Failed to find config file: {}'.format(config_version))
         sys.exit(1)
 
-    um = UpdateManager(args.config, args.noop)
+    um = UpdateManager(config_version, args.noop)
 
     # update resources_ro
     if not args.skip_resources:

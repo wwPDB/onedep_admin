@@ -77,6 +77,31 @@ function download_file {
     fi
 }
 
+#
+# activates the site-config configuration, setting up required env
+# variables
+#
+# Had to copy the contents of env.sh here because the env variables
+# set by ConfigInfoShellExec.py would be set only in the subshell hosting
+# 'env.sh'. The solution for now is to directly execute the same commands
+# from 'env.sh'
+#
+# before: $SITE_CONFIG_DIR/init/env.sh --siteid $WWPDB_SITE_ID --location $WWPDB_SITE_LOC
+function activate_configuration {
+    IFS='
+'
+
+    COMMAND="${PYTHON2} -E $SITE_CONFIG_DIR/init/ConfigInfoShellExec.py -v --configpath=${TOP_WWPDB_SITE_CONFIG_DIR} --locid=${SITE_LOC} --siteid=${SITE_ID} --shell"
+    echo $COMMAND
+
+    while IFS= read -r line; do
+        eval $line
+    done <<< "$($COMMAND)"
+
+    echo "+env.sh - Site id $WWPDB_SITE_ID tools path: $TOOLS_DIR"
+    echo "+env.sh - Application python path: $TOP_WWPDB_PYTHON_DIR"
+    umask 022
+}
 
 # ----------------------------------------------------------------
 # arguments parsing
@@ -85,7 +110,7 @@ function download_file {
 # arguments
 ONEDEP_VERSION="latest"
 SITE_ID="${WWPDB_SITE_ID}"
-SITE_LOC="${LOC_ID}"
+SITE_LOC="${WWPDB_SITE_LOC}"
 MACHINE_ENV="production"
 OPT_COMPILE_TOOLS=true
 OPT_SKIP_INSTALL=false
@@ -125,15 +150,13 @@ done
 # ----------------------------------------------------------------
 
 check_env_variable WWPDB_SITE_ID true
-check_env_variable LOC_ID true
+check_env_variable WWPDB_SITE_LOC true
 check_env_variable ONEDEP_PATH true
-check_env_variable DA_TOP true
 
 echo -e "----------------------------------------------------------------"
 echo -e "[*] $(highlight_text WWPDB_SITE_ID) is set to $(highlight_text $WWPDB_SITE_ID)"
-echo -e "[*] $(highlight_text LOC_ID) is set to $(highlight_text $LOC_ID)"
+echo -e "[*] $(highlight_text WWPDB_SITE_LOC) is set to $(highlight_text $WWPDB_SITE_LOC)"
 echo -e "[*] $(highlight_text ONEDEP_PATH) is set to $(highlight_text $ONEDEP_PATH)"
-echo -e "[*] $(highlight_text DA_TOP) is set to $(highlight_text $DA_TOP)"
 
 export SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
 export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
@@ -196,12 +219,11 @@ fi
 
 unset PYTHONHOME
 python3 -m venv /tmp/venv
+source /tmp/venv/bin/activate
 
 # ----------------------------------------------------------------
 # setting up directories used by onedep and python venv
 # ----------------------------------------------------------------
-
-source /tmp/venv/bin/activate
 
 show_info_message "updating setuptools"
 pip install --upgrade setuptools==40.8.0 pip
@@ -210,29 +232,15 @@ show_info_message "installing wwpdb.utils.config"
 pip install wwpdb.utils.config
  
 show_info_message "compiling site-config for the new site"
-ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $LOC_ID --writecache
+ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
 
 deactivate
 
 cd $ONEDEP_PATH
 
 show_info_message "activating the new configuration"
-
-# 
-# there was a problem here. If I called 'env.sh', the env variables
-# set by ConfigInfoShellExec.py would be set only in the subshell hosting
-# 'env.sh'. The solution for now is to directly execute the same commands
-# from 'env.sh'
-#
-# before: $SITE_CONFIG_DIR/init/env.sh --siteid $WWPDB_SITE_ID --location $LOC_ID
-# ----------------------------------------------------------------
-COMMAND="${PYTHON2} -E $SITE_CONFIG_DIR/init/ConfigInfoShellExec.py -v --configpath=${TOP_WWPDB_SITE_CONFIG_DIR} --locid=${SITE_LOC} --siteid=${SITE_ID} --shell"
-echo $COMMAND
-
-while IFS= read -r line; do
-    eval $line
-done <<< "$($COMMAND)"
-# ----------------------------------------------------------------
+# activate_configuration
+. site-config/init/env.sh --siteid $WWPDB_SITE_ID --location $WWPDB_SITE_LOC
 
 # now checking if DEPLOY_DIR has been set
 show_info_message "checking if everything went ok..."
@@ -283,17 +291,7 @@ show_info_message "setting up onedep virtual environment"
 cd $ONEDEP_PATH
 unset PYTHONHOME
 
-if [[ -z "$VENV_PATH" ]]; then
-    # we need to run the commands from env.sh
-    # maybe I should put this inside a function
-    COMMAND="${PYTHON2} -E $SITE_CONFIG_DIR/init/ConfigInfoShellExec.py -v --configpath=${TOP_WWPDB_SITE_CONFIG_DIR} --locid=${SITE_LOC} --siteid=${SITE_ID} --shell"
-    echo $COMMAND
-
-    while IFS= read -r line; do
-        eval $line
-    done <<< "$($COMMAND)"
-fi
-
+. site-config/init/env.sh --siteid $WWPDB_SITE_ID --location $WWPDB_SITE_LOC
 python3 -m venv $VENV_PATH
 
 show_info_message "checking for updates in onedep_admin"
@@ -306,7 +304,7 @@ show_info_message "running RunUpdate.py step"
 
 if [[ $OPT_SKIP_RUNUPDATE == false ]]; then
     pip install wwpdb.utils.config
-    python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_PATH/onedep_admin/V5.3/V53rel.conf --build-tools --build-version v-5200
+    python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config latest --build-tools --build-version v-5200
 else
     show_warning_message "skipping RunUpdate step"
 fi

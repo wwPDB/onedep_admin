@@ -19,7 +19,7 @@ from wwpdb.utils.config.ConfigInfo import ConfigInfo
 
 
 class BuildTools(object):
-    def __init__(self, config_file, noop, build_version='v-3300'):
+    def __init__(self, config_file, noop, build_version='v-5200'):
         self.__configfile = config_file
         self.__noop = noop
         self.__build_version = build_version
@@ -102,7 +102,7 @@ class BuildTools(object):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True, help='Configuration file for release')
-    parser.add_argument("--build-version", help='Version of tools to build from', default='v-3300')
+    parser.add_argument("--build-version", help='Version of tools to build from', default='v-5200')
     parser.add_argument("--noop", "-n", default=False, action='store_true', help='Do not carry out actions')
 
     args = parser.parse_args()

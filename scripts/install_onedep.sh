@@ -77,32 +77,6 @@ function download_file {
     fi
 }
 
-#
-# activates the site-config configuration, setting up required env
-# variables
-#
-# Had to copy the contents of env.sh here because the env variables
-# set by ConfigInfoShellExec.py would be set only in the subshell hosting
-# 'env.sh'. The solution for now is to directly execute the same commands
-# from 'env.sh'
-#
-# before: $SITE_CONFIG_DIR/init/env.sh --siteid $WWPDB_SITE_ID --location $WWPDB_SITE_LOC
-function activate_configuration {
-    IFS='
-'
-
-    COMMAND="${PYTHON2} -E $SITE_CONFIG_DIR/init/ConfigInfoShellExec.py -v --configpath=${TOP_WWPDB_SITE_CONFIG_DIR} --locid=${SITE_LOC} --siteid=${SITE_ID} --shell"
-    echo $COMMAND
-
-    while IFS= read -r line; do
-        eval $line
-    done <<< "$($COMMAND)"
-
-    echo "+env.sh - Site id $WWPDB_SITE_ID tools path: $TOOLS_DIR"
-    echo "+env.sh - Application python path: $TOP_WWPDB_PYTHON_DIR"
-    umask 022
-}
-
 # ----------------------------------------------------------------
 # arguments parsing
 # ----------------------------------------------------------------
@@ -133,12 +107,12 @@ do
         --skip-maintenance) OPT_SKIP_MAINTENANCE=true;;
         --help)
             echo ${USAGE}
-            OK=1
+            exit 1
         ;;
         *)
             # unknown option
             echo ${USAGE}
-            OK=1
+            exit 1
         ;;
     esac
     shift # past argument or value
@@ -152,11 +126,13 @@ done
 check_env_variable WWPDB_SITE_ID true
 check_env_variable WWPDB_SITE_LOC true
 check_env_variable ONEDEP_PATH true
+check_env_variable DA_TOP true
 
 echo -e "----------------------------------------------------------------"
 echo -e "[*] $(highlight_text WWPDB_SITE_ID) is set to $(highlight_text $WWPDB_SITE_ID)"
 echo -e "[*] $(highlight_text WWPDB_SITE_LOC) is set to $(highlight_text $WWPDB_SITE_LOC)"
 echo -e "[*] $(highlight_text ONEDEP_PATH) is set to $(highlight_text $ONEDEP_PATH)"
+echo -e "[*] $(highlight_text DA_TOP) is set to $(highlight_text $DA_TOP)"
 
 export SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
 export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
@@ -193,14 +169,14 @@ if [[ $OPT_SKIP_INSTALL == false ]]; then
     show_info_message "installing required packages"
 
     # installing python3
-    sudo yum -y install python3
+    yum -y install python3
 
     if [[ $OPT_COMPILE_TOOLS == true ]]; then
         show_info_message "installing packages and compiling tools"
-        sudo onedep-build/install-base/centos-7-build-packages.sh
+        onedep-build/install-base/centos-7-build-packages.sh
     else
         show_info_message "installing packages without compiling"
-        sudo onedep-build/install-base/centos-7-host-packages.sh
+        onedep-build/install-base/centos-7-host-packages.sh
     fi
 else
     show_warning_message "skipping installation of required packages"

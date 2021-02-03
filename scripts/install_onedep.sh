@@ -126,13 +126,11 @@ done
 check_env_variable WWPDB_SITE_ID true
 check_env_variable WWPDB_SITE_LOC true
 check_env_variable ONEDEP_PATH true
-check_env_variable DA_TOP true
 
 echo -e "----------------------------------------------------------------"
 echo -e "[*] $(highlight_text WWPDB_SITE_ID) is set to $(highlight_text $WWPDB_SITE_ID)"
 echo -e "[*] $(highlight_text WWPDB_SITE_LOC) is set to $(highlight_text $WWPDB_SITE_LOC)"
 echo -e "[*] $(highlight_text ONEDEP_PATH) is set to $(highlight_text $ONEDEP_PATH)"
-echo -e "[*] $(highlight_text DA_TOP) is set to $(highlight_text $DA_TOP)"
 
 export SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
 export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config

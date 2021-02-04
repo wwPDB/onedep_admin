@@ -87,20 +87,19 @@ ONEDEP_VERSION="latest"
 SITE_ID="${WWPDB_SITE_ID}"
 SITE_LOC="${WWPDB_SITE_LOC}"
 MACHINE_ENV="production"
-OPT_SKIP_INSTALL=false
-OPT_SKIP_BUILD=false
-OPT_SKIP_RUNUPDATE=false
-OPT_SKIP_MAINTENANCE=false
+OPT_DO_INSTALL=false
+OPT_DO_BUILD=false
+OPT_DO_RUNUPDATE=false
+OPT_DO_MAINTENANCE=false
 
-# USAGE="Usage: ${THIS_SCRIPT} [--version] [--skip-install] [--skip-build] [--skip-runupdate] [--skip-maintenance]"
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--version] [--python3-path] [--skip-install] [--skip-build] [--skip-runupdate] [--skip-maintenance]
-    --version:              OneDep config version, defaults to 'latest'
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance]
+    --config-version:       OneDep config version, defaults to 'latest'
     --python3-path:         path to a Python interpreter, defaults to 'python3'
-    --skip-install:         skip installation of base packages
-    --skip-build:           skip building tools
-    --skip-runupdate:       skip RunUpdate.py step
-    --skip-maintenance:     skip maintenance tasks
+    --install-base:         install base packages
+    --build-tools:          build OneDep tools
+    --run-update:           perform RunUpdate.py step
+    --run-maintenance:      perform maintenance tasks
 EOM
 
 while [[ $# > 0 ]]
@@ -116,10 +115,10 @@ do
             PYTHON3="$2"
             shift
         ;;
-        --skip-install) OPT_SKIP_INSTALL=true;;
-        --skip-build) OPT_SKIP_BUILD=true;;
-        --skip-runupdate) OPT_SKIP_RUNUPDATE=true;;
-        --skip-maintenance) OPT_SKIP_MAINTENANCE=true;;
+        --install-base) OPT_DO_INSTALL=true;;
+        --build-tools) OPT_DO_BUILD=true;;
+        --run-update) OPT_DO_RUNUPDATE=true;;
+        --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --help)
             echo "$USAGE"
             exit 1
@@ -180,7 +179,7 @@ if [[ $CENTOS_MAJOR_VER == 8 ]]; then
     cd ..
 fi
 
-if [[ $OPT_SKIP_INSTALL == false ]]; then
+if [[ $OPT_DO_INSTALL == true ]]; then
     show_info_message "installing required packages"
 
     if [[ $OPT_COMPILE_TOOLS == true ]]; then
@@ -218,7 +217,7 @@ pip install --upgrade setuptools==40.8.0 pip
 
 show_info_message "installing wwpdb.utils.config"
 pip install wwpdb.utils.config
- 
+
 show_info_message "compiling site-config for the new site"
 ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
 
@@ -261,7 +260,7 @@ show_info_message "creating 'resources' folder"
 
 mkdir -p $DEPLOY_DIR/resources
 
-if [[ $OPT_SKIP_BUILD == false ]]; then
+if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
 
     cd $ONEDEP_PATH/onedep-build/v-5200/build-centos-7 # maybe I should put the build version in a variable
@@ -294,9 +293,9 @@ git pull
 
 show_info_message "running RunUpdate.py step"
 
-if [[ $OPT_SKIP_RUNUPDATE == false ]]; then
+if [[ $OPT_DO_RUNUPDATE == true ]]; then
     pip install wwpdb.utils.config
-    python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config latest --build-tools --build-version v-5200
+    python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-version v-5200
 else
     show_warning_message "skipping RunUpdate step"
 fi
@@ -312,7 +311,7 @@ pip list
 # to checkout / update the mmCIF dictionary
 # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_mmcif_dictionary.sh
 
-if [[ $OPT_SKIP_MAINTENANCE == false ]]; then
+if [[ $OPT_DO_MAINTENANCE == true ]]; then
     show_info_message "checking out / updating mmcif dictionary"
 
     if [[ ! -d $SITE_PDBX_DICT_PATH ]]; then

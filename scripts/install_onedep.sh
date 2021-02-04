@@ -265,6 +265,11 @@ show_info_message "setting up onedep virtual environment"
 cd $ONEDEP_PATH
 unset PYTHONHOME
 
+if [[ -z "$VENV_PATH" ]]; then
+    show_error_message "VENV_PATH not set, quitting..."
+    exit 1
+fi
+
 . site-config/init/env.sh --siteid $WWPDB_SITE_ID --location $WWPDB_SITE_LOC
 python3 -m venv $VENV_PATH
 

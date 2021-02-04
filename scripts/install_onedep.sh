@@ -7,6 +7,7 @@
 # internal
 HOSTNAME=$(hostname)
 PYTHON2="python2"
+PYTHON3="python3"
 THIS_SCRIPT="${BASH_SOURCE[0]}"
 CENTOS_MAJOR_VER=`cat /etc/redhat-release | cut -d' ' -f4  | cut -d'.' -f1`
 
@@ -86,32 +87,47 @@ ONEDEP_VERSION="latest"
 SITE_ID="${WWPDB_SITE_ID}"
 SITE_LOC="${WWPDB_SITE_LOC}"
 MACHINE_ENV="production"
-OPT_COMPILE_TOOLS=true
 OPT_SKIP_INSTALL=false
 OPT_SKIP_BUILD=false
 OPT_SKIP_RUNUPDATE=false
 OPT_SKIP_MAINTENANCE=false
 
-USAGE="Usage: ${THIS_SCRIPT} [--version] [--no-compile] [--skip-install] [--skip-build] [--skip-runupdate] [--skip-maintenance]"
+# USAGE="Usage: ${THIS_SCRIPT} [--version] [--skip-install] [--skip-build] [--skip-runupdate] [--skip-maintenance]"
+read -r -d '' USAGE << EOM
+Usage: ${THIS_SCRIPT} [--version] [--python3-path] [--skip-install] [--skip-build] [--skip-runupdate] [--skip-maintenance]
+    --version:              OneDep config version, defaults to 'latest'
+    --python3-path:         path to a Python interpreter, defaults to 'python3'
+    --skip-install:         skip installation of base packages
+    --skip-build:           skip building tools
+    --skip-runupdate:       skip RunUpdate.py step
+    --skip-maintenance:     skip maintenance tasks
+EOM
 
 while [[ $# > 0 ]]
 do
     key="$1"
     case $key in
         # optional args
-        --version) ONEDEP_VERSION="$2";;
-        --no-compile) OPT_COMPILE_TOOLS=false;;
+        --version)
+            ONEDEP_VERSION="$2"
+            shift
+        ;;
+        --python3-path)
+            PYTHON3="$2"
+            shift
+        ;;
         --skip-install) OPT_SKIP_INSTALL=true;;
         --skip-build) OPT_SKIP_BUILD=true;;
         --skip-runupdate) OPT_SKIP_RUNUPDATE=true;;
         --skip-maintenance) OPT_SKIP_MAINTENANCE=true;;
         --help)
-            echo ${USAGE}
+            echo "$USAGE"
             exit 1
         ;;
         *)
             # unknown option
-            echo ${USAGE}
+            echo "Unknown option '$key'"
+            echo "$USAGE"
             exit 1
         ;;
     esac
@@ -137,6 +153,7 @@ export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
 
 echo -e "[*] $(highlight_text SITE_CONFIG_DIR) is set to $(highlight_text $SITE_CONFIG_DIR)"
 echo -e "[*] $(highlight_text TOP_WWPDB_SITE_CONFIG_DIR) is set to $(highlight_text $TOP_WWPDB_SITE_CONFIG_DIR)"
+echo -e "[*] using $(highlight_text $PYTHON3) as Python 3 interpreter"
 echo -e "----------------------------------------------------------------"
 
 # ----------------------------------------------------------------
@@ -166,9 +183,6 @@ fi
 if [[ $OPT_SKIP_INSTALL == false ]]; then
     show_info_message "installing required packages"
 
-    # installing python3
-    yum -y install python3
-
     if [[ $OPT_COMPILE_TOOLS == true ]]; then
         show_info_message "installing packages and compiling tools"
         onedep-build/install-base/centos-7-build-packages.sh
@@ -192,7 +206,7 @@ if [[ -d "/tmp/venv" ]]; then
 fi
 
 unset PYTHONHOME
-python3 -m venv /tmp/venv
+$PYTHON3 -m venv /tmp/venv
 source /tmp/venv/bin/activate
 
 # ----------------------------------------------------------------
@@ -270,8 +284,7 @@ if [[ -z "$VENV_PATH" ]]; then
     exit 1
 fi
 
-. site-config/init/env.sh --siteid $WWPDB_SITE_ID --location $WWPDB_SITE_LOC
-python3 -m venv $VENV_PATH
+$PYTHON3 -m venv $VENV_PATH
 
 show_info_message "checking for updates in onedep_admin"
 

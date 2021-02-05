@@ -170,6 +170,10 @@ fi
 
 cd $ONEDEP_PATH
 
+if [[ ! -d "onedep-build" ]]; then
+    git clone $ONEDEP_BUILD_REPO_URL
+fi
+
 if [[ $CENTOS_MAJOR_VER == 8 ]]; then
     show_info_message "changing onedep-build to centos8 version"
 
@@ -215,6 +219,9 @@ source /tmp/venv/bin/activate
 show_info_message "updating setuptools"
 pip install --upgrade setuptools==40.8.0 pip
 
+show_info_message "installing wheel"
+pip install wheel
+
 show_info_message "installing wwpdb.utils.config"
 pip install wwpdb.utils.config
 
@@ -236,10 +243,6 @@ echo "[*] $(highlight_text DEPLOY_DIR) is set to $(highlight_text $DEPLOY_DIR)"
 check_env_variable DEPLOY_DIR true
 
 show_info_message "cloning onedep repositories"
-
-if [[ ! -d "onedep-build" ]]; then
-    git clone $ONEDEP_BUILD_REPO_URL
-fi
 
 if [[ ! -d "onedep_admin" ]]; then
     git clone $ONEDEP_ADMIN_REPO_URL

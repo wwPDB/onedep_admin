@@ -236,6 +236,19 @@ show_info_message "activating the new configuration"
 # activate_configuration
 . site-config/init/env.sh --siteid $WWPDB_SITE_ID --location $WWPDB_SITE_LOC
 
+# pip config file
+show_info_message "creating pip configuration file"
+
+if [[ ! -z "$CS_HOST_BASE" && ! -z "$CS_USER" && ! -z "$CS_PW" && ! -z "$CS_DISTRIB_URL" ]]; then
+    PIP_INI_FILE=$VENV_PATH/pip.conf
+    echo "[global]" > $PIP_INI_FILE
+    echo "trusted-host    = ${CS_HOST_BASE}" >>  $PIP_INI_FILE
+    echo "extra-index-url = http://${CS_USER}:${CS_PW}@${CS_DISTRIB_URL}" >> $PIP_INI_FILE
+    echo "                  https://pypi.anaconda.org/OpenEye/simple" >> $PIP_INI_FILE
+else
+    show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
+fi
+
 # now checking if DEPLOY_DIR has been set
 show_info_message "checking if everything went ok..."
 

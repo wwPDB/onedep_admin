@@ -196,7 +196,11 @@ if [[ $OPT_DO_INSTALL == true ]]; then
         onedep-build/install-base/centos-7-build-packages.sh
     else
         show_info_message "installing packages without compiling"
-        onedep-build/install-base/centos-7-host-packages.sh
+        if [[ $CENTOS_MAJOR_VER == 8 ]]; then
+          onedep-build/install-base/centos-8-host-packages.sh
+        else
+          onedep-build/install-base/centos-7-host-packages.sh
+        fi
     fi
 else
     show_warning_message "skipping installation of required packages"

@@ -144,13 +144,11 @@ done
 check_env_variable WWPDB_SITE_ID true
 check_env_variable WWPDB_SITE_LOC true
 check_env_variable ONEDEP_PATH true
-check_env_variable VENV_PATH true
 
 echo -e "----------------------------------------------------------------"
 echo -e "[*] $(highlight_text WWPDB_SITE_ID) is set to $(highlight_text $WWPDB_SITE_ID)"
 echo -e "[*] $(highlight_text WWPDB_SITE_LOC) is set to $(highlight_text $WWPDB_SITE_LOC)"
 echo -e "[*] $(highlight_text ONEDEP_PATH) is set to $(highlight_text $ONEDEP_PATH)"
-echo -e "[*] $(highlight_text VENV_PATH) is set to $(highlight_text $VENV_PATH)"
 
 export SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
 export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
@@ -295,9 +293,15 @@ cd $ONEDEP_PATH
 unset PYTHONHOME
 
 if [[ -z "$VENV_PATH" ]]; then
+  VENV_PATH=`echo $PYTHONPATH | cut -d":" -f1`
+fi
+
+if [[ -z "$VENV_PATH" ]]; then
     show_error_message "VENV_PATH not set, quitting..."
     exit 1
 fi
+
+show_info_message "setting up onedep virtual environment in ${VENV_PATH}"
 
 $PYTHON3 -m venv $VENV_PATH
 

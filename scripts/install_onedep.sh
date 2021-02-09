@@ -451,7 +451,7 @@ fi
 
 start_service_command="python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py"
 startWFE="$start_service_command --restart_wfe"
-startApache="start_service_command --restart_apache"
+startApache="$start_service_command --restart_apache"
 
 show_info_message "done..."
 echo "[*] activate OneDep: $(highlight_text python3 -E -m wwpdb.utils.config.ConfigInfoShellExec --configpath ${SITE_CONFIG_DIR} --siteid ${WWPDB_SITE_ID} --locid ${WWPDB_SITE_LOC} --shell)"

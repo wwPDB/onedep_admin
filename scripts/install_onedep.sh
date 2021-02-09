@@ -91,6 +91,7 @@ OPT_DO_INSTALL=false
 OPT_DO_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
+OPT_DO_APACHE=false
 
 read -r -d '' USAGE << EOM
 Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance]
@@ -100,6 +101,7 @@ Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--bu
     --build-tools:          build OneDep tools
     --run-update:           perform RunUpdate.py step
     --run-maintenance:      perform maintenance tasks
+    --setup-apache:         setup the apache
 EOM
 
 while [[ $# > 0 ]]
@@ -119,6 +121,7 @@ do
         --build-tools) OPT_DO_BUILD=true;;
         --run-update) OPT_DO_RUNUPDATE=true;;
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
+        --setup-apache) OPT_DO_APACHE=true;;
         --help)
             echo "$USAGE"
             exit 1
@@ -185,14 +188,22 @@ fi
 
 if [[ $OPT_DO_INSTALL == true ]]; then
     show_info_message "installing required packages"
+    command=''
 
     if [[ $OPT_COMPILE_TOOLS == true ]]; then
         show_info_message "installing packages and compiling tools"
-        onedep-build/install-base/centos-7-build-packages.sh
+        command=onedep-build/install-base/centos-7-build-packages.sh
     else
         show_info_message "installing packages without compiling"
-        onedep-build/install-base/centos-7-host-packages.sh
+        if [[ $CENTOS_MAJOR_VER == 8 ]]; then
+          command=onedep-build/install-base/centos-8-host-packages.sh
+        else
+          command=onedep-build/install-base/centos-7-host-packages.sh
+        fi
     fi
+    show_warning_message "running command: $command"
+    chmod +x $command
+    $command
 else
     show_warning_message "skipping installation of required packages"
 fi
@@ -235,19 +246,6 @@ cd $ONEDEP_PATH
 show_info_message "activating the new configuration"
 # activate_configuration
 . site-config/init/env.sh --siteid $WWPDB_SITE_ID --location $WWPDB_SITE_LOC
-
-# pip config file
-show_info_message "creating pip configuration file"
-
-if [[ ! -z "$CS_HOST_BASE" && ! -z "$CS_USER" && ! -z "$CS_PW" && ! -z "$CS_DISTRIB_URL" ]]; then
-    PIP_INI_FILE=$VENV_PATH/pip.conf
-    echo "[global]" > $PIP_INI_FILE
-    echo "trusted-host    = ${CS_HOST_BASE}" >>  $PIP_INI_FILE
-    echo "extra-index-url = http://${CS_USER}:${CS_PW}@${CS_DISTRIB_URL}" >> $PIP_INI_FILE
-    echo "                  https://pypi.anaconda.org/OpenEye/simple" >> $PIP_INI_FILE
-else
-    show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
-fi
 
 # now checking if DEPLOY_DIR has been set
 show_info_message "checking if everything went ok..."
@@ -295,11 +293,30 @@ cd $ONEDEP_PATH
 unset PYTHONHOME
 
 if [[ -z "$VENV_PATH" ]]; then
+  VENV_PATH=$(echo $PYTHONPATH | cut -d":" -f1)
+fi
+
+if [[ -z "$VENV_PATH" ]]; then
     show_error_message "VENV_PATH not set, quitting..."
     exit 1
 fi
 
+show_info_message "setting up onedep virtual environment in $(highlight_text $VENV_PATH)"
+
 $PYTHON3 -m venv $VENV_PATH
+
+# adding pip config file
+show_info_message "creating pip configuration file"
+
+if [[ ! -z "$CS_HOST_BASE" && ! -z "$CS_USER" && ! -z "$CS_PW" && ! -z "$CS_DISTRIB_URL" ]]; then
+    PIP_INI_FILE=$VENV_PATH/pip.conf
+    echo "[global]" > $PIP_INI_FILE
+    echo "trusted-host    = ${CS_HOST_BASE}" >>  $PIP_INI_FILE
+    echo "extra-index-url = http://${CS_USER}:${CS_PW}@${CS_DISTRIB_URL}" >> $PIP_INI_FILE
+    echo "                  https://pypi.anaconda.org/OpenEye/simple" >> $PIP_INI_FILE
+else
+    show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
+fi
 
 show_info_message "checking for updates in onedep_admin"
 
@@ -412,27 +429,38 @@ fi
 # ----------------------------------------------------------------
 # apache setup
 # ----------------------------------------------------------------
+if [[ $OPT_DO_APACHE == true ]]; then
+    show_info_message "copying httpd.conf"
 
-show_info_message "copying httpd.conf"
+    cd $APACHE_PREFIX_DIR/conf
+    mv httpd.conf httpd.conf.safe
+    ln -s $SITE_CONFIG_DIR/apache_config/httpd.conf httpd.conf
+else
+  show_warning_message "skipping setting up the apache"
+fi
 
-cd $APACHE_PREFIX_DIR/conf
-mv httpd.conf httpd.conf.safe
-ln -s $SITE_CONFIG_DIR/apache_config/httpd.conf httpd.conf
+#show_info_message "setting up csd"
 
-show_info_message "setting up csd"
-
-ln -s $ONEDEP_PATH/resources/csds/latest $DEPLOY_DIR/resources/csd
+#ln -s $ONEDEP_PATH/resources/csds/latest $DEPLOY_DIR/resources/csd
 
 # ----------------------------------------------------------------
 # service startup
 # ----------------------------------------------------------------
 
-show_info_message "restarting wfe service"
-python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_wfe   # aliased to restart_wfe
+#show_info_message "restarting wfe service"
+#python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_wfe   # aliased to restart_wfe
 
-show_info_message "restarting apache service"
-python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_apache   # aliased to restart_apache
+#show_info_message "restarting apache service"
+#python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_apache   # aliased to restart_apache
+
+start_service_command="python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py"
+startWFE="$start_service_command --restart_wfe"
+startApache="$start_service_command --restart_apache"
 
 show_info_message "done..."
+echo "[*] activate OneDep: $(highlight_text python3 -E -m wwpdb.utils.config.ConfigInfoShellExec --configpath ${SITE_CONFIG_DIR} --siteid ${WWPDB_SITE_ID} --locid ${WWPDB_SITE_LOC} --shell)"
 echo "[*] wfm url: $(highlight_text http://$HOSTNAME/wfm)"
 echo "[*] deposition url: $(highlight_text http://$HOSTNAME/deposition)"
+echo "[*] start wfe service: $(highlight_text $startWFE)"
+echo "[*] start apache service: $(highlight_text $startApache)"
+

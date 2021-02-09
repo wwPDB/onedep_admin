@@ -292,9 +292,9 @@ show_info_message "setting up onedep virtual environment"
 cd $ONEDEP_PATH
 unset PYTHONHOME
 
-if [[ -z "$VENV_PATH" ]]; then
-  VENV_PATH=$(echo $PYTHONPATH | cut -d":" -f1)
-fi
+#if [[ -z "$VENV_PATH" ]]; then
+#  VENV_PATH=$(echo $PYTHONPATH | cut -d":" -f1)
+#fi
 
 if [[ -z "$VENV_PATH" ]]; then
     show_error_message "VENV_PATH not set, quitting..."

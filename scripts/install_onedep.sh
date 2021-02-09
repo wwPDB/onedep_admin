@@ -190,18 +190,22 @@ fi
 
 if [[ $OPT_DO_INSTALL == true ]]; then
     show_info_message "installing required packages"
+    command=''
 
     if [[ $OPT_COMPILE_TOOLS == true ]]; then
         show_info_message "installing packages and compiling tools"
-        onedep-build/install-base/centos-7-build-packages.sh
+        command=onedep-build/install-base/centos-7-build-packages.sh
     else
         show_info_message "installing packages without compiling"
         if [[ $CENTOS_MAJOR_VER == 8 ]]; then
-          onedep-build/install-base/centos-8-host-packages.sh
+          command=onedep-build/install-base/centos-8-host-packages.sh
         else
-          onedep-build/install-base/centos-7-host-packages.sh
+          command=onedep-build/install-base/centos-7-host-packages.sh
         fi
     fi
+    show_warning_message "running command: $command"
+    chmod +x $command
+    $command
 else
     show_warning_message "skipping installation of required packages"
 fi

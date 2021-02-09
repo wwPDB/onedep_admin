@@ -442,7 +442,7 @@ fi
 #python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_apache   # aliased to restart_apache
 
 show_info_message "done..."
-echo "[*] activate OneDep: $(highlight_text python3 -E -m wwpdb.utils.config.ConfigInfoShellExec --configpath ${SITE_CONFIG_DIR} --siteid ${WWPDB_SITE_ID} --locid ${WWPDB_SITE_LOC} --shell"
+echo "[*] activate OneDep: $(highlight_text python3 -E -m wwpdb.utils.config.ConfigInfoShellExec --configpath ${SITE_CONFIG_DIR} --siteid ${WWPDB_SITE_ID} --locid ${WWPDB_SITE_LOC} --shell)"
 echo "[*] wfm url: $(highlight_text http://$HOSTNAME/wfm)"
 echo "[*] deposition url: $(highlight_text http://$HOSTNAME/deposition)"
 echo "[*] start wfe service: $(highlight_text python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_wfe)"

@@ -295,7 +295,7 @@ unset PYTHONHOME
 echo $PYTHONPATH
 
 if [[ -z "$VENV_PATH" ]]; then
-  VENV_PATH=`echo $PYTHONPATH | cut -d":" -f1`
+  VENV_PATH=$(echo $PYTHONPATH | cut -d":" -f1)
 fi
 
 if [[ -z "$VENV_PATH" ]]; then

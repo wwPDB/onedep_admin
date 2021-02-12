@@ -227,28 +227,15 @@ source /tmp/venv/bin/activate
 # setting up directories used by onedep and python venv
 # ----------------------------------------------------------------
 
-# adding pip config file
-show_info_message "creating pip configuration file"
-
-if [[ ! -z "$CS_HOST_BASE" && ! -z "$CS_USER" && ! -z "$CS_PW" && ! -z "$CS_DISTRIB_URL" ]]; then
-    PIP_INI_FILE=$VENV_PATH/pip.conf
-    echo "[global]" > $PIP_INI_FILE
-    echo "trusted-host    = ${CS_HOST_BASE}" >>  $PIP_INI_FILE
-    echo "extra-index-url = http://${CS_USER}:${CS_PW}@${CS_DISTRIB_URL}" >> $PIP_INI_FILE
-    echo "                  https://pypi.anaconda.org/OpenEye/simple" >> $PIP_INI_FILE
-    echo "no-cache-dir = false"
-else
-    show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
-fi
 
 show_info_message "updating setuptools"
-pip install --upgrade setuptools==40.8.0 pip
+pip install --no-cache-dir --upgrade setuptools==40.8.0 pip
 
 show_info_message "installing wheel"
 pip install --no-cache-dir wheel
 
 show_info_message "installing wwpdb.utils.config"
-pip install wwpdb.utils.config
+pip install --no-cache-dir wwpdb.utils.config
 
 show_info_message "compiling site-config for the new site"
 ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
@@ -318,6 +305,17 @@ fi
 show_info_message "setting up onedep virtual environment in $(highlight_text $VENV_PATH)"
 
 $PYTHON3 -m venv $VENV_PATH
+
+# adding pip config file
+show_info_message "creating pip configuration file"
+
+if [[ ! -z "$CS_HOST_BASE" && ! -z "$CS_USER" && ! -z "$CS_PW" && ! -z "$CS_DISTRIB_URL" ]]; then
+    pip config --site set global.trusted-host $CS_HOST_BASE
+    pip config --site set global.extra-index-url "http://${CS_USER}:${CS_PW}@${CS_DISTRIB_URL} https://pypi.anaconda.org/OpenEye/simple"
+    pip config --site set global.no-cache-dir false
+else
+    show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
+fi
 
 show_info_message "checking for updates in onedep_admin"
 

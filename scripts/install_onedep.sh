@@ -173,7 +173,8 @@ fi
 
 cd $ONEDEP_PATH
 
-if [[ $OPT_DO_INSTALL == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE == true && ! -d "onedep-build" ]]; then
+if [[ ( $OPT_DO_INSTALL == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE == true ) && ! -d "onedep-build" ]]; then
+    show_info_message "cloning onedep-build repository"
     git clone $ONEDEP_BUILD_REPO_URL
 fi
 
@@ -268,7 +269,7 @@ if [[ ! -d "onedep_admin" ]]; then
     cd ..
 fi
 
-if [[ $OPT_DO_MAINTENANCE == true ! -d "onedep-maintenance" ]]; then
+if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
     git clone $ONEDEP_MAINTENANCE_REPO_URL
 fi
 

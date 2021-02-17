@@ -89,15 +89,17 @@ SITE_LOC="${WWPDB_SITE_LOC}"
 MACHINE_ENV="production"
 OPT_DO_INSTALL=false
 OPT_DO_BUILD=false
+OPT_PREPARE_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance]
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools]
     --config-version:       OneDep config version, defaults to 'latest'
     --python3-path:         path to a Python interpreter, defaults to 'python3'
     --install-base:         install base packages
+    --prepare-to-build-tools   install packages ready for building tools
     --build-tools:          build OneDep tools
     --run-update:           perform RunUpdate.py step
     --run-maintenance:      perform maintenance tasks
@@ -122,6 +124,7 @@ do
         --run-update) OPT_DO_RUNUPDATE=true;;
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
+        --prepare-to-build-tools) OPT_PREPARE_BUILD=true;;
         --help)
             echo "$USAGE"
             exit 1
@@ -173,7 +176,7 @@ fi
 
 cd $ONEDEP_PATH
 
-if [[ ( $OPT_DO_INSTALL == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE == true ) && ! -d "onedep-build" ]]; then
+if [[ ( $OPT_DO_INSTALL == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE == true || $OPT_PREPARE_BUILD == true ) && ! -d "onedep-build" ]]; then
     show_info_message "cloning onedep-build repository"
     git clone $ONEDEP_BUILD_REPO_URL
 fi
@@ -191,7 +194,7 @@ if [[ $OPT_DO_INSTALL == true ]]; then
     show_info_message "installing required packages"
     command=''
 
-    if [[ $OPT_COMPILE_TOOLS == true ]]; then
+    if [[ $OPT_DO_BUILD == true || $OPT_PREPARE_BUILD == true ]]; then
         show_info_message "installing packages and compiling tools"
         command=onedep-build/install-base/centos-7-build-packages.sh
     else

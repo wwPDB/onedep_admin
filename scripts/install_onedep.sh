@@ -461,8 +461,10 @@ start_service_command="python $ONEDEP_PATH/onedep-maintenance/common/restart_ser
 startWFE="$start_service_command --restart_wfe"
 startApache="$start_service_command --restart_apache"
 
+activate_onedep_command=". ${ONEDEP_PATH}/site-config/init/env.sh --siteid ${WWPDB_SITE_ID} --location ${WWPDB_SITE_LOC}"
+
 show_info_message "done..."
-echo "[*] activate OneDep: $(highlight_text python3 -E -m wwpdb.utils.config.ConfigInfoShellExec --configpath ${SITE_CONFIG_DIR} --siteid ${WWPDB_SITE_ID} --locid ${WWPDB_SITE_LOC} --shell)"
+echo "[*] activate OneDep: $(highlight_text $activate_onedep_command)"
 echo "[*] wfm url: $(highlight_text http://$HOSTNAME/wfm)"
 echo "[*] deposition url: $(highlight_text http://$HOSTNAME/deposition)"
 echo "[*] start wfe service: $(highlight_text $startWFE)"

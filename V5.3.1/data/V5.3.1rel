@@ -90,7 +90,7 @@ wwpdb.apps.ann-tasks-v2==0.15
 wwpdb.apps.ccmodule==0.11
 wwpdb.apps.chem-ref-data==0.10
 wwpdb.apps.chemeditor==0.7
-wwpdb.apps.content-ws-server==0.4
+wwpdb.apps.content-ws-server==0.4.1
 wwpdb.apps.deposit==0.23.2
 wwpdb.apps.editormodule==0.7
 wwpdb.apps.entity-transform==0.11.2
@@ -100,7 +100,7 @@ wwpdb.apps.seqmodule==0.17
 wwpdb.apps.site-admin==0.8
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.7
-wwpdb.apps.val_ws_server==0.6
+wwpdb.apps.val_ws_server==0.6.1
 wwpdb.apps.validation==2.17.1
 wwpdb.apps.wf-engine==0.11.1
 wwpdb.apps.workmanager==0.13.2

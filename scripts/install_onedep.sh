@@ -15,7 +15,6 @@ CENTOS_MAJOR_VER=`cat /etc/redhat-release | cut -d' ' -f4  | cut -d'.' -f1`
 ONEDEP_BUILD_REPO_URL=git@github.com:wwPDB/onedep-build.git # scripts to build tools for OneDep
 ONEDEP_ADMIN_REPO_URL=git@github.com:wwPDB/onedep_admin.git # OneDep package management
 ONEDEP_MAINTENANCE_REPO_URL=git@github.com:wwPDB/onedep-maintenance.git # scripts to setup and maintain OneDep
-WWPDB_UTILS_CONFIG=git@github.com:wwPDB/py-wwpdb_utils_config.git
 
 # ----------------------------------------------------------------
 # helper functions
@@ -93,9 +92,10 @@ OPT_PREPARE_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
+SPECIFIC_PACKAGE=''
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools]
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package]
     --config-version:       OneDep config version, defaults to 'latest'
     --python3-path:         path to a Python interpreter, defaults to 'python3'
     --install-base:         install base packages
@@ -104,6 +104,7 @@ Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--bu
     --run-update:           perform RunUpdate.py step
     --run-maintenance:      perform maintenance tasks
     --setup-apache:         setup the apache
+    --install-specific-package: install a specific package into the OneDep venv
 EOM
 
 while [[ $# > 0 ]]
@@ -117,6 +118,10 @@ do
         ;;
         --python3-path)
             PYTHON3="$2"
+            shift
+        ;;
+        --install-specific-package)
+            SPECIFIC_PACKAGE="$2"
             shift
         ;;
         --install-base) OPT_DO_INSTALL=true;;
@@ -228,7 +233,7 @@ $PYTHON3 -m venv /tmp/venv
 source /tmp/venv/bin/activate
 
 # ----------------------------------------------------------------
-# setting up directories used by onedep and python venv
+# setting up directories used by OneDep and python venv
 # ----------------------------------------------------------------
 
 
@@ -290,10 +295,10 @@ else
 fi
 
 # ----------------------------------------------------------------
-# setting up onedep virtual env
+# setting up OneDep virtual env
 # ----------------------------------------------------------------
 
-show_info_message "setting up onedep virtual environment"
+show_info_message "setting up OneDep virtual environment"
 
 cd $ONEDEP_PATH
 unset PYTHONHOME
@@ -307,7 +312,7 @@ if [[ -z "$VENV_PATH" ]]; then
     exit 1
 fi
 
-show_info_message "setting up onedep virtual environment in $(highlight_text $VENV_PATH)"
+show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH)"
 
 $PYTHON3 -m venv $VENV_PATH
 
@@ -337,6 +342,11 @@ if [[ $OPT_DO_RUNUPDATE == true ]]; then
     python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-version v-5200
 else
     show_warning_message "skipping RunUpdate step"
+fi
+
+if [[ ! -z $SPECIFIC_PACKAGE ]]; then
+  show_info_message "installing package $(highlight_text $SPECIFIC_PACKAGE)"
+  pip install $SPECIFIC_PACKAGE
 fi
 
 pip list

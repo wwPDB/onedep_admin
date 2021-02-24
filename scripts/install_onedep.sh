@@ -322,6 +322,9 @@ else
     show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
 fi
 
+show_info_message "install some base packages"
+pip install wheel wwpdb.utils.config
+
 show_info_message "checking for updates in onedep_admin"
 
 cd $ONEDEP_PATH/onedep_admin
@@ -331,7 +334,6 @@ git pull
 show_info_message "running RunUpdate.py step"
 
 if [[ $OPT_DO_RUNUPDATE == true ]]; then
-    pip install wwpdb.utils.config
     python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-version v-5200
 else
     show_warning_message "skipping RunUpdate step"

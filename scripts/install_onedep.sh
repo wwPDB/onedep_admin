@@ -344,7 +344,6 @@ else
     show_warning_message "skipping RunUpdate step"
 fi
 
-show_info_message "checking for specific packages in: $(highlight_text $SPECIFIC_PACKAGE)"
 if [[ ! -z $SPECIFIC_PACKAGE ]]; then
   show_info_message "installing package $(highlight_text $SPECIFIC_PACKAGE)"
   pip install $SPECIFIC_PACKAGE

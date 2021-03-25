@@ -115,7 +115,7 @@ wwpdb.utils.emdb==0.16.1
 wwpdb.utils.letters==0.11
 wwpdb.utils.markdown-wrapper==0.3
 wwpdb.utils.message-queue==0.4
-wwpdb.utils.nmr==0.9
+wwpdb.utils.nmr==0.9.1
 wwpdb.utils.oe-util==0.6
 wwpdb.utils.seqdb-v2==0.9
 wwpdb.utils.session==0.12

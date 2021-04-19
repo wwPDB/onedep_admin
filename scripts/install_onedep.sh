@@ -8,6 +8,7 @@
 HOSTNAME=$(hostname)
 PYTHON2="python2"
 PYTHON3="python3"
+ONEDEP_BUILD_VER="v-5200"
 THIS_SCRIPT="${BASH_SOURCE[0]}"
 CENTOS_MAJOR_VER=`cat /etc/redhat-release | cut -d' ' -f4  | cut -d'.' -f1`
 
@@ -186,15 +187,6 @@ if [[ ( $OPT_DO_INSTALL == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE ==
     git clone $ONEDEP_BUILD_REPO_URL
 fi
 
-if [[ $CENTOS_MAJOR_VER == 8 && $OPT_DO_BUILD == true ]]; then
-    show_info_message "changing onedep-build to centos8 version"
-
-    cd onedep-build
-    git checkout centos8_mostly_working
-    git pull
-    cd ..
-fi
-
 if [[ $OPT_DO_INSTALL == true ]]; then
     show_info_message "installing required packages"
     command=''
@@ -244,7 +236,7 @@ show_info_message "installing wheel"
 pip install --no-cache-dir wheel
 
 show_info_message "installing wwpdb.utils.config"
-pip install --no-cache-dir wwpdb.utils.config
+pip install --no-cache-dir PyYaml==3.10 wwpdb.utils.config
 
 show_info_message "compiling site-config for the new site"
 ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
@@ -287,8 +279,7 @@ mkdir -p $DEPLOY_DIR/resources
 
 if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
-
-    cd $ONEDEP_PATH/onedep-build/v-5200/build-centos-7 # maybe I should put the build version in a variable
+    cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER # maybe I should put the build version in a variable
     ./BUILD.sh |& tee build.log
 else
     show_warning_message "skipping build"

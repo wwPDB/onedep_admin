@@ -306,6 +306,7 @@ fi
 show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH)"
 
 $PYTHON3 -m venv $VENV_PATH
+source $VENV_PATH/bin/activate
 
 # adding pip config file
 show_info_message "creating pip configuration file"
@@ -354,14 +355,7 @@ pip list
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
     show_info_message "checking out / updating mmcif dictionary"
 
-    if [[ ! -d $SITE_PDBX_DICT_PATH ]]; then
-        mkdir -p $SITE_PDBX_DICT_PATH
-        cd $SITE_PDBX_DICT_PATH
-        svn co --no-auth-cache --username $SVN_USER --password $SVN_PASS https://svn-dev.wwpdb.org/svn-test/data-dictionary/trunk .
-    else
-        cd $SITE_PDBX_DICT_PATH
-        svn up --no-auth-cache --username $SVN_USER --password $SVN_PASS
-    fi
+    python onedep-maintenance/update_mmcif_dictionary.py
 
     if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary' failed with exit code $?"; fi
 
@@ -393,7 +387,7 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
     if [[ $? != 0 ]]; then show_error_message "step 'checking out PRD' failed with exit code $?"; fi
 
     python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
-    if [[ $? != 0 ]]; then show_error_message "step 'updating taxonomy' failed with exit code $?"; fi
+    if [[ $? != 0 ]]; then show_error_message "step 'compiling CCD and PRD data files' failed with exit code $?"; fi
 
     # checkout / update sequences in OneDep - it now runs from anywhere using RunRemote
     # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/Update-reference-sequences.sh
@@ -423,11 +417,11 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
     # get the taxonomy information for the depUI and load it into the OneDep database
 
     # PDBe specific instruction -
-    # python -m wwpdb.apps.deposit.depui.taxonomy.getData
+    # python onedep-maintenance/common/taxonomy/get_data_from_uniprot.py --output_csv $DEPLOY_DIR/resources/taxonomy/taxonomy_name.csv
 
     # sync taxonomy data from PDBe...
     show_info_message "loading taxonomy information into OneDep db"
-    python -m wwpdb.apps.deposit.depui.taxonomy.loadData
+    python onedep-maintenance/common/taxonomy/load_data_to_onedep.py --input_csv $DEPLOY_DIR/resources/taxonomy/taxonomy_name.csv
     if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
 else
     show_warning_message "skipping maintenance tasks"

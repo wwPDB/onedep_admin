@@ -16,6 +16,9 @@ ONEDEP_BUILD_REPO_URL=git@github.com:wwPDB/onedep-build.git # scripts to build t
 ONEDEP_ADMIN_REPO_URL=git@github.com:wwPDB/onedep_admin.git # OneDep package management
 ONEDEP_MAINTENANCE_REPO_URL=git@github.com:wwPDB/onedep-maintenance.git # scripts to setup and maintain OneDep
 
+# download links
+MYSQL_COMMUNITY_SERVER=https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.24-linux-glibc2.17-x86_64-minimal.tar.xz
+
 # ----------------------------------------------------------------
 # helper functions
 # ----------------------------------------------------------------
@@ -75,6 +78,8 @@ function download_file {
     else
         echo "[*] file $(highlight_text $filename) already exists, skipping"
     fi
+
+    retval=$filename
 }
 
 # ----------------------------------------------------------------
@@ -92,19 +97,23 @@ OPT_PREPARE_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
+OPT_DO_DATABASE=false
 SPECIFIC_PACKAGE=''
+DATABASE_DIR=$(pwd)/onedep_database
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package]
-    --config-version:       OneDep config version, defaults to 'latest'
-    --python3-path:         path to a Python interpreter, defaults to 'python3'
-    --install-base:         install base packages
-    --prepare-to-build-tools   install packages ready for building tools
-    --build-tools:          build OneDep tools
-    --run-update:           perform RunUpdate.py step
-    --run-maintenance:      perform maintenance tasks
-    --setup-apache:         setup the apache
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [[--setup-database [--database-dir]]
+    --config-version:           OneDep config version, defaults to 'latest'
+    --python3-path:             path to a Python interpreter, defaults to 'python3'
+    --install-base:             install base packages
+    --prepare-to-build-tools    install packages ready for building tools
+    --build-tools:              build OneDep tools
+    --run-update:               perform RunUpdate.py step
+    --run-maintenance:          perform maintenance tasks
+    --setup-apache:             setup the apache
     --install-specific-package: install a specific package into the OneDep venv
+    --setup-database:           setup database (installs server as non-root and setup tables)
+    --database-dir:             directory where database will be setup, defaults to './onedep_database'
 EOM
 
 while [[ $# > 0 ]]
@@ -124,12 +133,17 @@ do
             SPECIFIC_PACKAGE="$2"
             shift
         ;;
+        --database-dir)
+            DATABASE_DIR="$2"
+            shift
+        ;;
         --install-base) OPT_DO_INSTALL=true;;
         --build-tools) OPT_DO_BUILD=true;;
         --run-update) OPT_DO_RUNUPDATE=true;;
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
         --prepare-to-build-tools) OPT_PREPARE_BUILD=true;;
+        --setup-database) OPT_DO_DATABASE=true;;
         --help)
             echo "$USAGE"
             exit 1
@@ -165,6 +179,34 @@ echo -e "[*] $(highlight_text SITE_CONFIG_DIR) is set to $(highlight_text $SITE_
 echo -e "[*] $(highlight_text TOP_WWPDB_SITE_CONFIG_DIR) is set to $(highlight_text $TOP_WWPDB_SITE_CONFIG_DIR)"
 echo -e "[*] using $(highlight_text $PYTHON3) as Python 3 interpreter"
 echo -e "----------------------------------------------------------------"
+
+# ----------------------------------------------------------------
+# database setup
+# ----------------------------------------------------------------
+
+if [[ $OPT_DO_DATABASE == true ]]; then
+    show_info_message "setting up database"
+
+    echo "[*] database will be installed in $(highlight_text $DATABASE_DIR)"
+
+    if [[ ! -d $DATABASE_DIR ]]; then
+        mkdir -p $DATABASE_DIR
+    fi
+
+    cd $DATABASE_DIR
+
+    mkdir -p data
+    mkdir -p mysql
+
+    show_info_message "downloading mysql server"
+
+    download_file $MYSQL_COMMUNITY_SERVER
+    # tar -xvf ./$retval --directory mysql --strip-components=1
+
+    ./mysql/bin/mysqld --user=w3_pdb05 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=3666 &
+fi
+
+exit 0
 
 # ----------------------------------------------------------------
 # install required packages
@@ -458,6 +500,10 @@ fi
 #show_info_message "setting up csd"
 
 #ln -s $ONEDEP_PATH/resources/csds/latest $DEPLOY_DIR/resources/csd
+
+##
+#DB HERE
+##
 
 # ----------------------------------------------------------------
 # service startup

@@ -421,7 +421,8 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
 
     # sync taxonomy data from PDBe...
     show_info_message "loading taxonomy information into OneDep db"
-    python onedep-maintenance/common/taxonomy/load_data_to_onedep.py --input_csv $DEPLOY_DIR/resources/taxonomy/taxonomy_name.csv
+    # python onedep-maintenance/common/taxonomy/load_data_to_onedep.py --input_csv $DEPLOY_DIR/resources/taxonomy/taxonomy_name.csv
+    python -m wwpdb.apps.deposit.depui.taxonomy.loadData --input_csv $DEPLOY_DIR/resources/taxonomy/taxonomy_name.csv
     if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
 else
     show_warning_message "skipping maintenance tasks"

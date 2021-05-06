@@ -82,6 +82,17 @@ function download_file {
     retval=$filename
 }
 
+#
+# get the value in site-config for the given variable key. I'm pretty sure
+# there's a better way of doing this...
+#   $1: variable key
+function get_config_var {
+    local key=$1
+    local value=$(python -c "from wwpdb.utils.config.ConfigInfo import ConfigInfo; cI=ConfigInfo('$WWPDB_SITE_ID'); print(cI.get('$key'))")
+
+    retval=$value
+}
+
 # ----------------------------------------------------------------
 # arguments parsing
 # ----------------------------------------------------------------
@@ -179,34 +190,6 @@ echo -e "[*] $(highlight_text SITE_CONFIG_DIR) is set to $(highlight_text $SITE_
 echo -e "[*] $(highlight_text TOP_WWPDB_SITE_CONFIG_DIR) is set to $(highlight_text $TOP_WWPDB_SITE_CONFIG_DIR)"
 echo -e "[*] using $(highlight_text $PYTHON3) as Python 3 interpreter"
 echo -e "----------------------------------------------------------------"
-
-# ----------------------------------------------------------------
-# database setup
-# ----------------------------------------------------------------
-
-if [[ $OPT_DO_DATABASE == true ]]; then
-    show_info_message "setting up database"
-
-    echo "[*] database will be installed in $(highlight_text $DATABASE_DIR)"
-
-    if [[ ! -d $DATABASE_DIR ]]; then
-        mkdir -p $DATABASE_DIR
-    fi
-
-    cd $DATABASE_DIR
-
-    mkdir -p data
-    mkdir -p mysql
-
-    show_info_message "downloading mysql server"
-
-    download_file $MYSQL_COMMUNITY_SERVER
-    # tar -xvf ./$retval --directory mysql --strip-components=1
-
-    ./mysql/bin/mysqld --user=w3_pdb05 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=3666 &
-fi
-
-exit 0
 
 # ----------------------------------------------------------------
 # install required packages
@@ -501,9 +484,99 @@ fi
 
 #ln -s $ONEDEP_PATH/resources/csds/latest $DEPLOY_DIR/resources/csd
 
-##
-#DB HERE
-##
+# ----------------------------------------------------------------
+# database setup
+# ----------------------------------------------------------------
+
+if [[ $OPT_DO_DATABASE == true ]]; then
+    show_info_message "setting up database"
+
+    echo "[*] database will be installed in $(highlight_text $DATABASE_DIR)"
+
+    if [[ ! -d $DATABASE_DIR ]]; then
+        mkdir -p $DATABASE_DIR
+    fi
+
+    # site-config variables
+    get_config_var SITE_DEP_DB_USER_NAME
+    db_user=$retval
+
+    get_config_var SITE_DEP_DB_PASSWORD
+    db_password=$retval
+
+    get_config_var SITE_DEP_DB_PORT_NUMBER
+    db_port=$retval
+
+    cd $DATABASE_DIR
+
+    mkdir -p data
+    mkdir -p mysql
+
+    show_info_message "downloading mysql server"
+
+    download_file $MYSQL_COMMUNITY_SERVER
+    tar -xvf ./$retval --directory mysql --strip-components=1
+
+    show_info_message "initializing mysql server"
+    ./mysql/bin/mysqld --user=w3_pdb05 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port --initialize
+
+    show_info_message "starting mysql server, please wait"
+    ./mysql/bin/mysqld --user=w3_pdb05 --bind-address=0.0.0.0 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port &
+    mysql_pid=$!
+
+    while :; do
+        mysql_state=$(ps -q $mysql_pid -o state --no-headers)
+
+        if [[ -z $mysql_state ]]; then
+            show_error_message "mysql process killed, skipping database setup"
+            exit 1
+            break
+        fi
+
+        mysql_log=$(tail log.err)
+
+        if [[ $mysql_log == *"ready for connections"* ]]; then
+            show_info_message "mysql server up and accepting connections"
+            sleep 3
+            break
+        fi
+
+        sleep 3
+    done
+
+    mysql_log=$(cat log.err)
+    regex=$'A temporary password is generated for (\w+@\w+): ([a-zA-Z0-9,.;_!@#$%^&*()_+{}|:<>?=-]+)'
+
+    if [[ $mysql_log =~ $regex ]]; then
+        temp_db_root_password=${BASH_REMATCH[2]}
+    else
+        show_error_message "could not find temporary root password in log, exiting"
+        exit 1
+    fi
+
+    new_db_root_password=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9,.;_!@#$%^&*()_+{}|:<>?=-' | fold -w 32 | head -n 1)
+
+    echo "[*] mysql temporary root password is $(highlight_text $temp_db_root_password)"
+    echo "[*] setting mysql root password to $(highlight_text $new_db_root_password)"
+
+    mysql -P$db_port -uroot -p$temp_db_root_password --socket $DATABASE_DIR/mysql.sock --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$new_db_root_password'"
+    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE USER '$db_user'@'%' IDENTIFIED BY '$db_password'"
+    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "GRANT ALL ON *.* TO '$db_user'@'%' WITH GRANT OPTION"
+
+    show_info_message "creating schemas"
+
+    # status and da_internal
+    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock < $DATABASE_DIR/status_schema.sql
+    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock < $DATABASE_DIR/da_internal_schema.sql
+
+    # django tables
+    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE DATABASE depui_django"
+    python /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_deposit/wwpdb/apps/deposit/manage.py makemigrations depui
+    python /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_deposit/wwpdb/apps/deposit/manage.py migrate
+
+    # shutdown
+    # ./bin/mysqladmin --socket=./socket shutdown -uroot -p$new_db_root_password
+fi
 
 # ----------------------------------------------------------------
 # service startup

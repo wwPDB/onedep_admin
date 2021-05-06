@@ -355,7 +355,7 @@ pip list
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
     show_info_message "checking out / updating mmcif dictionary"
 
-    python onedep-maintenance/common/update_mmcif_dictionary.py
+    python $ONEDEP_PATH/onedep-maintenance/common/update_mmcif_dictionary.py
 
     if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary' failed with exit code $?"; fi
 

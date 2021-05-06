@@ -394,7 +394,7 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
 
     show_info_message "checking out / updating sequences in OneDep"
 
-    SCRIPT_PATH=${ONEDEP_PATH}/onedep_admin/scripts
+    SCRIPT_PATH=${ONEDEP_PATH}/onedep-maintenance/common/sequence
 
     ${SCRIPT_PATH}/sequence/Fetch-db-unp.sh
     if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-unp.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi

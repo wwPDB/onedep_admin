@@ -273,9 +273,9 @@ if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
     git clone $ONEDEP_MAINTENANCE_REPO_URL
 fi
 
-show_info_message "creating 'resources' folder"
+#show_info_message "creating 'resources' folder"
 
-mkdir -p $DEPLOY_DIR/resources
+#mkdir -p $DEPLOY_DIR/resources
 
 if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
@@ -434,7 +434,7 @@ fi
 
 #show_info_message "setting up csd"
 
-#ln -s $ONEDEP_PATH/resources/csds/latest $DEPLOY_DIR/resources/csd
+#ln -s $ONEDEP_PATH/resources/csds/latest ONEDEP_PATH/resources/csd
 
 # ----------------------------------------------------------------
 # service startup

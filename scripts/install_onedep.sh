@@ -396,13 +396,13 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
 
     SCRIPT_PATH=${ONEDEP_PATH}/onedep-maintenance/common/sequence
 
-    ${SCRIPT_PATH}/sequence/Fetch-db-unp.sh
+    ${SCRIPT_PATH}/Fetch-db-unp.sh
     if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-unp.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
-    ${SCRIPT_PATH}/sequence/Fetch-db-gb.sh
+    ${SCRIPT_PATH}/Fetch-db-gb.sh
     if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-gb.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
-    ${SCRIPT_PATH}/sequence/Format-db.sh
+    ${SCRIPT_PATH}/Format-db.sh
     if [[ $? != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
     # get the taxonomy information for the depUI and load it into the OneDep database

@@ -273,9 +273,9 @@ if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
     git clone $ONEDEP_MAINTENANCE_REPO_URL
 fi
 
-show_info_message "creating 'resources' folder"
+#show_info_message "creating 'resources' folder"
 
-mkdir -p $DEPLOY_DIR/resources
+#mkdir -p $DEPLOY_DIR/resources
 
 if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
@@ -306,6 +306,7 @@ fi
 show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH)"
 
 $PYTHON3 -m venv $VENV_PATH
+source $VENV_PATH/bin/activate
 
 # adding pip config file
 show_info_message "creating pip configuration file"
@@ -354,14 +355,7 @@ pip list
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
     show_info_message "checking out / updating mmcif dictionary"
 
-    if [[ ! -d $SITE_PDBX_DICT_PATH ]]; then
-        mkdir -p $SITE_PDBX_DICT_PATH
-        cd $SITE_PDBX_DICT_PATH
-        svn co --no-auth-cache --username $SVN_USER --password $SVN_PASS https://svn-dev.wwpdb.org/svn-test/data-dictionary/trunk .
-    else
-        cd $SITE_PDBX_DICT_PATH
-        svn up --no-auth-cache --username $SVN_USER --password $SVN_PASS
-    fi
+    python $ONEDEP_PATH/onedep-maintenance/common/update_mmcif_dictionary.py
 
     if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary' failed with exit code $?"; fi
 
@@ -393,41 +387,33 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
     if [[ $? != 0 ]]; then show_error_message "step 'checking out PRD' failed with exit code $?"; fi
 
     python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
-    if [[ $? != 0 ]]; then show_error_message "step 'updating taxonomy' failed with exit code $?"; fi
+    if [[ $? != 0 ]]; then show_error_message "step 'compiling CCD and PRD data files' failed with exit code $?"; fi
 
     # checkout / update sequences in OneDep - it now runs from anywhere using RunRemote
     # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/Update-reference-sequences.sh
 
     show_info_message "checking out / updating sequences in OneDep"
 
-    SCRIPT_PATH="${BASH_SOURCE[0]}";
-    if ([ -h "${SCRIPT_PATH}" ]); then
-        while([ -h "${SCRIPT_PATH}" ]); do
-            SCRIPT_PATH=`readlink "${SCRIPT_PATH}"`;
-        done
-    fi
+    SCRIPT_PATH=${ONEDEP_PATH}/onedep-maintenance/common/sequence
 
-    pushd . > /dev/null
-    cd `dirname ${SCRIPT_PATH}` > /dev/null
-    SCRIPT_PATH=`pwd`;
-
-    ${SCRIPT_PATH}/sequence/Fetch-db-unp.sh
+    ${SCRIPT_PATH}/Fetch-db-unp.sh
     if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-unp.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
-    ${SCRIPT_PATH}/sequence/Fetch-db-gb.sh
+    ${SCRIPT_PATH}/Fetch-db-gb.sh
     if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-gb.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
-    ${SCRIPT_PATH}/sequence/Format-db.sh
+    ${SCRIPT_PATH}/Format-db.sh
     if [[ $? != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
     # get the taxonomy information for the depUI and load it into the OneDep database
 
     # PDBe specific instruction -
-    # python -m wwpdb.apps.deposit.depui.taxonomy.getData
+    # python onedep-maintenance/common/taxonomy/get_data_from_uniprot.py --output_csv $DEPLOY_DIR/resources/taxonomy/taxonomy_name.csv
 
     # sync taxonomy data from PDBe...
     show_info_message "loading taxonomy information into OneDep db"
-    python -m wwpdb.apps.deposit.depui.taxonomy.loadData
+    # python onedep-maintenance/common/taxonomy/load_data_to_onedep.py --input_csv $DEPLOY_DIR/resources/taxonomy/taxonomy_name.csv
+    python -m wwpdb.apps.deposit.depui.taxonomy.loadData --input_csv $DEPLOY_DIR/resources/taxonomy/taxonomy_name.csv
     if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
 else
     show_warning_message "skipping maintenance tasks"
@@ -448,7 +434,7 @@ fi
 
 #show_info_message "setting up csd"
 
-#ln -s $ONEDEP_PATH/resources/csds/latest $DEPLOY_DIR/resources/csd
+#ln -s $ONEDEP_PATH/resources/csds/latest $ONEDEP_PATH/resources/csd
 
 # ----------------------------------------------------------------
 # service startup

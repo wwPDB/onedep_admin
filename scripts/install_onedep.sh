@@ -434,7 +434,7 @@ fi
 
 #show_info_message "setting up csd"
 
-#ln -s $ONEDEP_PATH/resources/csds/latest ONEDEP_PATH/resources/csd
+#ln -s $ONEDEP_PATH/resources/csds/latest $ONEDEP_PATH/resources/csd
 
 # ----------------------------------------------------------------
 # service startup

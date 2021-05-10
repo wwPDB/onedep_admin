@@ -130,7 +130,7 @@ class UpdateManager(object):
             path_to_list_of_repo = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements_wwpdb_dependencies.txt'))
             with open(path_to_list_of_repo) as list_of_repo:
                 for repo in list_of_repo:
-                    command = 'git clone --recursive git@github.com:wwPDB/{}.git'.format(repo.rstrip())
+                    command = 'git clone --recursive git@github.com:wwPDB/{0}.git; cd {0}; git checkout develop; cd ..'.format(repo.rstrip())
                     self.__exec(command, working_directory=source_dir)
                     command = 'pip install {} --edit {}'.format(pip_extra_urls, repo)
                     self.__exec(command, working_directory=source_dir)

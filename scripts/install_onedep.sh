@@ -93,6 +93,7 @@ OPT_PREPARE_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
+OPT_DO_BUILD_DEV=false
 SPECIFIC_PACKAGE=''
 
 read -r -d '' USAGE << EOM
@@ -105,6 +106,7 @@ Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--bu
     --run-update:           perform RunUpdate.py step
     --run-maintenance:      perform maintenance tasks
     --setup-apache:         setup the apache
+    --install-develop-as-edit install onedep packages in edit mode as develop version
     --install-specific-package: install a specific package into the OneDep venv
 EOM
 
@@ -131,6 +133,7 @@ do
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
         --prepare-to-build-tools) OPT_PREPARE_BUILD=true;;
+        --install-develop-as-edit) OPT_DO_BUILD_DEV=true;;
         --help)
             echo "$USAGE"
             exit 1
@@ -330,7 +333,9 @@ git pull
 
 show_info_message "running RunUpdate.py step"
 
-if [[ $OPT_DO_RUNUPDATE == true ]]; then
+if [[ $OPT_DO_RUNUPDATE == true && $OPT_DO_BUILD_DEV == true ]]; then
+    python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-dev --build-version v-5200
+elif [[ $OPT_DO_RUNUPDATE == true ]]; then
     python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-version v-5200
 else
     show_warning_message "skipping RunUpdate step"

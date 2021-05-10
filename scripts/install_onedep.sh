@@ -97,7 +97,7 @@ OPT_DO_BUILD_DEV=false
 SPECIFIC_PACKAGE=''
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package]
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [-install-develop-as-edit]
     --config-version:       OneDep config version, defaults to 'latest'
     --python3-path:         path to a Python interpreter, defaults to 'python3'
     --install-base:         install base packages

@@ -349,29 +349,19 @@ pip list
 # so keeping this to the minimum
 # ----------------------------------------------------------------
 
-# to checkout / update the mmCIF dictionary
-# using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_mmcif_dictionary.sh
+
 
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
+
     show_info_message "checking out / updating mmcif dictionary"
 
     python $ONEDEP_PATH/onedep-maintenance/common/update_mmcif_dictionary.py
 
     if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary' failed with exit code $?"; fi
 
-    # to checkout / update the taxonomy for annotation
-    # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_taxonomy.sh
-
     show_info_message "checking out / updating taxonomy"
 
-    if [[ ! -d $SITE_TAXDUMP_PATH ]]; then
-        mkdir -p $SITE_TAXDUMP_PATH
-        cd $SITE_TAXDUMP_PATH
-        svn co --username $SVN_USER --password $SVN_PASS https://svn-dev.wwpdb.org/svn-test/data-taxdump/trunk .
-    else
-        cd $SITE_TAXDUMP_PATH
-        svn up --username $SVN_USER --password $SVN_PASS
-    fi
+    python $ONEDEP_PATH/onedep-maintenance/common/update_taxonomy_files.py
 
     if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating taxonomy' failed with exit code $?"; fi
 

@@ -93,10 +93,11 @@ OPT_PREPARE_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
+OPT_DO_BUILD_DEV=false
 SPECIFIC_PACKAGE=''
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package]
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [-install-develop-as-edit]
     --config-version:       OneDep config version, defaults to 'latest'
     --python3-path:         path to a Python interpreter, defaults to 'python3'
     --install-base:         install base packages
@@ -105,6 +106,7 @@ Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--bu
     --run-update:           perform RunUpdate.py step
     --run-maintenance:      perform maintenance tasks
     --setup-apache:         setup the apache
+    --install-develop-as-edit install onedep packages in edit mode as develop version
     --install-specific-package: install a specific package into the OneDep venv
 EOM
 
@@ -131,6 +133,7 @@ do
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
         --prepare-to-build-tools) OPT_PREPARE_BUILD=true;;
+        --install-develop-as-edit) OPT_DO_BUILD_DEV=true;;
         --help)
             echo "$USAGE"
             exit 1
@@ -320,7 +323,9 @@ else
 fi
 
 show_info_message "install some base packages"
-pip install wheel wwpdb.utils.config
+pip install wheel
+
+pip install wwpdb.utils.config
 
 show_info_message "checking for updates in onedep_admin"
 
@@ -330,7 +335,9 @@ git pull
 
 show_info_message "running RunUpdate.py step"
 
-if [[ $OPT_DO_RUNUPDATE == true ]]; then
+if [[ $OPT_DO_RUNUPDATE == true && $OPT_DO_BUILD_DEV == true ]]; then
+    python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-dev --build-version v-5200
+elif [[ $OPT_DO_RUNUPDATE == true ]]; then
     python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-version v-5200
 else
     show_warning_message "skipping RunUpdate step"
@@ -349,29 +356,19 @@ pip list
 # so keeping this to the minimum
 # ----------------------------------------------------------------
 
-# to checkout / update the mmCIF dictionary
-# using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_mmcif_dictionary.sh
+
 
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
+
     show_info_message "checking out / updating mmcif dictionary"
 
     python $ONEDEP_PATH/onedep-maintenance/common/update_mmcif_dictionary.py
 
     if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary' failed with exit code $?"; fi
 
-    # to checkout / update the taxonomy for annotation
-    # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_taxonomy.sh
-
     show_info_message "checking out / updating taxonomy"
 
-    if [[ ! -d $SITE_TAXDUMP_PATH ]]; then
-        mkdir -p $SITE_TAXDUMP_PATH
-        cd $SITE_TAXDUMP_PATH
-        svn co --username $SVN_USER --password $SVN_PASS https://svn-dev.wwpdb.org/svn-test/data-taxdump/trunk .
-    else
-        cd $SITE_TAXDUMP_PATH
-        svn up --username $SVN_USER --password $SVN_PASS
-    fi
+    python $ONEDEP_PATH/onedep-maintenance/common/update_taxonomy_files.py
 
     if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating taxonomy' failed with exit code $?"; fi
 

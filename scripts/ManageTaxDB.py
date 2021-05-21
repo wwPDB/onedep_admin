@@ -11,6 +11,7 @@ import os
 import argparse
 import subprocess
 
+from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
 from wwpdb.utils.db.MyDbUtil import MyDbQuery
 
@@ -21,6 +22,7 @@ class TaxDbManager(object):
         self.__noop = noop
         self.__taxdbsize = taxdbsize
         self.__maxsize = maxsize
+        self.__cI = ConfigInfo()
 
     def updatedb(self):
         mydb = MyConnectionBase()
@@ -43,7 +45,12 @@ class TaxDbManager(object):
             print("Taxdb at least as big as expected")
             return
 
-        command = "python -m wwpdb.apps.deposit.depui.taxonomy.loadData"
+        taxfile = self.__cI.get("TAXONOMY_FILE_NAME")
+        if not taxfile:
+            print("Could not find site-config TAXONOMY_FILE_NAME -- cannot load taxonomy")
+            return
+
+        command = "python -m wwpdb.apps.deposit.depui.taxonomy.loadData --input_csv {}".format(taxfile)
         self.__exec(command)
 
 

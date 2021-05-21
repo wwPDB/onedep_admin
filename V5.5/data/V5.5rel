@@ -101,7 +101,7 @@ wwpdb.apps.seqmodule==0.19.1
 wwpdb.apps.site-admin==0.9
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.8
-wwpdb.apps.val-ws-server==0.7
+wwpdb.apps.val-ws-server==0.7.1
 wwpdb.apps.validation==2.19
 wwpdb.apps.wf-engine==0.13
 wwpdb.apps.workmanager==0.15

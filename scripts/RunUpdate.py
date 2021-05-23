@@ -19,6 +19,7 @@ import sys
 
 import os
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon
 
 class DbSchemaManager(object):
     def __init__(self, noop):
@@ -53,6 +54,7 @@ class UpdateManager(object):
         self.__configfile = config_file
         self.__noop = noop
         self.__ci = ConfigInfo()
+        self.__ciCommon = ConfigInfoAppCommon()
 
         instenv = self.__ci.get('INSTALL_ENVIRONMENT')
         self.__extraconf = instenv.get("ADMIN_EXTRA_CONF", None)
@@ -120,7 +122,7 @@ class UpdateManager(object):
         reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
         if dev_build:
             # Clone and do pip edit install
-            webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
+            webappsdir = self.__ci.get('SITE_WEB_APPS_SESSIONS_PATH')
 
             # Checking if source directory exist
             source_dir = os.path.abspath(os.path.join(webappsdir, '../..'))
@@ -156,7 +158,7 @@ class UpdateManager(object):
             self.__exec(command)
 
     def checkwebfe(self, overridenoop = False):
-        webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
+        webappsdir = self.__ci.get('SITE_WEB_APPS_SESSIONS_PATH')
         webdir = os.path.abspath(os.path.join(webappsdir, '..'))
         curdir = os.path.dirname(__file__)
         checkscript = os.path.join(curdir, 'ManageWebFE.py')
@@ -169,7 +171,7 @@ class UpdateManager(object):
 
 
     def updatewebfe(self):
-        webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
+        webappsdir = self.__ci.get('SITE_WEB_APPS_SESSIONS_PATH')
 
         # Checking if source directory exist
         source_dir = os.path.abspath(os.path.join(webappsdir, '../..'))
@@ -226,7 +228,7 @@ class UpdateManager(object):
     def checktoolvers(self):
         #  vers_config_var,  configinfovar,             relative path
         confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json'],
-                 ['webfever', 'TOP_WWPDB_WEBAPPS_DIR', 'version.json'],
+                 ['webfever', 'SITE_WEB_APPS_SESSIONS_PATH', 'version.json'],
                  ['resourcever', 'RO_RESOURCE_PATH', 'version.json'],
                  ['cctoolsver', 'SITE_CC_APPS_PATH', 'etc/bundleversion.json'],
                  ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json']
@@ -273,7 +275,7 @@ class UpdateManager(object):
             return
 
 
-        oelicfile = self.__ci.get('SITE_CC_OE_LICENSE')
+        oelicfile = self.__ciCommonget_site_cc_oe_licence()
         # Might be in OS_ENVIRONMENT
         if not oelicfile:
             oelicfile = os.getenv('SITE_CC_OE_LICENSE')

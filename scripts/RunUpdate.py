@@ -122,7 +122,7 @@ class UpdateManager(object):
         reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
         if dev_build:
             # Clone and do pip edit install
-            webappsdir = self.__ci.get('SITE_WEB_APPS_SESSIONS_PATH')
+            webappsdir = self.__ciCommon.get_site_web_apps_top_path()
 
             # Checking if source directory exist
             source_dir = os.path.abspath(os.path.join(webappsdir, '../..'))
@@ -158,7 +158,7 @@ class UpdateManager(object):
             self.__exec(command)
 
     def checkwebfe(self, overridenoop = False):
-        webappsdir = self.__ci.get('SITE_WEB_APPS_SESSIONS_PATH')
+        webappsdir = self.__ciCommon.get_site_web_apps_top_path()
         webdir = os.path.abspath(os.path.join(webappsdir, '..'))
         curdir = os.path.dirname(__file__)
         checkscript = os.path.join(curdir, 'ManageWebFE.py')
@@ -171,7 +171,7 @@ class UpdateManager(object):
 
 
     def updatewebfe(self):
-        webappsdir = self.__ci.get('SITE_WEB_APPS_SESSIONS_PATH')
+        webappsdir = self.__ciCommon.get_site_web_apps_top_path()
 
         # Checking if source directory exist
         source_dir = os.path.abspath(os.path.join(webappsdir, '../..'))
@@ -228,7 +228,7 @@ class UpdateManager(object):
     def checktoolvers(self):
         #  vers_config_var,  configinfovar,             relative path
         confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json'],
-                 ['webfever', 'SITE_WEB_APPS_SESSIONS_PATH', 'version.json'],
+                 ['webfever', 'SITE_WEB_APPS_TOP_PATH', 'version.json'],
                  ['resourcever', 'RO_RESOURCE_PATH', 'version.json'],
                  ['cctoolsver', 'SITE_CC_APPS_PATH', 'etc/bundleversion.json'],
                  ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json']
@@ -275,7 +275,7 @@ class UpdateManager(object):
             return
 
 
-        oelicfile = self.__ciCommonget_site_cc_oe_licence()
+        oelicfile = self.__ciCommon.get_site_cc_oe_licence()
         # Might be in OS_ENVIRONMENT
         if not oelicfile:
             oelicfile = os.getenv('SITE_CC_OE_LICENSE')

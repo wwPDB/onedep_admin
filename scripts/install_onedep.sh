@@ -279,12 +279,9 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     
     # status db
     mkdir -p status_schema && cd status_schema
-    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE DATABASE status"
 
-    # temporary
-    status_cif=$ONEDEP_PATH/resources/onedep_checkouts/git/py-wwpdb_apps_deposit/wwpdb/apps/deposit/depui/schema/status_schema.cif
-    $($db_loader_path -sql -server mysql -map $status_cif -schema -db status)
-    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock < ./DB_LOADER_SCHEMA.sql
+    python -m wwpdb.apps.deposit.depui.schema.DepUISchema > status_schema.sql
+    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock < ./status_schema.sql
 
     cd ..
 
@@ -310,9 +307,10 @@ if [[ $OPT_DO_DATABASE == true ]]; then
 
     # shutdown
     # ./bin/mysqladmin --socket=./socket shutdown -uroot -p$new_db_root_password
+    # ./onedep_admin/scripts/install_onedep.sh --setup-database --database-dir /nfs/public/release/msd/services/onedep/db
 fi
 
-exit 0
+exit 1
 
 # ----------------------------------------------------------------
 # install required packages

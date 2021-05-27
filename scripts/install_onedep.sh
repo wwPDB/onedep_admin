@@ -109,11 +109,12 @@ OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
 OPT_DO_DATABASE=false
+OPT_DO_RESTART_SERVICES=false
 SPECIFIC_PACKAGE=''
 DATABASE_DIR=$(pwd)/onedep_database
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [[--setup-database [--database-dir]]
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [[--setup-database [--database-dir]] [--restart-services]
     --config-version:           OneDep config version, defaults to 'latest'
     --python3-path:             path to a Python interpreter, defaults to 'python3'
     --install-base:             install base packages
@@ -122,6 +123,7 @@ Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--bu
     --run-update:               perform RunUpdate.py step
     --run-maintenance:          perform maintenance tasks
     --setup-apache:             setup the apache
+    --restart-services:         restart all onedep services (workflow engine, consumers, apache servers)
     --install-specific-package: install a specific package into the OneDep venv
     --setup-database:           setup database (installs server as non-root and setup tables)
     --database-dir:             directory where database will be setup, defaults to './onedep_database'
@@ -155,6 +157,7 @@ do
         --setup-apache) OPT_DO_APACHE=true;;
         --prepare-to-build-tools) OPT_PREPARE_BUILD=true;;
         --setup-database) OPT_DO_DATABASE=true;;
+        --restart-services) OPT_DO_RESTART_SERVICES=true;;
         --help)
             echo "$USAGE"
             exit 1
@@ -601,6 +604,22 @@ fi
 #show_info_message "setting up csd"
 
 #ln -s $ONEDEP_PATH/resources/csds/latest $DEPLOY_DIR/resources/csd
+
+# ----------------------------------------------------------------
+# restart services
+# ----------------------------------------------------------------
+if [[ $OPT_DO_RESTART_SERVICES == true ]]; then
+    show_info_message "restarting all services"
+
+    # restart_all_apaches
+    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_apache
+    # restart_workflow_engines
+    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_wfe
+    # val_api_consumer_restart
+    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_val_api_consumers 60
+    # val_rel_consumer_restart, should we have this as well?
+    # python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_val_rel_consumers 60
+fi
 
 # ----------------------------------------------------------------
 # service startup

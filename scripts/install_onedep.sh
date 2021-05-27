@@ -92,6 +92,7 @@ OPT_PREPARE_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
+OPT_DO_RESTART_SERVICES=false
 SPECIFIC_PACKAGE=''
 
 read -r -d '' USAGE << EOM
@@ -104,6 +105,7 @@ Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--bu
     --run-update:           perform RunUpdate.py step
     --run-maintenance:      perform maintenance tasks
     --setup-apache:         setup the apache
+    --restart-services:     restart all onedep services (workflow engine, consumers, apache servers)
     --install-specific-package: install a specific package into the OneDep venv
 EOM
 
@@ -130,6 +132,7 @@ do
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
         --prepare-to-build-tools) OPT_PREPARE_BUILD=true;;
+        --restart-services) OPT_DO_RESTART_SERVICES=true;;
         --help)
             echo "$USAGE"
             exit 1
@@ -458,6 +461,22 @@ fi
 #show_info_message "setting up csd"
 
 #ln -s $ONEDEP_PATH/resources/csds/latest $DEPLOY_DIR/resources/csd
+
+# ----------------------------------------------------------------
+# restart services
+# ----------------------------------------------------------------
+if [[ $OPT_DO_RESTART_SERVICES == true ]]; then
+    show_info_message "restarting all services"
+
+    # restart_all_apaches
+    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_apache
+    # restart_workflow_engines
+    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_wfe
+    # val_api_consumer_start
+    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --start_val_api_consumers 60
+    # val_rel_consumer_start, should we have this as well?
+    # python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --start_val_rel_consumers 60
+fi
 
 # ----------------------------------------------------------------
 # service startup

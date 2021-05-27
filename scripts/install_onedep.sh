@@ -17,7 +17,7 @@ ONEDEP_ADMIN_REPO_URL=git@github.com:wwPDB/onedep_admin.git # OneDep package man
 ONEDEP_MAINTENANCE_REPO_URL=git@github.com:wwPDB/onedep-maintenance.git # scripts to setup and maintain OneDep
 
 # download links
-MYSQL_COMMUNITY_SERVER=https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-8.0.24-linux-glibc2.17-x86_64-minimal.tar.xz
+MYSQL_COMMUNITY_SERVER=https://dev.mysql.com/get/Downloads/MySQL-8.0/mysql-boost-8.0.11.tar.gz
 
 # ----------------------------------------------------------------
 # helper functions
@@ -91,6 +91,33 @@ function get_config_var {
     local value=$(python -c "from wwpdb.utils.config.ConfigInfo import ConfigInfo; cI=ConfigInfo('$WWPDB_SITE_ID'); print(cI.get('$key'))")
 
     retval=$value
+}
+
+#
+# function that downloads and builds mysql server
+# in the current directory
+function build_mysql {
+    local DATABASE_DIR=$1
+
+    show_info_message "downloading mysql server"
+
+    download_file $MYSQL_COMMUNITY_SERVER
+    local mysql_version=$retval
+    
+    show_info_message "building $mysql_version"
+
+    mkdir -p mysql-source
+    tar -xvf ./$mysql_version --directory mysql-source --strip-components=1
+
+    cd mysql-source
+    mkdir -p bld && cd bld
+
+    export CC=/usr/bin/gcc
+    export CXX=/usr/bin/g++
+    
+    cmake .. -DCMAKE_INSTALL_PREFIX=$DATABASE_DIR/mysql -DMYSQL_UNIX_ADDR=$DATABASE_DIR/mysql.sock -DWITH_BOOST=$DATABASE_DIR/mysql-source/boost
+    make
+    make install
 }
 
 # ----------------------------------------------------------------
@@ -407,10 +434,9 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     mkdir -p data
     mkdir -p mysql
 
-    show_info_message "downloading mysql server"
+    build_mysql $DATABASE_DIR 
 
-    download_file $MYSQL_COMMUNITY_SERVER
-    tar -xvf ./$retval --directory mysql --strip-components=1
+    cd $DATABASE_DIR 
 
     show_info_message "initializing mysql server"
     ./mysql/bin/mysqld --user=w3_pdb05 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port --initialize
@@ -618,7 +644,7 @@ if [[ $OPT_DO_RESTART_SERVICES == true ]]; then
     # val_api_consumer_restart
     python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_val_api_consumers 60
     # val_rel_consumer_restart, should we have this as well?
-    # python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_val_rel_consumers 60
+    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_val_rel_consumers 60
 fi
 
 # ----------------------------------------------------------------

@@ -486,8 +486,8 @@ if [[ $OPT_DO_DATABASE == true ]]; then
 
     # django tables
     mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE DATABASE depui_django"
-    python /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_deposit/wwpdb/apps/deposit/manage.py makemigrations depui
-    python /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_deposit/wwpdb/apps/deposit/manage.py migrate
+    python -m wwpdb.apps.deposit.manage makemigrations depui
+    python -m wwpdb.apps.deposit.manage migrate
 
     # shutdown
     # ./bin/mysqladmin --socket=./socket shutdown -uroot -p$new_db_root_password

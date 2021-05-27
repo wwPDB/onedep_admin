@@ -137,11 +137,12 @@ OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
 OPT_DO_DATABASE=false
 OPT_DO_RESTART_SERVICES=false
+OPT_VAL_SERVER_NUM_WORKERS="60"
 SPECIFIC_PACKAGE=''
 DATABASE_DIR=$(pwd)/onedep_database
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [[--setup-database [--database-dir]] [--restart-services]
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [[--setup-database [--database-dir]] [[--restart-services] [--val-num-workers]]
     --config-version:           OneDep config version, defaults to 'latest'
     --python3-path:             path to a Python interpreter, defaults to 'python3'
     --install-base:             install base packages
@@ -154,6 +155,7 @@ Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--bu
     --install-specific-package: install a specific package into the OneDep venv
     --setup-database:           setup database (installs server as non-root and setup tables)
     --database-dir:             directory where database will be setup, defaults to './onedep_database'
+    --val-num-workers:          how many workers validation servers should have
 EOM
 
 while [[ $# > 0 ]]
@@ -175,6 +177,10 @@ do
         ;;
         --database-dir)
             DATABASE_DIR="$2"
+            shift
+        ;;
+        --val-num-workers)
+            OPT_VAL_SERVER_NUM_WORKERS="$2"
             shift
         ;;
         --install-base) OPT_DO_INSTALL=true;;
@@ -642,9 +648,9 @@ if [[ $OPT_DO_RESTART_SERVICES == true ]]; then
     # restart_workflow_engines
     python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_wfe
     # val_api_consumer_restart
-    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_val_api_consumers 60
+    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_val_api_consumers $OPT_VAL_SERVER_NUM_WORKERS
     # val_rel_consumer_restart, should we have this as well?
-    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_val_rel_consumers 60
+    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_val_rel_consumers $OPT_VAL_SERVER_NUM_WORKERS
 fi
 
 # ----------------------------------------------------------------

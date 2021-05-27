@@ -472,10 +472,10 @@ if [[ $OPT_DO_RESTART_SERVICES == true ]]; then
     python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_apache
     # restart_workflow_engines
     python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_wfe
-    # val_api_consumer_start
-    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --start_val_api_consumers 60
-    # val_rel_consumer_start, should we have this as well?
-    # python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --start_val_rel_consumers 60
+    # val_api_consumer_restart
+    python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_val_api_consumers 60
+    # val_rel_consumer_restart, should we have this as well?
+    # python $ONEDEP_PATH/onedep_admin/scripts/RestartServices.py --restart_val_rel_consumers 60
 fi
 
 # ----------------------------------------------------------------

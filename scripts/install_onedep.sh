@@ -139,7 +139,7 @@ OPT_DO_DATABASE=false
 OPT_DO_RESTART_SERVICES=false
 OPT_VAL_SERVER_NUM_WORKERS="60"
 SPECIFIC_PACKAGE=''
-DATABASE_DIR=$(pwd)/onedep_database
+DATABASE_DIR="default"
 
 read -r -d '' USAGE << EOM
 Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [[--setup-database [--database-dir]] [[--restart-services] [--val-num-workers]]
@@ -419,6 +419,10 @@ pip list
 if [[ $OPT_DO_DATABASE == true ]]; then
     show_info_message "setting up database"
 
+    if [[ $DATABASE_DIR == "default" ]]; then
+        DATABASE_DIR=$DEPLOY_DIR/onedep_database
+    fi
+
     echo "[*] database will be installed in $(highlight_text $DATABASE_DIR)"
 
     if [[ ! -d $DATABASE_DIR ]]; then
@@ -472,10 +476,10 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     done
 
     mysql_log=$(cat log.err)
-    regex=$'A temporary password is generated for (\w+@\w+): ([a-zA-Z0-9,.;_!@#$%^&*()_+{}|:<>?=-]+)'
+    regex=$'A temporary password is generated for .*'
 
     if [[ $mysql_log =~ $regex ]]; then
-        temp_db_root_password=${BASH_REMATCH[2]}
+        temp_db_root_password=$(echo ${BASH_REMATCH[0]} | cut -d" " -f8)
     else
         show_error_message "could not find temporary root password in log, exiting"
         exit 1
@@ -486,9 +490,9 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     echo "[*] mysql temporary root password is $(highlight_text $temp_db_root_password)"
     echo "[*] setting mysql root password to $(highlight_text $new_db_root_password)"
 
-    mysql -P$db_port -uroot -p$temp_db_root_password --socket $DATABASE_DIR/mysql.sock --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED BY '$new_db_root_password'"
-    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE USER '$db_user'@'%' IDENTIFIED BY '$db_password'"
-    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "GRANT ALL ON *.* TO '$db_user'@'%' WITH GRANT OPTION"
+    mysql/bin/mysql -P$db_port -uroot -p$temp_db_root_password --socket $DATABASE_DIR/mysql.sock --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$new_db_root_password'"
+    mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE USER '$db_user'@'%' IDENTIFIED WITH mysql_native_password BY '$db_password'"
+    mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "GRANT ALL ON *.* TO '$db_user'@'%' WITH GRANT OPTION"
 
     show_info_message "creating schemas"
 

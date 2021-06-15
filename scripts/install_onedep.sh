@@ -403,14 +403,9 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
     if [[ $? != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
     # get the taxonomy information for the depUI and load it into the OneDep database
-
-    # PDBe specific instruction -
-    # python onedep-maintenance/common/taxonomy/get_data_from_uniprot.py --output_csv $DEPLOY_DIR/resources/taxonomy/taxonomy_name.csv
-
-    # sync taxonomy data from PDBe...
     show_info_message "loading taxonomy information into OneDep db"
-    # python onedep-maintenance/common/taxonomy/load_data_to_onedep.py --input_csv $DEPLOY_DIR/resources/taxonomy/taxonomy_name.csv
-    python -m wwpdb.apps.deposit.depui.taxonomy.loadData --input_csv $DEPLOY_DIR/resources/taxonomy/taxonomy_name.csv
+    python -m wwpdb.apps.deposit.depui.taxonomy.loadTaxonomyFromFTP.py --write_sql
+
     if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
 else
     show_warning_message "skipping maintenance tasks"

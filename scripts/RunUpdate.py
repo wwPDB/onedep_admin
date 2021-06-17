@@ -247,7 +247,7 @@ class UpdateManager(object):
                 tvers = self.__cparser.get('DEFAULT', varname)
                 if config_info_app_method:
                     class_method = getattr(self.__ci_common, config_info_app_method)
-                    toolspath = class_method(self.__ci_common())
+                    toolspath = class_method()
                 else:
                     toolspath = self.__ci.get(confvar)
                 fname = os.path.join(toolspath, fpart)

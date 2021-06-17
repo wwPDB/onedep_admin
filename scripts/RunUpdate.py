@@ -10,15 +10,17 @@ try:
     from urllib.parse import urlparse
 except ImportError:
     from urlparse import urlparse
-import subprocess
 import argparse
-import os.path
 import fnmatch
 import json
+import os
+import os.path
+import subprocess
 import sys
 
-import os
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon
+
 
 class DbSchemaManager(object):
     def __init__(self, noop):
@@ -31,7 +33,6 @@ class DbSchemaManager(object):
         ret = 0
         ret = subprocess.call(cmd, shell=True)
         return ret
-
 
     def updateschema(self):
         if self.__noop:
@@ -53,6 +54,7 @@ class UpdateManager(object):
         self.__configfile = config_file
         self.__noop = noop
         self.__ci = ConfigInfo()
+        self.__ci_common = ConfigInfoAppCommon()
 
         instenv = self.__ci.get('INSTALL_ENVIRONMENT')
         self.__extraconf = instenv.get("ADMIN_EXTRA_CONF", None)
@@ -74,7 +76,7 @@ class UpdateManager(object):
             cfiles = [self.__configfile, self.__extraconf]
         self.__cparser.read(cfiles)
 
-    def __exec(self, cmd, overridenoop = False, working_directory=False):
+    def __exec(self, cmd, overridenoop=False, working_directory=None):
         print(cmd)
         ret = 0
         if not self.__noop or overridenoop:
@@ -113,7 +115,7 @@ class UpdateManager(object):
         self.__exec(command)
 
         if self.__cparser.has_option('DEFAULT', 'pip_extra_reqs'):
-            opt_req = self.__cparser.get('DEFAULT', 'pip_extra_reqs', vars = self.__confvars)
+            opt_req = self.__cparser.get('DEFAULT', 'pip_extra_reqs', vars=self.__confvars)
         else:
             opt_req = None
 
@@ -127,10 +129,12 @@ class UpdateManager(object):
             if not os.path.isdir(source_dir):
                 os.makedirs(source_dir)
 
-            path_to_list_of_repo = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements_wwpdb_dependencies.txt'))
+            path_to_list_of_repo = os.path.abspath(
+                os.path.join(script_dir, '../base_packages/requirements_wwpdb_dependencies.txt'))
             with open(path_to_list_of_repo) as list_of_repo:
                 for repo in list_of_repo:
-                    command = 'git clone --recursive git@github.com:wwPDB/{0}.git; cd {0}; git checkout develop; cd ..'.format(repo.rstrip())
+                    command = 'git clone --recursive git@github.com:wwPDB/{0}.git; cd {0}; git checkout develop; cd ..'.format(
+                        repo.rstrip())
                     self.__exec(command, working_directory=source_dir)
                     command = 'pip install {} --edit {}'.format(pip_extra_urls, repo)
                     self.__exec(command, working_directory=source_dir)
@@ -152,10 +156,11 @@ class UpdateManager(object):
                 command = 'git clone git@github.com:wwPDB/onedep-resources_ro.git {}'.format(resdir)
                 self.__exec(command)
 
-            command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(resdir, restag, restag)
+            command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(
+                resdir, restag, restag)
             self.__exec(command)
 
-    def checkwebfe(self, overridenoop = False):
+    def checkwebfe(self, overridenoop=False):
         webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
         webdir = os.path.abspath(os.path.join(webappsdir, '..'))
         curdir = os.path.dirname(__file__)
@@ -163,10 +168,9 @@ class UpdateManager(object):
         webfecheck = self.__cparser.get('DEFAULT', 'webfeconf')
 
         command = 'python {} --webroot {} check -r {}'.format(checkscript, webdir, webfecheck)
-        ret = self.__exec(command, overridenoop = overridenoop)
+        ret = self.__exec(command, overridenoop=overridenoop)
         if ret:
             print("ERROR: check of webfe directory failed")
-
 
     def updatewebfe(self):
         webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
@@ -176,7 +180,7 @@ class UpdateManager(object):
         if not os.path.isdir(source_dir):
             os.makedirs(source_dir)
 
-        #Check if repo is cloned
+        # Check if repo is cloned
         webfe_repo = os.path.abspath(os.path.join(webappsdir, '..'))
         if not os.path.isdir(webfe_repo):
             command = 'git clone --recurse-submodules git@github.com:wwPDB/onedep-webfe.git'
@@ -185,7 +189,8 @@ class UpdateManager(object):
 
         webfetag = self.__cparser.get('DEFAULT', 'webfetag')
 
-        command = 'cd {}; git pull; git checkout {}; git pull origin {}; git submodule init; git submodule update'.format(webfe_repo, webfetag, webfetag)
+        command = 'cd {}; git pull; git checkout {}; git pull origin {}; git submodule init; git submodule update'.format(
+            webfe_repo, webfetag, webfetag)
         self.__exec(command)
 
         # Now check the results
@@ -200,7 +205,6 @@ class UpdateManager(object):
             maxsize = 999999999
         taxresource = self.__ci.get('TAXONOMY_FILE_NAME')
 
-
         if not taxresource:
             print("ERROR: TAXONOMY_FILE_NAME is not set in site-config")
             return
@@ -211,7 +215,7 @@ class UpdateManager(object):
         if self.__noop:
             command = 'python {} --noop update --maxsize {} --taxdbsize {}'.format(checkscript, maxsize, taxdbsize)
         else:
-            command = 'python {} --maxsize {} --taxdbsize {}'.format(checkscript,  maxsize, taxdbsize)
+            command = 'python {} --maxsize {} --taxdbsize {}'.format(checkscript, maxsize, taxdbsize)
         self.__exec(command)
 
     def updateschema(self):
@@ -221,25 +225,28 @@ class UpdateManager(object):
     def postflightdbcheck(self):
         dbs = DbSchemaManager(self.__noop)
         dbs.checkviews()
-        
 
     def checktoolvers(self):
-        #  vers_config_var,  configinfovar,             relative path
-        confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json'],
-                 ['webfever', 'TOP_WWPDB_WEBAPPS_DIR', 'version.json'],
-                 ['resourcever', 'RO_RESOURCE_PATH', 'version.json'],
-                 ['cctoolsver', 'SITE_CC_APPS_PATH', 'etc/bundleversion.json'],
-                 ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json']
-             ]
+        #  vers_config_var,  configinfovar,             relative path    ConfiginfoAppMethod
+        confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json', 'get_site_annot_tools_path'],
+                 ['webfever', 'TOP_WWPDB_WEBAPPS_DIR', 'version.json', ''],
+                 ['resourcever', 'RO_RESOURCE_PATH', 'version.json', ''],
+                 ['cctoolsver', 'SITE_CC_APPS_PATH', 'etc/bundleversion.json', 'get_site_cc_apps_path'],
+                 ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json', 'get_site_packages_path']
+                 ]
 
         for c in confs:
             varname = c[0]
             confvar = c[1]
             fpart = c[2]
+            config_info_app_method = c[3]
 
             try:
                 tvers = self.__cparser.get('DEFAULT', varname)
-                toolspath = self.__ci.get(c[1])
+                if config_info_app_method:
+                    toolspath = self.__ci_common.config_info_app_method()
+                else:
+                    toolspath = self.__ci.get(confvar)
                 fname = os.path.join(toolspath, fpart)
                 if not os.path.exists(fname):
                     print("WARNING: Tool out of date. %s not found" % fname)
@@ -272,13 +279,12 @@ class UpdateManager(object):
             # Option not in config file - continue
             return
 
-
-        oelicfile = self.__ci.get('SITE_CC_OE_LICENSE')
+        oelicfile = self.__ci_common.get_site_cc_oe_licence()
         # Might be in OS_ENVIRONMENT
         if not oelicfile:
             oelicfile = os.getenv('SITE_CC_OE_LICENSE')
         if not oelicfile:
-            print ("***ERROR: Cannot determine open eye license from config")
+            print("***ERROR: Cannot determine open eye license from config")
             return
 
         with open(oelicfile, 'r') as fin:
@@ -292,6 +298,7 @@ class UpdateManager(object):
                     # Only need single report
                     return
 
+
 #        pass
 
 def get_latest_version_filepath():
@@ -304,7 +311,7 @@ def get_latest_version_filepath():
     """
     parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     versions = []
-    
+
     if os.scandir:
         # scandir is only available for python > 3.6
         with os.scandir(parent_dir) as entries:
@@ -316,14 +323,14 @@ def get_latest_version_filepath():
         for e in os.listdir(parent_dir):
             if os.path.isdir(e) and fnmatch.fnmatch(e.name, 'V[0-9]*'):
                 versions.append(e)
-    
+
     if len(versions) == 0:
         # this should never happen
         return None
-    
+
     latest_version = sorted(versions)[-1]
     version_filepath = os.path.join(parent_dir, latest_version, '{}rel.conf'.format(latest_version.replace('.', '')))
-    
+
     return version_filepath
 
 
@@ -362,7 +369,7 @@ def main():
 
     # update python
     if not args.skip_pip:
-            um.updatepyenv(args.build_dev)
+        um.updatepyenv(args.build_dev)
 
     # update webfe
     if not args.skip_webfe:
@@ -386,7 +393,8 @@ def main():
 
     # Final check on webfe
     if not args.skip_webfe:
-        um.checkwebfe(overridenoop = True)
+        um.checkwebfe(overridenoop=True)
+
 
 if __name__ == '__main__':
     main()

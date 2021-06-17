@@ -226,6 +226,8 @@ class UpdateManager(object):
         dbs = DbSchemaManager(self.__noop)
         dbs.checkviews()
 
+
+
     def checktoolvers(self):
         #  vers_config_var,  configinfovar,             relative path    ConfiginfoAppMethod
         confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json', 'get_site_annot_tools_path'],
@@ -244,7 +246,8 @@ class UpdateManager(object):
             try:
                 tvers = self.__cparser.get('DEFAULT', varname)
                 if config_info_app_method:
-                    toolspath = self.__ci_common.config_info_app_method()
+                    class_method = getattr(self.__ci_common, config_info_app_method)
+                    toolspath = class_method(self.__ci_common())
                 else:
                     toolspath = self.__ci.get(confvar)
                 fname = os.path.join(toolspath, fpart)

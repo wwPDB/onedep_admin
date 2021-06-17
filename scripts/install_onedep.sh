@@ -135,14 +135,20 @@ OPT_PREPARE_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
-OPT_DO_DATABASE=false
 OPT_DO_RESTART_SERVICES=false
 OPT_VAL_SERVER_NUM_WORKERS="60"
 SPECIFIC_PACKAGE=''
+
+# database flags
+OPT_DO_DATABASE=false
+OPT_DB_ADD_DUMMY_CODES=false
+OPT_DB_SKIP_BUILD=false
 DATABASE_DIR="default"
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [[--setup-database [--database-dir]] [[--restart-services] [--val-num-workers]]
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [--setup-database [opts]] [--restart-services] [--val-num-workers]
+
+General parameters:
     --config-version:           OneDep config version, defaults to 'latest'
     --python3-path:             path to a Python interpreter, defaults to 'python3'
     --install-base:             install base packages
@@ -153,9 +159,13 @@ Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--bu
     --setup-apache:             setup the apache
     --restart-services:         restart all onedep services (workflow engine, consumers, apache servers)
     --install-specific-package: install a specific package into the OneDep venv
-    --setup-database:           setup database (installs server as non-root and setup tables)
-    --database-dir:             directory where database will be setup, defaults to './onedep_database'
     --val-num-workers:          how many workers validation servers should have
+
+Database parameters:
+    --setup-database:           setup database (installs server as non-root and setup tables)
+    --database-dir:             directory where database will be setup, defaults to '$DEPLOY_DIR/onedep_database'
+    --skip-db-build:            will skip downloading of mysql and building steps
+    --dummy-codes:              add PDB and EMDB dummy codes to database
 EOM
 
 while [[ $# > 0 ]]
@@ -189,8 +199,10 @@ do
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
         --prepare-to-build-tools) OPT_PREPARE_BUILD=true;;
-        --setup-database) OPT_DO_DATABASE=true;;
         --restart-services) OPT_DO_RESTART_SERVICES=true;;
+        --setup-database) OPT_DO_DATABASE=true;;
+        --skip-db-build) OPT_DB_SKIP_BUILD=true;;
+        --dummy-codes) OPT_DB_ADD_DUMMY_CODES=true;;
         --help)
             echo "$USAGE"
             exit 1
@@ -444,7 +456,9 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     mkdir -p data
     mkdir -p mysql
 
-    build_mysql $DATABASE_DIR 
+    if [[ $OPT_DB_SKIP_BUILD == false ]]; then
+        build_mysql $DATABASE_DIR 
+    fi
 
     cd $DATABASE_DIR 
 
@@ -527,6 +541,30 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE DATABASE depui_django"
     python -m wwpdb.apps.deposit.manage makemigrations depui
     python -m wwpdb.apps.deposit.manage migrate
+
+    # prdv4 and compv4 schemas
+    get_config_var SITE_REFDATA_PRD_DB_NAME
+    prd_schema_name=$retval
+
+    get_config_var SITE_REFDATA_CC_DB_NAME
+    cc_schema_name=$retval
+
+    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE DATABASE $cc_schema_name"
+    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE DATABASE $prd_schema_name"
+
+    if [[ $OPT_DB_ADD_DUMMY_CODES == true ]]; then
+        show_info_message "adding PDB and EMDB dummy codes to db"
+        
+        # codes
+        seq -w 4 0001 0050 > dummy_pdb_codes.ids
+        seq --format EMD-%04g 1 50 > dummy_emdb_codes.ids
+
+        $(python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --load_accessions_pdb --accession_file dummy_pdb_codes.ids)
+        $(python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --load_accessions_emdb --accession_file dummy_emdb_codes.ids)
+
+        rm dummy_pdb_codes.ids
+        rm dummy_emdb_codes.ids
+    fi
 
     # shutdown
     # ./bin/mysqladmin --socket=./socket shutdown -uroot -p$new_db_root_password

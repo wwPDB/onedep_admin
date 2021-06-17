@@ -8,6 +8,7 @@
 HOSTNAME=$(hostname)
 PYTHON2="python2"
 PYTHON3="python3"
+ONEDEP_BUILD_VER="v-5200"
 THIS_SCRIPT="${BASH_SOURCE[0]}"
 CENTOS_MAJOR_VER=`cat /etc/redhat-release | cut -d' ' -f4  | cut -d'.' -f1`
 
@@ -103,7 +104,7 @@ function build_mysql {
 
     download_file $MYSQL_COMMUNITY_SERVER
     local mysql_version=$retval
-    
+
     show_info_message "building $mysql_version"
 
     mkdir -p mysql-source
@@ -114,7 +115,7 @@ function build_mysql {
 
     export CC=/usr/bin/gcc
     export CXX=/usr/bin/g++
-    
+
     cmake .. -DCMAKE_INSTALL_PREFIX=$DATABASE_DIR/mysql -DMYSQL_UNIX_ADDR=$DATABASE_DIR/mysql.sock -DWITH_BOOST=$DATABASE_DIR/mysql-source/boost
     make
     make install
@@ -138,19 +139,21 @@ OPT_DO_APACHE=false
 OPT_DO_DATABASE=false
 OPT_DO_RESTART_SERVICES=false
 OPT_VAL_SERVER_NUM_WORKERS="60"
+OPT_DO_BUILD_DEV=false
 SPECIFIC_PACKAGE=''
 DATABASE_DIR="default"
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [[--setup-database [--database-dir]] [[--restart-services] [--val-num-workers]]
-    --config-version:           OneDep config version, defaults to 'latest'
-    --python3-path:             path to a Python interpreter, defaults to 'python3'
-    --install-base:             install base packages
-    --prepare-to-build-tools    install packages ready for building tools
-    --build-tools:              build OneDep tools
-    --run-update:               perform RunUpdate.py step
-    --run-maintenance:          perform maintenance tasks
-    --setup-apache:             setup the apache
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package]
+    --config-version:       OneDep config version, defaults to 'latest'
+    --python3-path:         path to a Python interpreter, defaults to 'python3'
+    --install-base:         install base packages
+    --prepare-to-build-tools   install packages ready for building tools
+    --build-tools:          build OneDep tools
+    --run-update:           perform RunUpdate.py step
+    --run-maintenance:      perform maintenance tasks
+    --setup-apache:         setup the apache
+    --install-develop-as-edit install onedep packages in edit mode as develop version
     --restart-services:         restart all onedep services (workflow engine, consumers, apache servers)
     --install-specific-package: install a specific package into the OneDep venv
     --setup-database:           setup database (installs server as non-root and setup tables)
@@ -189,6 +192,7 @@ do
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
         --prepare-to-build-tools) OPT_PREPARE_BUILD=true;;
+        --install-develop-as-edit) OPT_DO_BUILD_DEV=true;;
         --setup-database) OPT_DO_DATABASE=true;;
         --restart-services) OPT_DO_RESTART_SERVICES=true;;
         --help)
@@ -247,15 +251,6 @@ if [[ ( $OPT_DO_INSTALL == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE ==
     git clone $ONEDEP_BUILD_REPO_URL
 fi
 
-if [[ $CENTOS_MAJOR_VER == 8 && $OPT_DO_BUILD == true ]]; then
-    show_info_message "changing onedep-build to centos8 version"
-
-    cd onedep-build
-    git checkout centos8_mostly_working
-    git pull
-    cd ..
-fi
-
 if [[ $OPT_DO_INSTALL == true ]]; then
     show_info_message "installing required packages"
     command=''
@@ -305,7 +300,7 @@ show_info_message "installing wheel"
 pip install --no-cache-dir wheel
 
 show_info_message "installing wwpdb.utils.config"
-pip install --no-cache-dir wwpdb.utils.config
+pip install --no-cache-dir PyYaml==3.10 wwpdb.utils.config
 
 show_info_message "compiling site-config for the new site"
 ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
@@ -342,14 +337,13 @@ if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
     git clone $ONEDEP_MAINTENANCE_REPO_URL
 fi
 
-show_info_message "creating 'resources' folder"
+#show_info_message "creating 'resources' folder"
 
-mkdir -p $DEPLOY_DIR/resources
+#mkdir -p $DEPLOY_DIR/resources
 
 if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
-
-    cd $ONEDEP_PATH/onedep-build/v-5200/build-centos-7 # maybe I should put the build version in a variable
+    cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER # maybe I should put the build version in a variable
     ./BUILD.sh |& tee build.log
 else
     show_warning_message "skipping build"
@@ -376,6 +370,7 @@ fi
 show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH)"
 
 $PYTHON3 -m venv $VENV_PATH
+source $VENV_PATH/bin/activate
 
 # adding pip config file
 show_info_message "creating pip configuration file"
@@ -389,7 +384,9 @@ else
 fi
 
 show_info_message "install some base packages"
-pip install wheel wwpdb.utils.config
+pip install wheel
+
+pip install wwpdb.utils.config
 
 show_info_message "checking for updates in onedep_admin"
 
@@ -399,7 +396,9 @@ git pull
 
 show_info_message "running RunUpdate.py step"
 
-if [[ $OPT_DO_RUNUPDATE == true ]]; then
+if [[ $OPT_DO_RUNUPDATE == true && $OPT_DO_BUILD_DEV == true ]]; then
+    python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-dev --build-version v-5200
+elif [[ $OPT_DO_RUNUPDATE == true ]]; then
     python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-version v-5200
 else
     show_warning_message "skipping RunUpdate step"
@@ -444,9 +443,9 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     mkdir -p data
     mkdir -p mysql
 
-    build_mysql $DATABASE_DIR 
+    build_mysql $DATABASE_DIR
 
-    cd $DATABASE_DIR 
+    cd $DATABASE_DIR
 
     show_info_message "initializing mysql server"
     ./mysql/bin/mysqld --user=w3_pdb05 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port --initialize
@@ -499,7 +498,7 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     # status and da_internal
     get_config_var SITE_PACKAGES_PATH
     db_loader_path=$retval/dbloader/bin/db-loader
-    
+
     # status db
     mkdir -p status_schema && cd status_schema
 
@@ -539,36 +538,19 @@ fi
 # so keeping this to the minimum
 # ----------------------------------------------------------------
 
-# to checkout / update the mmCIF dictionary
-# using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_mmcif_dictionary.sh
+
 
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
+
     show_info_message "checking out / updating mmcif dictionary"
 
-    if [[ ! -d $SITE_PDBX_DICT_PATH ]]; then
-        mkdir -p $SITE_PDBX_DICT_PATH
-        cd $SITE_PDBX_DICT_PATH
-        svn co --no-auth-cache --username $SVN_USER --password $SVN_PASS https://svn-dev.wwpdb.org/svn-test/data-dictionary/trunk .
-    else
-        cd $SITE_PDBX_DICT_PATH
-        svn up --no-auth-cache --username $SVN_USER --password $SVN_PASS
-    fi
+    python $ONEDEP_PATH/onedep-maintenance/common/update_mmcif_dictionary.py
 
     if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary' failed with exit code $?"; fi
 
-    # to checkout / update the taxonomy for annotation
-    # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/update_taxonomy.sh
-
     show_info_message "checking out / updating taxonomy"
 
-    if [[ ! -d $SITE_TAXDUMP_PATH ]]; then
-        mkdir -p $SITE_TAXDUMP_PATH
-        cd $SITE_TAXDUMP_PATH
-        svn co --username $SVN_USER --password $SVN_PASS https://svn-dev.wwpdb.org/svn-test/data-taxdump/trunk .
-    else
-        cd $SITE_TAXDUMP_PATH
-        svn up --username $SVN_USER --password $SVN_PASS
-    fi
+    python $ONEDEP_PATH/onedep-maintenance/common/update_taxonomy_files.py
 
     if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating taxonomy' failed with exit code $?"; fi
 
@@ -584,41 +566,28 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
     if [[ $? != 0 ]]; then show_error_message "step 'checking out PRD' failed with exit code $?"; fi
 
     python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
-    if [[ $? != 0 ]]; then show_error_message "step 'updating taxonomy' failed with exit code $?"; fi
+    if [[ $? != 0 ]]; then show_error_message "step 'compiling CCD and PRD data files' failed with exit code $?"; fi
 
     # checkout / update sequences in OneDep - it now runs from anywhere using RunRemote
     # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/Update-reference-sequences.sh
 
     show_info_message "checking out / updating sequences in OneDep"
 
-    SCRIPT_PATH="${BASH_SOURCE[0]}";
-    if ([ -h "${SCRIPT_PATH}" ]); then
-        while([ -h "${SCRIPT_PATH}" ]); do
-            SCRIPT_PATH=`readlink "${SCRIPT_PATH}"`;
-        done
-    fi
+    SCRIPT_PATH=${ONEDEP_PATH}/onedep-maintenance/common/sequence
 
-    pushd . > /dev/null
-    cd `dirname ${SCRIPT_PATH}` > /dev/null
-    SCRIPT_PATH=`pwd`;
-
-    ${SCRIPT_PATH}/sequence/Fetch-db-unp.sh
+    ${SCRIPT_PATH}/Fetch-db-unp.sh
     if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-unp.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
-    ${SCRIPT_PATH}/sequence/Fetch-db-gb.sh
+    ${SCRIPT_PATH}/Fetch-db-gb.sh
     if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-gb.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
-    ${SCRIPT_PATH}/sequence/Format-db.sh
+    ${SCRIPT_PATH}/Format-db.sh
     if [[ $? != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
     # get the taxonomy information for the depUI and load it into the OneDep database
-
-    # PDBe specific instruction -
-    # python -m wwpdb.apps.deposit.depui.taxonomy.getData
-
-    # sync taxonomy data from PDBe...
     show_info_message "loading taxonomy information into OneDep db"
-    python -m wwpdb.apps.deposit.depui.taxonomy.loadData
+    python -m wwpdb.apps.deposit.depui.taxonomy.loadTaxonomyFromFTP.py --write_sql
+
     if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
 else
     show_warning_message "skipping maintenance tasks"
@@ -639,7 +608,7 @@ fi
 
 #show_info_message "setting up csd"
 
-#ln -s $ONEDEP_PATH/resources/csds/latest $DEPLOY_DIR/resources/csd
+#ln -s $ONEDEP_PATH/resources/csds/latest $ONEDEP_PATH/resources/csd
 
 # ----------------------------------------------------------------
 # restart services

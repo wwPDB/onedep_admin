@@ -568,6 +568,12 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
     python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
     if [[ $? != 0 ]]; then show_error_message "step 'compiling CCD and PRD data files' failed with exit code $?"; fi
 
+  # get the taxonomy information for the depUI and load it into the OneDep database
+    show_info_message "loading taxonomy information into OneDep db"
+    python -m wwpdb.apps.deposit.depui.taxonomy.loadTaxonomyFromFTP.py --write_sql
+
+    if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
+
     # checkout / update sequences in OneDep - it now runs from anywhere using RunRemote
     # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/Update-reference-sequences.sh
 
@@ -584,11 +590,7 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
     ${SCRIPT_PATH}/Format-db.sh
     if [[ $? != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
 
-    # get the taxonomy information for the depUI and load it into the OneDep database
-    show_info_message "loading taxonomy information into OneDep db"
-    python -m wwpdb.apps.deposit.depui.taxonomy.loadTaxonomyFromFTP.py --write_sql
 
-    if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
 else
     show_warning_message "skipping maintenance tasks"
 fi

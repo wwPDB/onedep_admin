@@ -571,7 +571,6 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     fi
 
     new_db_root_password=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9!@#$%&*+<>?=-' | fold -w 32 | head -n 1)
-    new_db_root_password="typADPEk?QzcF!6n*wwbpslW<io=%fGy"
 
     echo "[*] mysql temporary root password is $(highlight_text $temp_db_root_password)"
     echo "[*] setting mysql root password to $(highlight_text $new_db_root_password)"

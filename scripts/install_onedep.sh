@@ -576,7 +576,7 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
 
   # get the taxonomy information for the depUI and load it into the OneDep database
     show_info_message "loading taxonomy information into OneDep db"
-    python -m wwpdb.apps.deposit.depui.taxonomy.loadTaxonomyFromFTP.py --write_sql
+    python -m wwpdb.apps.deposit.depui.taxonomy.loadTaxonomyFromFTP --write_sql
 
     if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
 

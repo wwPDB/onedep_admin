@@ -121,6 +121,83 @@ function build_mysql {
     make install
 }
 
+#
+# creates a "connection string" to be used to run commands in shell
+#   $1: db identifier, MUST BE one of the following: 'status', 'depui', 'da_internal', 'compv4', 'prdv4'
+#   $2: location of mysql binary
+function create_mysql_conn_string {
+    local db_key=$1
+    local mysql_bin=$2
+    local db_name_var="" # need this because for da_internal the format is different
+    local var_prefix=""
+
+    case $db_key in
+        status) 
+            db_name_var="SITE_DB_DATABASE_NAME"
+            var_prefix="SITE"
+        ;;
+        depui) 
+            db_name_var="SITE_DEP_DB_DATABASE_NAME"
+            var_prefix="SITE_DEP"
+        ;;
+        da_internal) 
+            db_name_var="SITE_DA_INTERNAL_DB_NAME"
+            var_prefix="SITE_DA_INTERNAL"
+        ;;
+        compv4) 
+            db_name_var="SITE_REFDATA_CC_DB_NAME"
+            var_prefix="SITE_REFDATA"
+        ;;
+        prdv4) 
+            db_name_var="SITE_REFDATA_PRD_DB_NAME"
+            var_prefix="SITE_REFDATA"
+        ;;
+        *)
+            # unknown option
+            show_error_message "unknown database '$db_key', valid options are 'status', 'depui', 'da_internal', 'compv4', 'prdv4'"
+            return -1
+        ;;
+    esac
+
+    get_config_var ${db_name_var}; local db_name=$retval
+    get_config_var ${var_prefix}_DB_HOST_NAME; local db_hostname=$retval
+    get_config_var ${var_prefix}_DB_PORT_NUMBER; local db_port=$retval
+    get_config_var ${var_prefix}_DB_USER_NAME; local db_user=$retval
+    get_config_var ${var_prefix}_DB_PASSWORD; local db_password=$retval
+    get_config_var ${var_prefix}_DB_SOCKET; local db_socket=$retval
+
+    # here I'm assuming we'll be in the database setup folder
+    retval="$mysql_bin -h$db_hostname -P$db_port -u$db_user -p$db_password --socket $db_socket"
+}
+
+#
+# function to execute a given command in a mysql server
+#   $1: mysql binary
+#   $2: db identifier, MUST BE one of the following: 'status', 'depui', 'da_internal', 'compv4', 'prdv4'
+#   $3: db command to be executed
+function run_mysql_command {
+    local mysql_bin=$1
+    local db_key=$2
+    local db_command=$3
+
+    create_mysql_conn_string $db_key $mysql_bin; conn_string=$retval
+    echo $(eval "$conn_string -e \"$db_command\"")
+}
+
+#
+# function to execute a given command in a mysql server
+#   $1: mysql binary
+#   $2: db identifier, MUST BE one of the following: 'status', 'depui', 'da_internal', 'compv4', 'prdv4'
+#   $3: sql script file to be passed to mysql
+function run_mysql_script {
+    local mysql_bin=$1
+    local db_key=$2
+    local script_file=$3
+
+    create_mysql_conn_string $db_key $mysql_bin; conn_string=$retval
+    echo $(eval "$conn_string < $script_file")
+}
+
 # ----------------------------------------------------------------
 # arguments parsing
 # ----------------------------------------------------------------
@@ -441,14 +518,9 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     fi
 
     # site-config variables
-    get_config_var SITE_DEP_DB_USER_NAME
-    db_user=$retval
-
-    get_config_var SITE_DEP_DB_PASSWORD
-    db_password=$retval
-
-    get_config_var SITE_DEP_DB_PORT_NUMBER
-    db_port=$retval
+    get_config_var SITE_DB_USER; db_user=$retval
+    get_config_var SITE_DB_PASSWORD; db_password=$retval
+    get_config_var SITE_DB_PORT_NUMBER; db_port=$retval
 
     cd $DATABASE_DIR
 
@@ -498,14 +570,17 @@ if [[ $OPT_DO_DATABASE == true ]]; then
         exit 1
     fi
 
-    new_db_root_password=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9,.;_!@#$%^&*()_+{}|:<>?=-' | fold -w 32 | head -n 1)
+    new_db_root_password=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9!@#$%&*+<>?=-' | fold -w 32 | head -n 1)
+    new_db_root_password="typADPEk?QzcF!6n*wwbpslW<io=%fGy"
 
     echo "[*] mysql temporary root password is $(highlight_text $temp_db_root_password)"
     echo "[*] setting mysql root password to $(highlight_text $new_db_root_password)"
 
-    mysql/bin/mysql -P$db_port -uroot -p$temp_db_root_password --socket $DATABASE_DIR/mysql.sock --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$new_db_root_password'"
-    mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE USER '$db_user'@'%' IDENTIFIED WITH mysql_native_password BY '$db_password'"
-    mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "GRANT ALL ON *.* TO '$db_user'@'%' WITH GRANT OPTION"
+    # not using the run_mysql_command here as this requires additional flags
+    ./mysql/bin/mysql -P$db_port -uroot -p$temp_db_root_password --socket $DATABASE_DIR/mysql.sock --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$new_db_root_password'"
+    ./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE USER '$db_user'@'%' IDENTIFIED WITH mysql_native_password BY '$db_password'"
+    # should we restrict permissions for this user?
+    ./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "GRANT ALL ON *.* TO '$db_user'@'%' WITH GRANT OPTION"
 
     show_info_message "creating schemas"
 
@@ -514,42 +589,74 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     db_loader_path=$retval/dbloader/bin/db-loader
 
     # status db
+    get_config_var SITE_DB_DATABASE_NAME; db_name=$retval
     mkdir -p status_schema && cd status_schema
 
-    python -m wwpdb.apps.deposit.depui.schema.DepUISchema > status_schema.sql
-    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock < ./status_schema.sql
+    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql status "SHOW DATABASES LIKE '$db_name';")
+    if [[ -z $db_exists ]]; then
+        python -m wwpdb.apps.deposit.depui.schema.DepUISchema > status_schema.sql
+        run_mysql_script $DATABASE_DIR/mysql/bin/mysql status status_schema.sql
+    else
+        show_warning_message "database $db_name already exists on server"
+    fi
 
     cd ..
 
     # should we be doing this using the python APIs (PdbxSchemaMapReader, SchemaDefBase, MyDbAdminSqlGen)? would have to
     # create a new file to load this cif OR do it using an inline python command
+    get_config_var SITE_DA_INTERNAL_DB_NAME; db_name=$retval
     mkdir -p da_internal_schema && cd da_internal_schema
-    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE DATABASE da_internal"
 
-    da_internal_cif=$RO_RESOURCE_PATH/da_internal/status_rcsb_schema_da.cif
-    $($db_loader_path -sql -server mysql -map $da_internal_cif -schema -db da_internal)
-    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock < ./DB_LOADER_SCHEMA.sql
+    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
+    if [[ -z $db_exists ]]; then
+        run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "CREATE DATABASE $db_name"
 
-    da_internal_cif=$RO_RESOURCE_PATH/da_internal/database_status_history_schema.cif
-    $($db_loader_path -sql -server mysql -map $da_internal_cif -schema -db da_internal)
-    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock < ./DB_LOADER_SCHEMA.sql
+        da_internal_cif=$RO_RESOURCE_PATH/da_internal/status_rcsb_schema_da.cif
+        $($db_loader_path -sql -server mysql -map $da_internal_cif -schema -db da_internal)
+        run_mysql_script $DATABASE_DIR/mysql/bin/mysql da_internal DB_LOADER_SCHEMA.sql
+
+        da_internal_cif=$RO_RESOURCE_PATH/da_internal/database_status_history_schema.cif
+        $($db_loader_path -sql -server mysql -map $da_internal_cif -schema -db da_internal)
+        run_mysql_script $DATABASE_DIR/mysql/bin/mysql da_internal DB_LOADER_SCHEMA.sql
+    else
+        show_warning_message "database $db_name already exists on server"
+    fi
 
     cd ..
 
     # django tables
-    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE DATABASE depui_django"
-    python -m wwpdb.apps.deposit.manage makemigrations depui
-    python -m wwpdb.apps.deposit.manage migrate
+    get_config_var SITE_DEP_DB_DATABASE_NAME; db_name=$retval
+
+    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
+    if [[ -z $db_exists ]]; then
+        run_mysql_command $DATABASE_DIR/mysql/bin/mysql depui "CREATE DATABASE $db_name"
+
+        python -m wwpdb.apps.deposit.manage makemigrations depui
+        python -m wwpdb.apps.deposit.manage migrate
+    else
+        show_warning_message "database $db_name already exists on server"
+    fi
 
     # prdv4 and compv4 schemas
-    get_config_var SITE_REFDATA_PRD_DB_NAME
-    prd_schema_name=$retval
+    get_config_var SITE_REFDATA_PRD_DB_NAME; db_name=$retval
 
-    get_config_var SITE_REFDATA_CC_DB_NAME
-    cc_schema_name=$retval
+    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
+    if [[ -z $db_exists ]]; then
+        run_mysql_command $DATABASE_DIR/mysql/bin/mysql prdv4 "CREATE DATABASE $db_name"
+    else
+        show_warning_message "database $db_name already exists on server"
+    fi
 
-    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE DATABASE $cc_schema_name"
-    mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE DATABASE $prd_schema_name"
+    get_config_var SITE_REFDATA_CC_DB_NAME; db_name=$retval
+
+    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
+    if [[ -z $db_exists ]]; then
+        run_mysql_command $DATABASE_DIR/mysql/bin/mysql prdv4 "CREATE DATABASE $db_name"
+    else
+        show_warning_message "database $db_name already exists on server"
+    fi
+
+    # dummy codes
 
     if [[ $OPT_DB_ADD_DUMMY_CODES == true ]]; then
         show_info_message "adding PDB and EMDB dummy codes to db"
@@ -558,8 +665,8 @@ if [[ $OPT_DO_DATABASE == true ]]; then
         seq -w 4 0001 0050 > dummy_pdb_codes.ids
         seq --format EMD-%04g 1 50 > dummy_emdb_codes.ids
 
-        $(python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --load_accessions_pdb --accession_file dummy_pdb_codes.ids)
-        $(python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --load_accessions_emdb --accession_file dummy_emdb_codes.ids)
+        python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --load_accessions_pdb --accession_file dummy_pdb_codes.ids
+        python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --load_accessions_emdb --accession_file dummy_emdb_codes.ids
 
         rm dummy_pdb_codes.ids
         rm dummy_emdb_codes.ids

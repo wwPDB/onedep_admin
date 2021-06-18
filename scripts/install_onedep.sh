@@ -546,24 +546,30 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
 
     python $ONEDEP_PATH/onedep-maintenance/common/update_mmcif_dictionary.py
 
-    if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary' failed with exit code $?"; fi
+    if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary from SVN' failed with exit code $?"; fi
 
     show_info_message "checking out / updating taxonomy"
 
     python $ONEDEP_PATH/onedep-maintenance/common/update_taxonomy_files.py
 
-    if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating taxonomy' failed with exit code $?"; fi
+    if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating taxonomy from SVN' failed with exit code $?"; fi
 
     # to checkout/ update  the chemical component dictionary (CCD) and PRD - this step can take a while
     # using installed modules
 
     show_info_message "checking out / updating CCD and PRD"
 
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db CC --load
+    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db CC
     if [[ $? != 0 ]]; then show_error_message "step 'checking out CC' failed with exit code $?"; fi
 
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db PRD --load
+    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --db CC --load
+    if [[ $? != 0 ]]; then show_error_message "step 'loading CC' failed with exit code $?"; fi
+
+    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db PRD
     if [[ $? != 0 ]]; then show_error_message "step 'checking out PRD' failed with exit code $?"; fi
+
+    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --db PRD --load
+    if [[ $? != 0 ]]; then show_error_message "step 'loading PRD' failed with exit code $?"; fi
 
     python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
     if [[ $? != 0 ]]; then show_error_message "step 'compiling CCD and PRD data files' failed with exit code $?"; fi

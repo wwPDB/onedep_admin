@@ -17,6 +17,7 @@ import os
 import os.path
 import subprocess
 import sys
+import warnings
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon
@@ -203,19 +204,27 @@ class UpdateManager(object):
             maxsize = int(self.__cparser.get('DEFAULT', 'taxdbmaxsize'))
         else:
             maxsize = 999999999
-        taxresource = self.__ci.get('TAXONOMY_FILE_NAME')
 
-        if not taxresource:
-            print("ERROR: TAXONOMY_FILE_NAME is not set in site-config")
-            return
+        taxuseftp = self.__cparser.has_option('DEFAULT', 'taxuseftp')
+        if not taxuseftp:
+            taxresource = self.__ci.get('TAXONOMY_FILE_NAME')
+
+            if not taxresource:
+                print("ERROR: TAXONOMY_FILE_NAME is not set in site-config")
+                return
 
         curdir = os.path.dirname(__file__)
         checkscript = os.path.join(curdir, 'ManageTaxDB.py')
 
-        if self.__noop:
-            command = 'python {} --noop update --maxsize {} --taxdbsize {}'.format(checkscript, maxsize, taxdbsize)
+        if taxuseftp:
+            addftp=" --ftpload"
         else:
-            command = 'python {} --maxsize {} --taxdbsize {}'.format(checkscript, maxsize, taxdbsize)
+            addftp=""
+
+        if self.__noop:
+            command = 'python {} --noop --maxsize {} --taxdbsize {}{}'.format(checkscript, maxsize, taxdbsize, addftp)
+        else:
+            command = 'python {} --maxsize {} --taxdbsize {}{}'.format(checkscript, maxsize, taxdbsize, addftp)
         self.__exec(command)
 
     def updateschema(self):
@@ -390,8 +399,10 @@ def main():
         um.buildtools(args.build_version)
 
     if not args.skip_toolvers:
-        um.checktoolvers()
-        um.checkoelicense()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            um.checktoolvers()
+            um.checkoelicense()
         um.postflightdbcheck()
 
     # Final check on webfe

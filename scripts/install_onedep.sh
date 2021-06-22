@@ -689,14 +689,14 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
     show_info_message "checking out / updating mmcif dictionary"
 
     python $ONEDEP_PATH/onedep-maintenance/common/update_mmcif_dictionary.py
-
-    if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary from SVN' failed with exit code $?"; fi
+    ret=$?
+    if [[ $ret != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary from SVN' failed with exit code $ret"; fi
 
     show_info_message "checking out / updating taxonomy"
 
     python $ONEDEP_PATH/onedep-maintenance/common/update_taxonomy_files.py
-
-    if [[ $? != 0 ]]; then show_error_message "step 'checking out / updating taxonomy from SVN' failed with exit code $?"; fi
+    ret=$?
+    if [[ $ret != 0 ]]; then show_error_message "step 'checking out / updating taxonomy from SVN' failed with exit code $ret"; fi
 
     # to checkout/ update  the chemical component dictionary (CCD) and PRD - this step can take a while
     # using installed modules
@@ -704,25 +704,31 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
     show_info_message "checking out / updating CCD and PRD"
 
     python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db CC
-    if [[ $? != 0 ]]; then show_error_message "step 'checking out CC' failed with exit code $?"; fi
+    ret=$?
+    if [[ $ret != 0 ]]; then show_error_message "step 'checking out CC' failed with exit code $ret"; fi
 
     python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --db CC --load
-    if [[ $? != 0 ]]; then show_error_message "step 'loading CC' failed with exit code $?"; fi
+    ret=$?
+    if [[ $ret != 0 ]]; then show_error_message "step 'loading CC' failed with exit code $ret"; fi
 
     python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db PRD
-    if [[ $? != 0 ]]; then show_error_message "step 'checking out PRD' failed with exit code $?"; fi
+    ret=$?
+    if [[ $ret != 0 ]]; then show_error_message "step 'checking out PRD' failed with exit code $ret"; fi
 
     python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --db PRD --load
-    if [[ $? != 0 ]]; then show_error_message "step 'loading PRD' failed with exit code $?"; fi
+    ret=$?
+    if [[ $ret != 0 ]]; then show_error_message "step 'loading PRD' failed with exit code $ret"; fi
 
     python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
-    if [[ $? != 0 ]]; then show_error_message "step 'compiling CCD and PRD data files' failed with exit code $?"; fi
+    ret=$?
+    if [[ $ret != 0 ]]; then show_error_message "step 'compiling CCD and PRD data files' failed with exit code $ret"; fi
 
   # get the taxonomy information for the depUI and load it into the OneDep database
     show_info_message "loading taxonomy information into OneDep db"
+    
     python -m wwpdb.apps.deposit.depui.taxonomy.loadTaxonomyFromFTP --write_sql
-
-    if [[ $? != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $?"; fi
+    ret=$?
+    if [[ $ret != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $ret"; fi
 
     # checkout / update sequences in OneDep - it now runs from anywhere using RunRemote
     # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/Update-reference-sequences.sh
@@ -732,13 +738,16 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
     SCRIPT_PATH=${ONEDEP_PATH}/onedep-maintenance/common/sequence
 
     ${SCRIPT_PATH}/Fetch-db-unp.sh
-    if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-unp.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
+    ret=$?
+    if [[ $ret != 0 ]]; then show_error_message "script 'Fetch-db-unp.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $ret"; fi
 
     ${SCRIPT_PATH}/Fetch-db-gb.sh
-    if [[ $? != 0 ]]; then show_error_message "script 'Fetch-db-gb.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
+    ret=$?
+    if [[ $ret != 0 ]]; then show_error_message "script 'Fetch-db-gb.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $ret"; fi
 
     ${SCRIPT_PATH}/Format-db.sh
-    if [[ $? != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $?"; fi
+    ret=$?
+    if [[ $ret != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $ret"; fi
 
 
 else

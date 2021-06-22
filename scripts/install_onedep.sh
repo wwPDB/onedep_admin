@@ -6,7 +6,6 @@
 
 # internal
 HOSTNAME=$(hostname)
-PYTHON2="python2"
 PYTHON3="python3"
 ONEDEP_BUILD_VER="v-5200"
 THIS_SCRIPT="${BASH_SOURCE[0]}"
@@ -456,7 +455,7 @@ if [[ -z "$VENV_PATH" ]]; then
     exit 1
 fi
 
-show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH)"
+show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH) with $(highlight_text PYTHON3)"
 
 $PYTHON3 -m venv $VENV_PATH
 source $VENV_PATH/bin/activate

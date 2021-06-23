@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+(
 
 # ----------------------------------------------------------------
 # script variables
@@ -822,3 +823,7 @@ echo "[*] deposition url: $(highlight_text http://$HOSTNAME/deposition)"
 echo "[*] start wfe service: $(highlight_text $startWFE)"
 echo "[*] start apache service: $(highlight_text $startApache)"
 
+) |& tee install_script.log
+
+# cleaning up log file
+sed -i 's,\x1b\[[0-9]*m,,g' install_script.log

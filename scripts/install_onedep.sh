@@ -226,25 +226,31 @@ DATABASE_DIR="default"
 read -r -d '' USAGE << EOM
 Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [--setup-database [opts]] [--restart-services] [--val-num-workers]
 
-General parameters:
+System preparation parameters:
+    --install-base:             install packages ready for running onedep - not building tools (run as root)
+    --prepare-to-build-tools    install packages ready for building tools (run as root)
+
+OneDep installation parameters:
     --config-version:           OneDep config version, defaults to 'latest'
     --python3-path:             path to a Python interpreter, defaults to 'python3'
-    --install-base:             install base packages
-    --prepare-to-build-tools    install packages ready for building tools
     --build-tools:              build OneDep tools
-    --run-update:               perform RunUpdate.py step
-    --run-maintenance:          perform maintenance tasks
-    --setup-apache:             setup the apache
-    --install-develop-as-edit   install onedep packages in edit mode as develop version
-    --restart-services:         restart all onedep services (workflow engine, consumers, apache servers)
+    --run-update:               perform RunUpdate.py step which installs OneDep packages
+    --install-develop-as-edit   install OneDep packages in edit mode as develop version
     --install-specific-package: install a specific package into the OneDep venv
-    --val-num-workers:          how many workers validation servers should have
+    --run-maintenance:          perform maintenance tasks as part of setup
+    --setup-apache:             setup the apache
 
 Database parameters:
     --setup-database:           setup database (installs server as non-root and setup tables)
     --database-dir:             directory where database will be setup, defaults to '$DEPLOY_DIR/onedep_database'
     --skip-db-build:            will skip downloading of mysql and building steps
-    --dummy-codes:              add PDB and EMDB dummy codes to database
+    --dummy-codes:              add PDB and EMDB dummy codes to database - useful for development installation
+
+Post install parameters:
+    --restart-services:         restart all onedep services (workflow engine, consumers, apache servers)
+    --val-num-workers:          how many workers validation servers should have
+
+
 EOM
 
 while [[ $# > 0 ]]
@@ -339,7 +345,7 @@ if [[ ( $OPT_DO_INSTALL == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE ==
     git clone $ONEDEP_BUILD_REPO_URL
 fi
 
-if [[ $OPT_DO_INSTALL == true ]]; then
+if [[ $OPT_DO_INSTALL == true || $OPT_PREPARE_BUILD == true ]]; then
     show_info_message "installing required packages"
     command=''
 

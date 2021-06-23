@@ -215,7 +215,6 @@ OPT_DO_APACHE=false
 OPT_DO_RESTART_SERVICES=false
 OPT_VAL_SERVER_NUM_WORKERS="60"
 OPT_DO_BUILD_DEV=false
-SPECIFIC_PACKAGE=''
 
 # database flags
 OPT_DO_DATABASE=false
@@ -224,7 +223,7 @@ OPT_DB_SKIP_BUILD=false
 DATABASE_DIR="default"
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-runtime-base] [--build-tools] [--run-update] [--run-maintenance] [--install-build-base] [--install-specific-package] [--setup-database [opts]] [--restart-services] [--val-num-workers]
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-build-base] [--install-runtime-base] [--build-tools] [--install-onedep] [--install-onedep-develop] [--setup-database [opts]] [--run-maintenance] [--start-services] [--val-num-workers]
 
 System preparation parameters:
     --install-runtime-base:     install packages ready for running onedep - not building tools (run as root)
@@ -233,10 +232,9 @@ System preparation parameters:
 OneDep installation parameters:
     --config-version:           OneDep config version, defaults to 'latest'
     --python3-path:             path to a Python interpreter, defaults to 'python3'
-    --build-tools:              build OneDep tools
-    --run-update:               perform RunUpdate.py step which installs OneDep packages
-    --install-develop-as-edit   install OneDep packages in edit mode as develop version
-    --install-specific-package: install a specific package into the OneDep venv
+    --build-tools:              Compile OneDep tools - OneDep requires compiled tools to be compiled or sync'd from RCSB
+    --install-onedep:           Installs OneDep python packages
+    --install-onedep-develop    installs OneDep python packages develop branches in edit mode
     --run-maintenance:          perform maintenance tasks as part of setup
     --setup-apache:             setup the apache
 
@@ -247,7 +245,7 @@ Database parameters:
     --dummy-codes:              add PDB and EMDB dummy codes to database - useful for development installation
 
 Post install parameters:
-    --restart-services:         restart all onedep services (workflow engine, consumers, apache servers)
+    --start-services:         restart all onedep services (workflow engine, consumers, apache servers)
     --val-num-workers:          how many workers validation servers should have
 
 
@@ -280,16 +278,20 @@ do
         ;;
         --install-runtime-base) OPT_PREPARE_RUNTIME=true;;
         --install-build-base) OPT_PREPARE_BUILD=true;;
-        --build-tools) OPT_DO_BUILD=true;;
-        --run-update) OPT_DO_RUNUPDATE=true;;
-        --run-maintenance) OPT_DO_MAINTENANCE=true;;
-        --setup-apache) OPT_DO_APACHE=true;;
 
-        --install-develop-as-edit) OPT_DO_BUILD_DEV=true;;
-        --restart-services) OPT_DO_RESTART_SERVICES=true;;
+        --build-tools) OPT_DO_BUILD=true;;
+
+        --install-onedep) OPT_DO_RUNUPDATE=true;;
+        --install-onedep-develop) OPT_DO_BUILD_DEV=true;;
         --setup-database) OPT_DO_DATABASE=true;;
         --skip-db-build) OPT_DB_SKIP_BUILD=true;;
+
+        --run-maintenance) OPT_DO_MAINTENANCE=true;;
+        --setup-apache) OPT_DO_APACHE=true;;
         --dummy-codes) OPT_DB_ADD_DUMMY_CODES=true;;
+
+        --restart-services) OPT_DO_RESTART_SERVICES=true;;
+
         --help)
             echo "$USAGE"
             exit 1
@@ -492,7 +494,7 @@ git checkout master
 git pull
 
 
-if [[ $OPT_DO_RUNUPDATE == true ]]; then
+if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
   show_info_message "running RunUpdate.py step"
   if [[ $OPT_DO_BUILD_DEV == true ]]; then
       python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-dev

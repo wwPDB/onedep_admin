@@ -213,6 +213,7 @@ OPT_DO_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
+OPT_DO_RABBITMQ=false
 OPT_DO_RESTART_SERVICES=false
 OPT_VAL_SERVER_NUM_WORKERS="60"
 OPT_DO_BUILD_DEV=false
@@ -238,6 +239,7 @@ OneDep installation parameters:
     --install-onedep-develop    installs OneDep python packages develop branches in edit mode
     --run-maintenance:          perform maintenance tasks as part of setup
     --setup-apache:             setup the apache
+    --setup-rmq:                setup the rabbitmq server in a container
 
 Database parameters:
     --setup-database:           setup database (installs server as non-root and setup tables)
@@ -246,7 +248,7 @@ Database parameters:
     --dummy-codes:              add PDB and EMDB dummy codes to database - useful for development installation
 
 Post install parameters:
-    --start-services:         restart all onedep services (workflow engine, consumers, apache servers)
+    --start-services:           restart all onedep services (workflow engine, consumers, apache servers)
     --val-num-workers:          how many workers validation servers should have
 
 
@@ -289,6 +291,7 @@ do
 
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
+        --setup-rmq) OPT_DO_RABBITMQ=true;;
         --dummy-codes) OPT_DB_ADD_DUMMY_CODES=true;;
 
         --restart-services) OPT_DO_RESTART_SERVICES=true;;
@@ -316,14 +319,13 @@ check_env_variable WWPDB_SITE_ID true
 check_env_variable WWPDB_SITE_LOC true
 check_env_variable ONEDEP_PATH true
 
+export SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
+export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
+
 echo -e "----------------------------------------------------------------"
 echo -e "[*] $(highlight_text WWPDB_SITE_ID) is set to $(highlight_text $WWPDB_SITE_ID)"
 echo -e "[*] $(highlight_text WWPDB_SITE_LOC) is set to $(highlight_text $WWPDB_SITE_LOC)"
 echo -e "[*] $(highlight_text ONEDEP_PATH) is set to $(highlight_text $ONEDEP_PATH)"
-
-export SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
-export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
-
 echo -e "[*] $(highlight_text SITE_CONFIG_DIR) is set to $(highlight_text $SITE_CONFIG_DIR)"
 echo -e "[*] $(highlight_text TOP_WWPDB_SITE_CONFIG_DIR) is set to $(highlight_text $TOP_WWPDB_SITE_CONFIG_DIR)"
 echo -e "[*] using $(highlight_text $PYTHON3) as Python 3 interpreter"
@@ -367,6 +369,12 @@ if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
     show_warning_message "running command: $command"
     chmod +x $command
     $command
+
+    # this might not be the best place to put docker related setup
+    groupadd docker # might not be needed
+    usermod -aG docker $USER
+
+    systemctl start docker
 else
     show_warning_message "skipping installation of required packages"
 fi
@@ -690,12 +698,29 @@ if [[ $OPT_DO_DATABASE == true ]]; then
 fi
 
 # ----------------------------------------------------------------
+# rabbitmq setup
+# ----------------------------------------------------------------
+
+if [[ $OPT_DO_RABBITMQ == true ]]; then
+    show_info_message "setting up rabbitmq server"
+
+    get_config_var SITE_RBMQ_SERVER_PORT; rbmq_server_port=$retval
+    get_config_var SITE_RBMQ_USER_NAME; rbmq_user_name=$retval
+    get_config_var SITE_RBMQ_PASSWORD; rbmq_password=$retval
+    get_config_var SITE_RBMQ_VIRTUAL_HOST; rbmq_virtual_host=$retval
+
+    docker run -d --name rabbitmq -p $rbmq_server_port:$rbmq_server_port -p 15672:15672 \
+        -e RABBITMQ_DEFAULT_USER=$rbmq_user_name \
+        -e RABBITMQ_DEFAULT_PASS=$rbmq_password \
+        -e RABBITMQ_DEFAULT_VHOST=$rbmq_virtual_host \
+        rabbitmq:3-management
+fi
+
+# ----------------------------------------------------------------
 # maintenance tasks
 # according to the Confluence doc, there are many more maintenance tasks
 # so keeping this to the minimum
 # ----------------------------------------------------------------
-
-
 
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
 

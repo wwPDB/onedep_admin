@@ -206,9 +206,9 @@ ONEDEP_VERSION="latest"
 SITE_ID="${WWPDB_SITE_ID}"
 SITE_LOC="${WWPDB_SITE_LOC}"
 MACHINE_ENV="production"
-OPT_DO_INSTALL=false
-OPT_DO_BUILD=false
+OPT_PREPARE_RUNTIME=false
 OPT_PREPARE_BUILD=false
+OPT_DO_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
@@ -224,11 +224,11 @@ OPT_DB_SKIP_BUILD=false
 DATABASE_DIR="default"
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-base] [--build-tools] [--run-update] [--run-maintenance] [--prepare-to-build-tools] [--install-specific-package] [--setup-database [opts]] [--restart-services] [--val-num-workers]
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-runtime-base] [--build-tools] [--run-update] [--run-maintenance] [--install-build-base] [--install-specific-package] [--setup-database [opts]] [--restart-services] [--val-num-workers]
 
 System preparation parameters:
-    --install-base:             install packages ready for running onedep - not building tools (run as root)
-    --prepare-to-build-tools    install packages ready for building tools (run as root)
+    --install-runtime-base:     install packages ready for running onedep - not building tools (run as root)
+    --install-build-base:       install packages ready for building tools (run as root)
 
 OneDep installation parameters:
     --config-version:           OneDep config version, defaults to 'latest'
@@ -278,12 +278,13 @@ do
             OPT_VAL_SERVER_NUM_WORKERS="$2"
             shift
         ;;
-        --install-base) OPT_DO_INSTALL=true;;
+        --install-runtime-base) OPT_PREPARE_RUNTIME=true;;
+        --install-build-base) OPT_PREPARE_BUILD=true;;
         --build-tools) OPT_DO_BUILD=true;;
         --run-update) OPT_DO_RUNUPDATE=true;;
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
-        --prepare-to-build-tools) OPT_PREPARE_BUILD=true;;
+
         --install-develop-as-edit) OPT_DO_BUILD_DEV=true;;
         --restart-services) OPT_DO_RESTART_SERVICES=true;;
         --setup-database) OPT_DO_DATABASE=true;;
@@ -340,20 +341,20 @@ fi
 
 cd $ONEDEP_PATH
 
-if [[ ( $OPT_DO_INSTALL == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE == true || $OPT_PREPARE_BUILD == true ) && ! -d "onedep-build" ]]; then
+if [[ ( $OPT_PREPARE_RUNTIME == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE == true || $OPT_PREPARE_BUILD == true ) && ! -d "onedep-build" ]]; then
     show_info_message "cloning onedep-build repository"
     git clone $ONEDEP_BUILD_REPO_URL
 fi
 
-if [[ $OPT_DO_INSTALL == true || $OPT_PREPARE_BUILD == true ]]; then
-    show_info_message "installing required packages"
+if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
+    show_info_message "installing required system packages"
     command=''
 
-    if [[ $OPT_DO_BUILD == true || $OPT_PREPARE_BUILD == true ]]; then
-        show_info_message "installing packages and compiling tools"
+    if [[ $OPT_PREPARE_BUILD == true ]]; then
+        show_info_message "installing system packages for compiling tools"
         command=onedep-build/install-base/centos-7-build-packages.sh
     else
-        show_info_message "installing packages without compiling"
+        show_info_message "installing system packages for running OneDep"
         if [[ $CENTOS_MAJOR_VER == 8 ]]; then
           command=onedep-build/install-base/centos-8-host-packages.sh
         else

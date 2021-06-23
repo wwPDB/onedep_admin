@@ -467,7 +467,9 @@ show_info_message "setting up OneDep virtual environment in $(highlight_text $VE
 $PYTHON3 -m venv $VENV_PATH
 source $VENV_PATH/bin/activate
 
-# adding pip config file
+show_info_message "updating setuptools and pip"
+pip install --no-cache-dir --upgrade setuptools pip
+
 show_info_message "creating pip configuration file"
 
 if [[ ! -z "$CS_HOST_BASE" && ! -z "$CS_USER" && ! -z "$CS_PW" && ! -z "$CS_DISTRIB_URL" ]]; then
@@ -489,12 +491,14 @@ cd $ONEDEP_PATH/onedep_admin
 git checkout master
 git pull
 
-show_info_message "running RunUpdate.py step"
 
-if [[ $OPT_DO_RUNUPDATE == true && $OPT_DO_BUILD_DEV == true ]]; then
-    python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-dev --build-version v-5200
-elif [[ $OPT_DO_RUNUPDATE == true ]]; then
-    python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-version v-5200
+if [[ $OPT_DO_RUNUPDATE == true ]]; then
+  show_info_message "running RunUpdate.py step"
+  if [[ $OPT_DO_BUILD_DEV == true ]]; then
+      python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-dev
+  else
+      python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools
+  fi
 else
     show_warning_message "skipping RunUpdate step"
 fi

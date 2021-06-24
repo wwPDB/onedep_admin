@@ -246,7 +246,7 @@ Database parameters:
     --dummy-codes:              add PDB and EMDB dummy codes to database - useful for development installation
 
 Post install parameters:
-    --start-services:         restart all onedep services (workflow engine, consumers, apache servers)
+    --start-services:           start all onedep services (workflow engine, consumers, apache servers)
     --val-num-workers:          how many workers validation servers should have
 
 

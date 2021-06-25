@@ -234,6 +234,7 @@ OPT_DO_BUILD_DEV=false
 OPT_DO_DATABASE=false
 OPT_DB_ADD_DUMMY_CODES=false
 OPT_DB_SKIP_BUILD=false
+OPT_DB_RESET=false
 DATABASE_DIR="default"
 
 read -r -d '' USAGE << EOM
@@ -262,6 +263,7 @@ Database parameters:
     --setup-database:           setup database (installs server as non-root and setup tables)
     --database-dir:             directory where database will be setup, defaults to '$DEPLOY_DIR/onedep_database'
     --skip-db-build:            will skip downloading of mysql and building steps
+    --reset-db:                 reset local database by removing files under 'data' dir
     --dummy-codes:              add PDB and EMDB dummy codes to database - useful for development installation
 
 Post install parameters:
@@ -325,6 +327,7 @@ do
 
         --setup-database) OPT_DO_DATABASE=true;;
         --skip-db-build) OPT_DB_SKIP_BUILD=true;;
+        --reset-db) OPT_DB_RESET=true;;
 
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
@@ -593,6 +596,13 @@ if [[ $OPT_DO_DATABASE == true ]]; then
         mkdir -p $DATABASE_DIR
     fi
 
+    if [[ $OPT_DB_RESET == true ]]; then
+        show_info_message "resetting local database"
+
+        rm -rf $DATABASE_DIR/data
+        echo > $DATABASE_DIR/log.err
+    fi
+
     # site-config variables
     get_config_var SITE_DB_USER; db_user=$retval
     get_config_var SITE_DB_PASSWORD; db_password=$retval
@@ -609,8 +619,14 @@ if [[ $OPT_DO_DATABASE == true ]]; then
 
     cd $DATABASE_DIR
 
-    show_info_message "initializing mysql server"
-    ./mysql/bin/mysqld --user=w3_pdb05 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port --initialize
+    # killing all mysqld instances initiated by this used
+    killall mysqld
+
+    ls -A $DATABASE_DIR/data
+    if [[ ! "$(ls -A $DATABASE_DIR/data)" ]]; then
+        show_info_message "initializing mysql server"
+        ./mysql/bin/mysqld --user=w3_pdb05 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port --initialize
+    fi
 
     show_info_message "starting mysql server, please wait"
     ./mysql/bin/mysqld --user=w3_pdb05 --bind-address=0.0.0.0 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port &

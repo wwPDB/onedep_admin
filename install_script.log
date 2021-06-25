@@ -6,8 +6,496 @@
 [*] TOP_WWPDB_SITE_CONFIG_DIR is set to /nfs/public/release/msd/services/onedep/site-config
 [*] using python3 as Python 3 interpreter
 ----------------------------------------------------------------
-[+] removing tools and site related data
-[!] the following directories will be completely removed:
-     /nfs/public/release/msd/services/onedep/resources/tools/tools-centos-7-5200-local
-     /nfs/public/release/msd/services/onedep/deployments/local
-[>] do you want to proceed (y/n)? removing...
+[!] skipping installation of required packages
+[+] activating the new configuration
++env.sh - Site id PDBE_LOCALHOST tools path: /nfs/public/release/msd/services/onedep/resources/tools/tools-centos-7-5200-local
++env.sh - Application python path: /nfs/public/release/msd/services/onedep/deployments/local/source/python
+[+] checking if everything went ok...
+[*] DEPLOY_DIR is set to /nfs/public/release/msd/services/onedep/deployments/local
+[!] skipping build
+[+] setting up OneDep virtual environment
+[!] skipping RunUpdate step
+Package                            Version     Location
+---------------------------------- ----------- ------------------------------------------------------------------------------------------------------
+ansible                            3.1.0
+ansible-base                       2.10.7
+asgiref                            3.3.4
+asttokens                          2.0.5
+attrs                              20.3.0
+bcrypt                             3.2.0
+beautifulsoup4                     4.9.3
+biopython                          1.73
+BioTEMPy                           2.0.0a2
+certifi                            2020.12.5
+cffi                               1.14.5
+chardet                            4.0.0
+cheap-repr                         0.4.5
+clipboard                          0.0.4
+coverage                           5.5
+cryptography                       3.4.6
+cx-Oracle                          8.1.0
+cycler                             0.10.0
+debtcollector                      2.2.0
+debug-tools                        1.0.0
+dill                               0.3.3
+Django                             1.11.29
+emda                               1.1.3.post3
+executing                          0.6.0
+fakepdftk                          0.1
+fasteners                          0.16
+feedparser                         6.0.2
+future                             0.18.2
+gemmi                              0.4.5
+graphviz                           0.16
+gunicorn                           20.0.4
+html2text                          2020.1.16
+idna                               2.10
+iniconfig                          1.1.1
+iso8601                            0.1.14
+jellyfish                          0.8.2
+Jinja2                             2.11.3
+joblib                             1.0.1
+kiwisolver                         1.3.1
+lxml                               4.6.2
+Markdown                           3.3.4
+MarkupSafe                         1.1.1
+matplotlib                         3.3.4
+memory-profiler                    0.58.0
+mmcif                              0.61
+mmcif.utils                        0.22
+mod-wsgi                           4.7.1
+mrcfile                            1.3.0
+multiprocess                       0.70.11.1
+munkres                            1.1.4
+mysqlclient                        1.4.6
+netaddr                            0.8.0
+netifaces                          0.10.9
+numpy                              1.20.1
+onedep-biocuration-api             0.1
+openbabel                          2.4.1
+opencv-python                      4.5.1.48
+OpenEye-toolkits                   2020.2.0
+OpenEye-toolkits-python3-linux-x64 2020.2.0
+oslo.concurrency                   4.4.0
+oslo.config                        8.5.0
+oslo.i18n                          5.0.1
+oslo.utils                         4.8.0
+packaging                          20.9
+pandas                             1.2.3
+paramiko                           2.7.2
+pbr                                5.5.1
+pdfrw                              0.4
+pika                               1.1.0
+Pillow                             8.1.2
+pip                                21.1.2
+pluggy                             0.13.1
+powerline-shell                    0.7.0
+powerline-status                   2.7
+psutil                             5.8.0
+py                                 1.10.0
+pybind11                           2.6.2
+pycparser                          2.20
+pygal                              2.4.0
+Pygments                           2.8.1
+PyJWT                              2.0.1
+PyNaCl                             1.4.0
+pynmrstar                          3.1.0
+pyparsing                          2.4.7
+pyperclip                          1.8.2
+pytest                             6.2.2
+pytest-cov                         2.11.1
+python-dateutil                    2.8.1
+pytz                               2021.1
+PyYAML                             5.4.1
+rcsb.utils.multiproc               0.18
+requests                           2.25.1
+rfc3986                            1.4.0
+scandir                            1.10.0
+scikit-learn                       0.24.1
+scipy                              1.6.1
+setuptools                         57.0.0
+sgmllib3k                          1.0.0
+simplejson                         3.17.2
+six                                1.15.0
+snoop                              0.3.0
+soupsieve                          2.2.1
+SQLAlchemy                         1.3.23
+sqlparse                           0.4.1
+stevedore                          3.3.0
+svgwrite                           1.4.1
+tabulate                           0.8.9
+threadpoolctl                      2.1.0
+toml                               0.10.2
+urllib3                            1.26.4
+va                                 0.0.0.dev75
+WebOb                              1.8.7
+Werkzeug                           1.0.1
+wheel                              0.36.2
+wrapt                              1.12.1
+wwpdb.apps.ann-tasks-v2            0.16
+wwpdb.apps.ccmodule                0.16.dev5   /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_ccmodule
+wwpdb.apps.chem-ref-data           0.10        /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_chem_ref_data
+wwpdb.apps.chemeditor              0.7         /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_chemeditor
+wwpdb.apps.content-ws-server       0.5
+wwpdb.apps.deposit                 0.26.post1  /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_deposit
+wwpdb.apps.editormodule            0.7         /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_editormodule
+wwpdb.apps.entity-transform        0.11.2      /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_entity_transform
+wwpdb.apps.msgmodule               0.11.2
+wwpdb.apps.releasemodule           0.15.1
+wwpdb.apps.seqmodule               0.19.1
+wwpdb.apps.site-admin              0.8         /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_site_admin
+wwpdb.apps.testfixture             0.1
+wwpdb.apps.val-rel                 0.8
+wwpdb.apps.val-ws-server           0.6.2
+wwpdb.apps.validation              2.18
+wwpdb.apps.wf-engine               0.13
+wwpdb.apps.workmanager             0.13.2
+wwpdb.io                           0.17.dev1
+wwpdb.utils.align                  0.11
+wwpdb.utils.cc-dict-util           0.4         /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_utils_cc_dict_util
+wwpdb.utils.config                 0.24
+wwpdb.utils.db                     0.20        /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_utils_db
+wwpdb.utils.detach                 0.3         /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_utils_detach
+wwpdb.utils.dp                     0.31.1.dev1 /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_utils_dp
+wwpdb.utils.emdb                   0.16.1
+wwpdb.utils.letters                0.11        /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_utils_letters
+wwpdb.utils.markdown-wrapper       0.3         /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_utils_markdown_wrapper
+wwpdb.utils.message-queue          0.4         /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_utils_message_queue
+wwpdb.utils.nmr                    0.9.1
+wwpdb.utils.oe-util                0.6
+wwpdb.utils.seqdb-v2               0.9         /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_utils_seqdb_v2
+wwpdb.utils.session                0.12
+wwpdb.utils.testing                0.16        /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_utils_testing
+wwpdb.utils.wf                     0.22        /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_utils_wf
+wwpdb.utils.ws-utils               0.4.1       /nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_utils_ws_utils
+[+] setting up database
+[*] database will be installed in /nfs/public/release/msd/services/onedep/deployments/local/onedep_database
+[+] resetting local database
+mysqld: no process found
+[+] initializing mysql server
+[+] starting mysql server, please wait
+[+] mysql server up and accepting connections
+[*] mysql temporary root password is 9T%qsHUrj;hV
+[*] setting mysql root password to c<?H1dOoohQ@a7$1@-CjsUx!7vI$!eD9
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+[+] creating schemas
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+ERROR 1050 (42S01) at line 880: Table 'dep_instance' already exists
+
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+
+mysql: [Warning] Using a password on the command line interface can be insecure.
+ERROR 1074 (42000) at line 228: Column length too big for column 'Process_Description' (max = 16383); use BLOB or TEXT instead
+
+mysql: [Warning] Using a password on the command line interface can be insecure.
+
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+
++settings.py current major version 1.11 (1.11.29)
++settings.py using new settings for version '1.11'
++settings.py using template path '/nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_deposit/wwpdb/apps/deposit/depui/templates'
+[INFO] - settings - <module> - Log level DEBUG
+SELECT @@SQL_AUTO_IS_NULL
+SELECT VERSION()
+System check identified some issues:
+
+WARNINGS:
+?: (urls.W002) Your URL pattern '^/?$' has a regex beginning with a '/'. Remove this slash as it is unnecessary. If this pattern is targeted in an include(), ensure the include() pattern has a trailing '/'.
+SHOW FULL TABLES
+CREATE TABLE `django_migrations` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `app` varchar(255) NOT NULL, `name` varchar(255) NOT NULL, `applied` datetime(6) NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT `django_migrations`.`app`, `django_migrations`.`name` FROM `django_migrations`
+No changes detected in app 'depui'
++settings.py current major version 1.11 (1.11.29)
++settings.py using new settings for version '1.11'
++settings.py using template path '/nfs/public/release/msd/services/onedep/resources/onedep_checkouts/git/py-wwpdb_apps_deposit/wwpdb/apps/deposit/depui/templates'
+[INFO] - settings - <module> - Log level DEBUG
+SELECT @@SQL_AUTO_IS_NULL
+SELECT @@sql_mode
+SELECT VERSION()
+System check identified some issues:
+
+WARNINGS:
+?: (urls.W002) Your URL pattern '^/?$' has a regex beginning with a '/'. Remove this slash as it is unnecessary. If this pattern is targeted in an include(), ensure the include() pattern has a trailing '/'.
+SHOW FULL TABLES
+SELECT `django_migrations`.`app`, `django_migrations`.`name` FROM `django_migrations`
+SHOW FULL TABLES
+SELECT `django_migrations`.`app`, `django_migrations`.`name` FROM `django_migrations`
+Operations to perform:
+  Apply all migrations: auth, contenttypes, depui, sessions, sites
+Running migrations:
+  Applying contenttypes.0001_initial...CREATE TABLE `django_content_type` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `name` varchar(100) NOT NULL, `app_label` varchar(100) NOT NULL, `model` varchar(100) NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+ALTER TABLE `django_content_type` ADD CONSTRAINT `django_content_type_app_label_model_76bd3d3b_uniq` UNIQUE (`app_label`, `model`)
+SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying contenttypes.0002_remove_content_type_name...ALTER TABLE `django_content_type` MODIFY `name` varchar(100) NULL
+ALTER TABLE `django_content_type` DROP COLUMN `name`
+SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying auth.0001_initial...CREATE TABLE `auth_permission` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `name` varchar(50) NOT NULL, `content_type_id` integer NOT NULL, `codename` varchar(100) NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `auth_group` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `name` varchar(80) NOT NULL UNIQUE)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `auth_group_permissions` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `group_id` integer NOT NULL, `permission_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `auth_user` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `password` varchar(128) NOT NULL, `last_login` datetime(6) NOT NULL, `is_superuser` bool NOT NULL, `username` varchar(30) NOT NULL UNIQUE, `first_name` varchar(30) NOT NULL, `last_name` varchar(30) NOT NULL, `email` varchar(75) NOT NULL, `is_staff` bool NOT NULL, `is_active` bool NOT NULL, `date_joined` datetime(6) NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `auth_user_groups` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `user_id` integer NOT NULL, `group_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `auth_user_user_permissions` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `user_id` integer NOT NULL, `permission_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+ALTER TABLE `auth_permission` ADD CONSTRAINT `auth_permission_content_type_id_2f476e4b_fk_django_co` FOREIGN KEY (`content_type_id`) REFERENCES `django_content_type` (`id`)
+ALTER TABLE `auth_permission` ADD CONSTRAINT `auth_permission_content_type_id_codename_01ab375a_uniq` UNIQUE (`content_type_id`, `codename`)
+ALTER TABLE `auth_group_permissions` ADD CONSTRAINT `auth_group_permissions_group_id_b120cbf9_fk_auth_group_id` FOREIGN KEY (`group_id`) REFERENCES `auth_group` (`id`)
+ALTER TABLE `auth_group_permissions` ADD CONSTRAINT `auth_group_permissio_permission_id_84c5c92e_fk_auth_perm` FOREIGN KEY (`permission_id`) REFERENCES `auth_permission` (`id`)
+ALTER TABLE `auth_group_permissions` ADD CONSTRAINT `auth_group_permissions_group_id_permission_id_0cd325b0_uniq` UNIQUE (`group_id`, `permission_id`)
+ALTER TABLE `auth_user_groups` ADD CONSTRAINT `auth_user_groups_user_id_6a12ed8b_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
+ALTER TABLE `auth_user_groups` ADD CONSTRAINT `auth_user_groups_group_id_97559544_fk_auth_group_id` FOREIGN KEY (`group_id`) REFERENCES `auth_group` (`id`)
+ALTER TABLE `auth_user_groups` ADD CONSTRAINT `auth_user_groups_user_id_group_id_94350c0c_uniq` UNIQUE (`user_id`, `group_id`)
+ALTER TABLE `auth_user_user_permissions` ADD CONSTRAINT `auth_user_user_permissions_user_id_a95ead1b_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
+ALTER TABLE `auth_user_user_permissions` ADD CONSTRAINT `auth_user_user_permi_permission_id_1fbb5f2c_fk_auth_perm` FOREIGN KEY (`permission_id`) REFERENCES `auth_permission` (`id`)
+ALTER TABLE `auth_user_user_permissions` ADD CONSTRAINT `auth_user_user_permissions_user_id_permission_id_14a6b632_uniq` UNIQUE (`user_id`, `permission_id`)
+SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying auth.0002_alter_permission_name_max_length...ALTER TABLE `auth_permission` MODIFY `name` varchar(255) NOT NULL
+SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying auth.0003_alter_user_email_max_length...ALTER TABLE `auth_user` MODIFY `email` varchar(254) NOT NULL
+SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying auth.0004_alter_user_username_opts...SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying auth.0005_alter_user_last_login_null...ALTER TABLE `auth_user` MODIFY `last_login` datetime(6) NULL
+SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying auth.0006_require_contenttypes_0002...SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying auth.0007_alter_validators_add_error_messages...SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying auth.0008_alter_user_username_max_length...ALTER TABLE `auth_user` MODIFY `username` varchar(150) NOT NULL
+SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying depui.0001_initial...CREATE TABLE `depui_deposition` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `email` varchar(128) NOT NULL, `country` varchar(128) NOT NULL, `related_bmrb` varchar(128) NOT NULL, `preferred_site` varchar(8) NOT NULL, `structural_genomics` bool NOT NULL, `macromolecules` integer NOT NULL, `upload_version` integer NOT NULL, `user_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `depui_depositionstatus` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `date` datetime(6) NOT NULL, `type` varchar(80) NOT NULL, `type2` varchar(80) NOT NULL, `type3` varchar(80) NOT NULL, `user_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `depui_depositionuiuser` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `depui_experiments` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `experiment` varchar(128) NOT NULL, `user_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `depui_mapvoxel` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `map` varchar(128) NOT NULL, `pixel_x` double precision NOT NULL, `pixel_y` double precision NOT NULL, `pixel_z` double precision NOT NULL, `contour` double precision NOT NULL, `user_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `depui_processaction` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `date` datetime(6) NOT NULL, `action` varchar(128) NOT NULL, `priority` integer NOT NULL, `status` varchar(128) NOT NULL, `user_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `depui_processactionfile` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `inout` varchar(8) NOT NULL, `file_type` varchar(128) NOT NULL, `file_format` varchar(128) NOT NULL, `file_path` varchar(512) NOT NULL, `action_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `depui_relatedentries` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `related_entry` varchar(128) NOT NULL, `user_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `depui_requestedcodes` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `code` varchar(128) NOT NULL, `user_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE TABLE `depui_wwpdbupload` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `file` varchar(512) NOT NULL, `slug` varchar(512) NOT NULL, `type` varchar(128) NOT NULL, `uniq` varchar(64) NOT NULL, `size` bigint NOT NULL, `client_size` bigint NOT NULL, `active` bool NOT NULL, `info` varchar(64) NOT NULL, `archive_file` varchar(128) NOT NULL, `validation` bool NOT NULL, `upload_version` integer NOT NULL, `last_active` bool NULL, `user_id` integer NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+ALTER TABLE `depui_deposition` ADD CONSTRAINT `depui_deposition_user_id_ee978f71_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
+ALTER TABLE `depui_depositionstatus` ADD CONSTRAINT `depui_depositionstatus_user_id_b15bd9f7_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
+ALTER TABLE `depui_experiments` ADD CONSTRAINT `depui_experiments_user_id_d5c181dc_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
+ALTER TABLE `depui_mapvoxel` ADD CONSTRAINT `depui_mapvoxel_user_id_e2483e8e_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
+ALTER TABLE `depui_processaction` ADD CONSTRAINT `depui_processaction_user_id_916ac4c7_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
+ALTER TABLE `depui_processactionfile` ADD CONSTRAINT `depui_processactionf_action_id_8422e450_fk_depui_pro` FOREIGN KEY (`action_id`) REFERENCES `depui_processaction` (`id`)
+ALTER TABLE `depui_relatedentries` ADD CONSTRAINT `depui_relatedentries_user_id_d188cf1c_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
+ALTER TABLE `depui_requestedcodes` ADD CONSTRAINT `depui_requestedcodes_user_id_f1223d95_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
+ALTER TABLE `depui_wwpdbupload` ADD CONSTRAINT `depui_wwpdbupload_user_id_010c8eba_fk_auth_user_id` FOREIGN KEY (`user_id`) REFERENCES `auth_user` (`id`)
+CREATE INDEX `depui_wwpdbupload_slug_1d90a7ad` ON `depui_wwpdbupload` (`slug`)
+SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying sessions.0001_initial...CREATE TABLE `django_session` (`session_key` varchar(40) NOT NULL PRIMARY KEY, `session_data` longtext NOT NULL, `expire_date` datetime(6) NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+CREATE INDEX `django_session_expire_date_a5c62663` ON `django_session` (`expire_date`)
+SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying sites.0001_initial...CREATE TABLE `django_site` (`id` integer AUTO_INCREMENT NOT NULL PRIMARY KEY, `domain` varchar(100) NOT NULL, `name` varchar(50) NOT NULL)
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SELECT engine FROM information_schema.tables WHERE table_name = %s
+SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+  Applying sites.0002_alter_domain_unique...ALTER TABLE `django_site` ADD CONSTRAINT `django_site_domain_a2e37b91_uniq` UNIQUE (`domain`)
+SHOW FULL TABLES
+INSERT INTO `django_migrations` (`app`, `name`, `applied`) VALUES (%s, %s, %s)
+ OK
+SHOW FULL TABLES
+SELECT `django_migrations`.`app`, `django_migrations`.`name` FROM `django_migrations`
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `auth_permission`.`content_type_id`, `auth_permission`.`codename` FROM `auth_permission` INNER JOIN `django_content_type` ON (`auth_permission`.`content_type_id` = `django_content_type`.`id`) WHERE `auth_permission`.`content_type_id` IN (%s, %s, %s) ORDER BY `django_content_type`.`app_label` ASC, `django_content_type`.`model` ASC, `auth_permission`.`codename` ASC
+INSERT INTO `auth_permission` (`name`, `content_type_id`, `codename`) VALUES (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE `django_content_type`.`app_label` = %s
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `auth_permission`.`content_type_id`, `auth_permission`.`codename` FROM `auth_permission` INNER JOIN `django_content_type` ON (`auth_permission`.`content_type_id` = `django_content_type`.`id`) WHERE `auth_permission`.`content_type_id` IN (%s) ORDER BY `django_content_type`.`app_label` ASC, `django_content_type`.`model` ASC, `auth_permission`.`codename` ASC
+INSERT INTO `auth_permission` (`name`, `content_type_id`, `codename`) VALUES (%s, %s, %s), (%s, %s, %s), (%s, %s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE `django_content_type`.`app_label` = %s
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `auth_permission`.`content_type_id`, `auth_permission`.`codename` FROM `auth_permission` INNER JOIN `django_content_type` ON (`auth_permission`.`content_type_id` = `django_content_type`.`id`) WHERE `auth_permission`.`content_type_id` IN (%s) ORDER BY `django_content_type`.`app_label` ASC, `django_content_type`.`model` ASC, `auth_permission`.`codename` ASC
+INSERT INTO `auth_permission` (`name`, `content_type_id`, `codename`) VALUES (%s, %s, %s), (%s, %s, %s), (%s, %s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE `django_content_type`.`app_label` = %s
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `auth_permission`.`content_type_id`, `auth_permission`.`codename` FROM `auth_permission` INNER JOIN `django_content_type` ON (`auth_permission`.`content_type_id` = `django_content_type`.`id`) WHERE `auth_permission`.`content_type_id` IN (%s) ORDER BY `django_content_type`.`app_label` ASC, `django_content_type`.`model` ASC, `auth_permission`.`codename` ASC
+INSERT INTO `auth_permission` (`name`, `content_type_id`, `codename`) VALUES (%s, %s, %s), (%s, %s, %s), (%s, %s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE `django_content_type`.`app_label` = %s
+SELECT (1) AS `a` FROM `django_site` LIMIT 1
+UPDATE `django_site` SET `domain` = %s, `name` = %s WHERE `django_site`.`id` = %s
+INSERT INTO `django_site` (`id`, `domain`, `name`) VALUES (%s, %s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE (`django_content_type`.`app_label` = %s AND `django_content_type`.`model` = %s)
+INSERT INTO `django_content_type` (`app_label`, `model`) VALUES (%s, %s)
+SELECT `auth_permission`.`content_type_id`, `auth_permission`.`codename` FROM `auth_permission` INNER JOIN `django_content_type` ON (`auth_permission`.`content_type_id` = `django_content_type`.`id`) WHERE `auth_permission`.`content_type_id` IN (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) ORDER BY `django_content_type`.`app_label` ASC, `django_content_type`.`model` ASC, `auth_permission`.`codename` ASC
+INSERT INTO `auth_permission` (`name`, `content_type_id`, `codename`) VALUES (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s), (%s, %s, %s)
+SELECT `django_content_type`.`id`, `django_content_type`.`app_label`, `django_content_type`.`model` FROM `django_content_type` WHERE `django_content_type`.`app_label` = %s
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+
+mysql: [Warning] Using a password on the command line interface can be insecure.
+mysql: [Warning] Using a password on the command line interface can be insecure.
+
+[!] skipping maintenance tasks
+[!] skipping setting up the apache
+[+] done...
+[*] activate OneDep: . /nfs/public/release/msd/services/onedep/site-config/init/env.sh --siteid PDBE_LOCALHOST --location pdbe
+[*] wfm url: http://pdbe.localhost/wfm
+[*] deposition url: http://pdbe.localhost/deposition
+[*] start wfe service: python /nfs/public/release/msd/services/onedep/onedep-maintenance/common/restart_services.py --restart_wfe
+[*] start apache service: python /nfs/public/release/msd/services/onedep/onedep-maintenance/common/restart_services.py --restart_apache

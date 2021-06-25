@@ -524,9 +524,10 @@ if [[ -z "$VENV_PATH" ]]; then
     exit 1
 fi
 
-
 if [[ $OPT_DO_SETUP_VENV == true ]]; then
     show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH) with $(highlight_text $PYTHON3)"
+
+    rm -rf $VENV_PATH
 
     $PYTHON3 -m venv $VENV_PATH
     source $VENV_PATH/bin/activate

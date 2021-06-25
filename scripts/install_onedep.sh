@@ -227,9 +227,10 @@ OPT_DB_SKIP_BUILD=false
 DATABASE_DIR="default"
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-build-base] [--install-runtime-base] [--build-tools] [--install-onedep] [--install-onedep-develop] [--setup-database [opts]] [--run-maintenance] [--start-services] [--val-num-workers]
+Usage: ${THIS_SCRIPT} [--full-install] [opts]
 
 System preparation parameters:
+    --full-install:             run all installation steps
     --install-runtime-base:     install packages ready for running onedep - not building tools (run as root)
     --install-build-base:       install packages ready for building tools (run as root)
 
@@ -282,6 +283,22 @@ do
         --val-num-workers)
             OPT_VAL_SERVER_NUM_WORKERS="$2"
             shift
+        ;;
+        --full-install)
+            OPT_PREPARE_RUNTIME=true
+            OPT_PREPARE_BUILD=true
+            OPT_DO_BUILD=true
+            OPT_DO_COMPILE_SITE_CONFIG=true
+            OPT_DO_CLONE_DEPS=true
+            OPT_DO_SETUP_VENV=true
+            OPT_DO_RUNUPDATE=true
+            OPT_DO_BUILD_DEV=true
+            OPT_DO_DATABASE=true
+            OPT_DB_SKIP_BUILD=true
+            OPT_DO_MAINTENANCE=true
+            OPT_DO_APACHE=true
+            OPT_DB_ADD_DUMMY_CODES=true
+            OPT_DO_RESTART_SERVICES=true
         ;;
         --install-runtime-base) OPT_PREPARE_RUNTIME=true;;
         --install-build-base) OPT_PREPARE_BUILD=true;;

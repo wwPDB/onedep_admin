@@ -198,6 +198,15 @@ function run_mysql_script {
     echo $(eval "$conn_string < $script_file")
 }
 
+# checking if we're running as root
+
+user=$(whoami)
+
+if [[ $user == 'root' ]]; then
+    show_warning_message "you should not run this script as root, run as a normal user instead and provide superuser credentials when asked"
+    exit -1
+fi
+
 # ----------------------------------------------------------------
 # arguments parsing
 # ----------------------------------------------------------------
@@ -255,7 +264,6 @@ Database parameters:
 Post install parameters:
     --start-services:           start all onedep services (workflow engine, consumers, apache servers)
     --val-num-workers:          how many workers validation servers should have
-
 
 EOM
 
@@ -394,7 +402,7 @@ if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
     show_warning_message "running command: $command"
     
     chmod +x $command
-    $command
+    sudo $command
 else
     show_warning_message "skipping installation of required packages"
 fi
@@ -468,7 +476,8 @@ fi
 if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
     cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER # maybe I should put the build version in a variable
-    ./BUILD.sh |& tee build.log
+
+    sudo ./BUILD.sh |& tee build.log
 else
     show_warning_message "skipping build"
 fi

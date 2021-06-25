@@ -226,6 +226,7 @@ OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
 OPT_DO_RESTART_SERVICES=false
+OPT_DO_HARD_RESET=false
 OPT_VAL_SERVER_NUM_WORKERS="60"
 OPT_DO_BUILD_DEV=false
 
@@ -249,11 +250,13 @@ OneDep installation parameters:
     --clone-deps:               clone onedep_admin and onedep-maintenance
     --setup-venv:               setup onedep virtual environment
     --python3-path:             path to a Python interpreter, defaults to 'python3'
-    --build-tools:              Compile OneDep tools - OneDep requires compiled tools to be compiled or sync'd from RCSB
-    --install-onedep:           Installs OneDep python packages
+    --build-tools:              compile OneDep tools - OneDep requires compiled tools to be compiled or sync'd from RCSB
+    --install-onedep:           installs OneDep python packages
     --install-onedep-develop    installs OneDep python packages develop branches in edit mode
     --run-maintenance:          perform maintenance tasks as part of setup
     --setup-apache:             setup the apache
+    --hard-reset:               clean up tools, deployment subtree for the provided site, sessions and site references
+                                    this will be run before all steps
 
 Database parameters:
     --setup-database:           setup database (installs server as non-root and setup tables)
@@ -318,6 +321,8 @@ do
         --setup-venv) OPT_DO_SETUP_VENV=true;;
         --install-onedep) OPT_DO_RUNUPDATE=true;;
         --install-onedep-develop) OPT_DO_BUILD_DEV=true;;
+        --hard-reset) OPT_DO_HARD_RESET=true;;
+
         --setup-database) OPT_DO_DATABASE=true;;
         --skip-db-build) OPT_DB_SKIP_BUILD=true;;
 
@@ -376,6 +381,25 @@ if [[ ! -d $ONEDEP_PATH ]]; then
 fi
 
 cd $ONEDEP_PATH
+
+if [[ $OPT_DO_HARD_RESET == true ]]; then
+    show_info_message "removing tools and site related data"
+    
+    show_warning_message "the following directories will be completely removed:\n \
+    $TOOLS_DIR\n \
+    $DEPLOY_DIR"
+
+    read -p "[>] do you want to proceed (y/n)? " answer
+    case ${answer:0:1} in
+        y|Y )
+            rm -rf $TOOLS_DIR
+            rm -rf $DEPLOY_DIR
+        ;;
+        * )
+            show_warning_message "clean up cancelled"
+        ;;
+    esac
+fi
 
 if [[ ( $OPT_PREPARE_RUNTIME == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE == true || $OPT_PREPARE_BUILD == true ) && ! -d "onedep-build" ]]; then
     show_info_message "cloning onedep-build repository"

@@ -1,1 +1,13 @@
-[!] you should not run this script as root, run as a normal user instead and provide superuser credentials when asked
+----------------------------------------------------------------
+[*] WWPDB_SITE_ID is set to PDBE_LOCALHOST
+[*] WWPDB_SITE_LOC is set to pdbe
+[*] ONEDEP_PATH is set to /nfs/public/release/msd/services/onedep
+[*] SITE_CONFIG_DIR is set to /nfs/public/release/msd/services/onedep/site-config
+[*] TOP_WWPDB_SITE_CONFIG_DIR is set to /nfs/public/release/msd/services/onedep/site-config
+[*] using python3 as Python 3 interpreter
+----------------------------------------------------------------
+[+] removing tools and site related data
+[!] the following directories will be completely removed:
+     /nfs/public/release/msd/services/onedep/resources/tools/tools-centos-7-5200-local
+     /nfs/public/release/msd/services/onedep/deployments/local
+[>] do you want to proceed (y/n)? removing...

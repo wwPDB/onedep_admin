@@ -209,6 +209,9 @@ SITE_LOC="${WWPDB_SITE_LOC}"
 MACHINE_ENV="production"
 OPT_PREPARE_RUNTIME=false
 OPT_PREPARE_BUILD=false
+OPT_DO_COMPILE_SITE_CONFIG=false
+OPT_DO_CLONE_DEPS=false
+OPT_DO_SETUP_VENV=false
 OPT_DO_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
@@ -232,6 +235,9 @@ System preparation parameters:
 
 OneDep installation parameters:
     --config-version:           OneDep config version, defaults to 'latest'
+    --compile-site-config:      (re)compile site-config
+    --clone-deps:               clone onedep_admin and onedep-maintenance
+    --setup-venv:               setup onedep virtual environment
     --python3-path:             path to a Python interpreter, defaults to 'python3'
     --build-tools:              Compile OneDep tools - OneDep requires compiled tools to be compiled or sync'd from RCSB
     --install-onedep:           Installs OneDep python packages
@@ -282,6 +288,9 @@ do
 
         --build-tools) OPT_DO_BUILD=true;;
 
+        --compile-site-config) OPT_DO_COMPILE_SITE_CONFIG=true;;
+        --clone-deps) OPT_DO_CLONE_DEPS=true;;
+        --setup-venv) OPT_DO_SETUP_VENV=true;;
         --install-onedep) OPT_DO_RUNUPDATE=true;;
         --install-onedep-develop) OPT_DO_BUILD_DEV=true;;
         --setup-database) OPT_DO_DATABASE=true;;
@@ -316,14 +325,13 @@ check_env_variable WWPDB_SITE_ID true
 check_env_variable WWPDB_SITE_LOC true
 check_env_variable ONEDEP_PATH true
 
+export SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
+export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
+
 echo -e "----------------------------------------------------------------"
 echo -e "[*] $(highlight_text WWPDB_SITE_ID) is set to $(highlight_text $WWPDB_SITE_ID)"
 echo -e "[*] $(highlight_text WWPDB_SITE_LOC) is set to $(highlight_text $WWPDB_SITE_LOC)"
 echo -e "[*] $(highlight_text ONEDEP_PATH) is set to $(highlight_text $ONEDEP_PATH)"
-
-export SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
-export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
-
 echo -e "[*] $(highlight_text SITE_CONFIG_DIR) is set to $(highlight_text $SITE_CONFIG_DIR)"
 echo -e "[*] $(highlight_text TOP_WWPDB_SITE_CONFIG_DIR) is set to $(highlight_text $TOP_WWPDB_SITE_CONFIG_DIR)"
 echo -e "[*] using $(highlight_text $PYTHON3) as Python 3 interpreter"
@@ -358,13 +366,16 @@ if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
         command=onedep-build/install-base/centos-7-build-packages.sh
     else
         show_info_message "installing system packages for running OneDep"
+
         if [[ $CENTOS_MAJOR_VER == 8 ]]; then
           command=onedep-build/install-base/centos-8-host-packages.sh
         else
           command=onedep-build/install-base/centos-7-host-packages.sh
         fi
     fi
+
     show_warning_message "running command: $command"
+    
     chmod +x $command
     $command
 else
@@ -375,36 +386,33 @@ fi
 # setting up directories used by onedep and python venv
 # ----------------------------------------------------------------
 
-show_info_message "setting up Python virtual env"
+if [[ $OPT_DO_COMPILE_SITE_CONFIG == true ]]; then
+    show_info_message "setting up Python virtual env"
 
-# delete if it already exists
-if [[ -d "/tmp/venv" ]]; then
+    # delete if it already exists
+    if [[ -d "/tmp/venv" ]]; then
+        rm -rf /tmp/venv
+    fi
+
+    unset PYTHONHOME
+    $PYTHON3 -m venv /tmp/venv
+    source /tmp/venv/bin/activate
+
+    show_info_message "updating setuptools"
+    pip install --no-cache-dir --upgrade setuptools==40.8.0 pip
+
+    show_info_message "installing wheel"
+    pip install --no-cache-dir wheel
+
+    show_info_message "installing wwpdb.utils.config"
+    pip install --no-cache-dir PyYaml==3.10 wwpdb.utils.config
+
+    show_info_message "compiling site-config for the new site"
+    ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
+
+    deactivate
     rm -rf /tmp/venv
 fi
-
-unset PYTHONHOME
-$PYTHON3 -m venv /tmp/venv
-source /tmp/venv/bin/activate
-
-# ----------------------------------------------------------------
-# setting up directories used by OneDep and python venv
-# ----------------------------------------------------------------
-
-
-show_info_message "updating setuptools"
-pip install --no-cache-dir --upgrade setuptools==40.8.0 pip
-
-show_info_message "installing wheel"
-pip install --no-cache-dir wheel
-
-show_info_message "installing wwpdb.utils.config"
-pip install --no-cache-dir PyYaml==3.10 wwpdb.utils.config
-
-show_info_message "compiling site-config for the new site"
-ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
-
-deactivate
-rm -rf /tmp/venv
 
 cd $ONEDEP_PATH
 
@@ -418,25 +426,26 @@ show_info_message "checking if everything went ok..."
 echo "[*] $(highlight_text DEPLOY_DIR) is set to $(highlight_text $DEPLOY_DIR)"
 check_env_variable DEPLOY_DIR true
 
-show_info_message "cloning onedep repositories"
+if [[ $OPT_DO_CLONE_DEPS == true ]]; then
+    show_info_message "cloning onedep repositories"
 
-if [[ ! -d "onedep_admin" ]]; then
-    git clone $ONEDEP_ADMIN_REPO_URL
-    
-    cd onedep_admin
+    if [[ ! -d "onedep_admin" ]]; then
+        git clone $ONEDEP_ADMIN_REPO_URL
+        
+        cd onedep_admin
 
-    git checkout master
-    git pull
+        git checkout master
+        git pull
 
-    cd ..
-fi
+        cd ..
+    fi
 
-if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
-    git clone $ONEDEP_MAINTENANCE_REPO_URL
+    if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
+        git clone $ONEDEP_MAINTENANCE_REPO_URL
+    fi
 fi
 
 #show_info_message "creating 'resources' folder"
-
 #mkdir -p $DEPLOY_DIR/resources
 
 if [[ $OPT_DO_BUILD == true ]]; then
@@ -465,38 +474,41 @@ if [[ -z "$VENV_PATH" ]]; then
     exit 1
 fi
 
-show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH) with $(highlight_text $PYTHON3)"
 
-$PYTHON3 -m venv $VENV_PATH
-source $VENV_PATH/bin/activate
+if [[ $OPT_DO_SETUP_VENV == true ]]; then
+    show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH) with $(highlight_text $PYTHON3)"
 
-show_info_message "updating setuptools and pip"
-pip install --no-cache-dir --upgrade setuptools pip
+    $PYTHON3 -m venv $VENV_PATH
+    source $VENV_PATH/bin/activate
 
-show_info_message "creating pip configuration file"
+    show_info_message "updating setuptools and pip"
+    pip install --no-cache-dir --upgrade setuptools pip
 
-if [[ ! -z "$CS_HOST_BASE" && ! -z "$CS_USER" && ! -z "$CS_PW" && ! -z "$CS_DISTRIB_URL" ]]; then
-    pip config --site set global.trusted-host $CS_HOST_BASE
-    pip config --site set global.extra-index-url "http://${CS_USER}:${CS_PW}@${CS_DISTRIB_URL} https://pypi.anaconda.org/OpenEye/simple"
-    pip config --site set global.no-cache-dir false
-else
-    show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
+    show_info_message "creating pip configuration file"
+
+    if [[ ! -z "$CS_HOST_BASE" && ! -z "$CS_USER" && ! -z "$CS_PW" && ! -z "$CS_DISTRIB_URL" ]]; then
+        pip config --site set global.trusted-host $CS_HOST_BASE
+        pip config --site set global.extra-index-url "http://${CS_USER}:${CS_PW}@${CS_DISTRIB_URL} https://pypi.anaconda.org/OpenEye/simple"
+        pip config --site set global.no-cache-dir false
+    else
+        show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
+    fi
+
+    show_info_message "install some base packages"
+    pip install wheel
+
+    pip install wwpdb.utils.config
+
+    show_info_message "checking for updates in onedep_admin"
+
+    cd $ONEDEP_PATH/onedep_admin
+    git checkout master
+    git pull
 fi
-
-show_info_message "install some base packages"
-pip install wheel
-
-pip install wwpdb.utils.config
-
-show_info_message "checking for updates in onedep_admin"
-
-cd $ONEDEP_PATH/onedep_admin
-git checkout master
-git pull
-
 
 if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
   show_info_message "running RunUpdate.py step"
+
   if [[ $OPT_DO_BUILD_DEV == true ]]; then
       python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-dev
   else
@@ -695,8 +707,6 @@ fi
 # so keeping this to the minimum
 # ----------------------------------------------------------------
 
-
-
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
 
     show_info_message "checking out / updating mmcif dictionary"
@@ -770,6 +780,7 @@ fi
 # ----------------------------------------------------------------
 # apache setup
 # ----------------------------------------------------------------
+
 if [[ $OPT_DO_APACHE == true ]]; then
     show_info_message "copying httpd.conf"
 
@@ -787,6 +798,7 @@ fi
 # ----------------------------------------------------------------
 # restart services
 # ----------------------------------------------------------------
+
 if [[ $OPT_DO_RESTART_SERVICES == true ]]; then
     show_info_message "restarting all services"
 

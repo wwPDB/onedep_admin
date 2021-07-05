@@ -743,24 +743,11 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
     ret=$?
     if [[ $ret != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $ret"; fi
 
-    # checkout / update sequences in OneDep - it now runs from anywhere using RunRemote
-    # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/Update-reference-sequences.sh
-
     show_info_message "checking out / updating sequences in OneDep"
 
-    SCRIPT_PATH=${ONEDEP_PATH}/onedep-maintenance/common/sequence
-
-    ${SCRIPT_PATH}/Fetch-db-unp.sh
+    python ${ONEDEP_PATH}/onedep-maintenance/common/update_reference_sequences.py
     ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "script 'Fetch-db-unp.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $ret"; fi
-
-    ${SCRIPT_PATH}/Fetch-db-gb.sh
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "script 'Fetch-db-gb.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $ret"; fi
-
-    ${SCRIPT_PATH}/Format-db.sh
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $ret"; fi
+    if [[ $ret != 0 ]]; then show_error_message "step 'update reference sequences' failed with exit code $ret"; fi
 
 
 else

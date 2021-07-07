@@ -477,7 +477,7 @@ show_info_message "creating pip configuration file"
 
 get_config_var CS_HOST_BASE; cs_host_base=$retval
 get_config_var CS_USER; cs_user=$retval
-get_config_var CS_PW; cs_pw=$retval
+get_config_var CS_PASS; cs_pw=$retval
 get_config_var CS_DISTRIB_URL; cs_distrib_url=$retval
 
 if [[ ! -z "$cs_host_base" && ! -z "$cs_user" && ! -z "$cs_pw" && ! -z "$cs_distrib_url" ]]; then

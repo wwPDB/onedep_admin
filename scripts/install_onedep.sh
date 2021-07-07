@@ -628,6 +628,8 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     if [[ -z $db_exists ]]; then
         run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "CREATE DATABASE $db_name"
 
+        get_config_var RO_RESOURCE_PATH; RO_RESOURCE_PATH=$retval
+
         da_internal_cif=$RO_RESOURCE_PATH/da_internal/status_rcsb_schema_da.cif
         $($db_loader_path -sql -server mysql -map $da_internal_cif -schema -db da_internal)
         run_mysql_script $DATABASE_DIR/mysql/bin/mysql da_internal DB_LOADER_SCHEMA.sql

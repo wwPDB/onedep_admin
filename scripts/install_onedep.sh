@@ -475,9 +475,14 @@ pip install --no-cache-dir --upgrade setuptools pip
 
 show_info_message "creating pip configuration file"
 
-if [[ ! -z "$CS_HOST_BASE" && ! -z "$CS_USER" && ! -z "$CS_PW" && ! -z "$CS_DISTRIB_URL" ]]; then
-    pip config --site set global.trusted-host $CS_HOST_BASE
-    pip config --site set global.extra-index-url "http://${CS_USER}:${CS_PW}@${CS_DISTRIB_URL} https://pypi.anaconda.org/OpenEye/simple"
+get_config_var CS_HOST_BASE; cs_host_base=$retval
+get_config_var CS_USER; cs_user=$retval
+get_config_var CS_PW; cs_pw=$retval
+get_config_var CS_DISTRIB_URL; cs_distrib_url=$retval
+
+if [[ ! -z "$cs_host_base" && ! -z "$cs_user" && ! -z "$cs_pw" && ! -z "$cs_distrib_url" ]]; then
+    pip config --site set global.trusted-host $cs_host_base
+    pip config --site set global.extra-index-url "http://${cs_user}:${cs_pw}@${cs_distrib_url} https://pypi.anaconda.org/OpenEye/simple"
     pip config --site set global.no-cache-dir false
 else
     show_warning_message "some of the environment variables for the private RCSB Python repository are not set"

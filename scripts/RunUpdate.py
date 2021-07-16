@@ -57,8 +57,7 @@ class UpdateManager(object):
         self.__ci = ConfigInfo()
         self.__ci_common = ConfigInfoAppCommon()
 
-        instenv = self.__ci.get('INSTALL_ENVIRONMENT')
-        self.__extraconf = instenv.get("ADMIN_EXTRA_CONF", None)
+        self.__extraconf = self.get_variable("ADMIN_EXTRA_CONF", environment='INSTALL_ENVIRONMENT')
         self.__confvars = {}
         self.__extraconfdir = None
 
@@ -77,6 +76,9 @@ class UpdateManager(object):
             cfiles = [self.__configfile, self.__extraconf]
         self.__cparser.read(cfiles)
 
+        self.web_apps_path = self.get_variable('TOP_WWPDB_WEBAPPS_DIR')
+        self.resources_ro_path = self.get_variable('RO_RESOURCE_PATH')
+
     def __exec(self, cmd, overridenoop=False, working_directory=None):
         print(cmd)
         ret = 0
@@ -91,28 +93,40 @@ class UpdateManager(object):
                 ret = subprocess.call(cmd, shell=True)
         return ret
 
+    def get_variable(self, variable, environment=None):
+        ret = None
+        if environment:
+            ret = self.__ci.get(environment, {}).get(variable)
+        if not ret:
+            ret = self.__ci.get(variable)
+        if not ret:
+            ret = os.getenv(variable)
+        return ret
+
     def updatepyenv(self, dev_build):
-        instenv = self.__ci.get('INSTALL_ENVIRONMENT')
-        cs_user = instenv['CS_USER']
-        cs_pass = instenv['CS_PW']
-        cs_url = instenv['CS_URL']
+        cs_user = self.get_variable('CS_USER', environment='INSTALL_ENVIRONMENT')
+        cs_pass = self.get_variable('CS_PW', environment='INSTALL_ENVIRONMENT')
+        cs_url = self.get_variable('CS_URL', environment='INSTALL_ENVIRONMENT')
+
+        script_dir = os.path.dirname(os.path.realpath(__file__))
+        constraintfile = os.path.abspath(os.path.join(script_dir, '../base_packages/constraints.txt'))
 
         urlreq = urlparse(cs_url)
         urlpath = "{}://{}:{}@{}{}/dist/simple/".format(urlreq.scheme, cs_user, cs_pass, urlreq.netloc, urlreq.path)
+        pip_extra_urls = "--extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple ".format(
+                           urlpath, urlreq.netloc)
+
+        pip_extra_urls += '-c {}'.format(constraintfile)
 
         # pip installing from requirements.txt in base_packages
-        script_dir = os.path.dirname(os.path.realpath(__file__))
 
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/pre-requirements.txt'))
-        constraintfile = os.path.abspath(os.path.join(script_dir, '../base_packages/constraints.txt'))
-        pip_extra_urls = "--extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple -c {}".format(
-            urlpath, urlreq.netloc, constraintfile)
 
         command = 'pip install {} -r {}'.format(pip_extra_urls, reqfile)
         self.__exec(command)
 
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements.txt'))
-        command = 'pip install {} -r {} '.format(pip_extra_urls, reqfile)
+        command = 'pip install {} -r {}'.format(pip_extra_urls, reqfile)
         self.__exec(command)
 
         if self.__cparser.has_option('DEFAULT', 'pip_extra_reqs'):
@@ -123,10 +137,9 @@ class UpdateManager(object):
         reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
         if dev_build:
             # Clone and do pip edit install
-            webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
 
             # Checking if source directory exist
-            source_dir = os.path.abspath(os.path.join(webappsdir, '../..'))
+            source_dir = os.path.abspath(os.path.join(self.web_apps_path, '../..'))
             if not os.path.isdir(source_dir):
                 os.makedirs(source_dir)
 
@@ -140,30 +153,27 @@ class UpdateManager(object):
                     command = 'pip install {} --edit {}'.format(pip_extra_urls, repo)
                     self.__exec(command, working_directory=source_dir)
         else:
-            # reqfile = self.__cparser.get('DEFAULT', 'piprequirements')
             command = 'pip install -U {} -r {}'.format(pip_extra_urls, reqfile)
             self.__exec(command)
 
         if opt_req:
-            command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U {} -r {}'.format(
-                cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, pip_extra_urls, opt_req)
+            command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U -r {}'.format(
+                cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, opt_req)
             self.__exec(command)
 
     def updateresources(self):
         restag = self.__cparser.get('DEFAULT', 'resourcestag')
-        resdir = self.__ci.get('RO_RESOURCE_PATH')
-        if resdir:
-            if not os.path.exists(resdir):
-                command = 'git clone git@github.com:wwPDB/onedep-resources_ro.git {}'.format(resdir)
+        if self.resources_ro_path:
+            if not os.path.exists(self.resources_ro_path):
+                command = 'git clone git@github.com:wwPDB/onedep-resources_ro.git {}'.format(self.resources_ro_path)
                 self.__exec(command)
 
             command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(
-                resdir, restag, restag)
+                self.resources_ro_path, restag, restag)
             self.__exec(command)
 
     def checkwebfe(self, overridenoop=False):
-        webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
-        webdir = os.path.abspath(os.path.join(webappsdir, '..'))
+        webdir = os.path.abspath(os.path.join(self.web_apps_path, '..'))
         curdir = os.path.dirname(__file__)
         checkscript = os.path.join(curdir, 'ManageWebFE.py')
         webfecheck = self.__cparser.get('DEFAULT', 'webfeconf')
@@ -174,15 +184,14 @@ class UpdateManager(object):
             print("ERROR: check of webfe directory failed")
 
     def updatewebfe(self):
-        webappsdir = self.__ci.get('TOP_WWPDB_WEBAPPS_DIR')
 
         # Checking if source directory exist
-        source_dir = os.path.abspath(os.path.join(webappsdir, '../..'))
+        source_dir = os.path.abspath(os.path.join(self.web_apps_path, '../..'))
         if not os.path.isdir(source_dir):
             os.makedirs(source_dir)
 
         # Check if repo is cloned
-        webfe_repo = os.path.abspath(os.path.join(webappsdir, '..'))
+        webfe_repo = os.path.abspath(os.path.join(self.web_apps_path, '..'))
         if not os.path.isdir(webfe_repo):
             command = 'git clone --recurse-submodules git@github.com:wwPDB/onedep-webfe.git'
             self.__exec(command, working_directory=source_dir)
@@ -207,7 +216,7 @@ class UpdateManager(object):
 
         taxuseftp = self.__cparser.has_option('DEFAULT', 'taxuseftp')
         if not taxuseftp:
-            taxresource = self.__ci.get('TAXONOMY_FILE_NAME')
+            taxresource = self.get_variable('TAXONOMY_FILE_NAME')
 
             if not taxresource:
                 print("ERROR: TAXONOMY_FILE_NAME is not set in site-config")
@@ -258,7 +267,7 @@ class UpdateManager(object):
                     class_method = getattr(self.__ci_common, config_info_app_method)
                     toolspath = class_method()
                 else:
-                    toolspath = self.__ci.get(confvar)
+                    toolspath = self.get_variable(confvar)
                 fname = os.path.join(toolspath, fpart)
                 if not os.path.exists(fname):
                     print("WARNING: Tool out of date. %s not found" % fname)
@@ -294,7 +303,7 @@ class UpdateManager(object):
         oelicfile = self.__ci_common.get_site_cc_oe_licence()
         # Might be in OS_ENVIRONMENT
         if not oelicfile:
-            oelicfile = os.getenv('SITE_CC_OE_LICENSE')
+            oelicfile = self.get_variable('SITE_CC_OE_LICENSE')
         if not oelicfile:
             print("***ERROR: Cannot determine open eye license from config")
             return

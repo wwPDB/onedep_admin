@@ -1,4 +1,4 @@
-FROM onedep-build_onedep_tools
+FROM onedep_tools
 
 # force using bash shell
 SHELL ["/bin/bash", "-c"]

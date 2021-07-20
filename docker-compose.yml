@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  onedep:
+    entrypoint: /bin/sh
+    image: onedep
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CS_USER: ${CS_USER}
+        CS_PW: ${CS_PW}
+        CS_URL: ${CS_URL}
+    environment:
+      WWPDB_SITE_ID: ${WWPDB_SITE_ID}
+      WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
+      TOP_WWPDB_SITE_CONFIG_DIR: /wwpdb/onedep/site-config
+    ports:
+      - target: 8080
+        published: 8080
+    #volumes:
+    #  - onedep_data:/wwpdb/onedep/data
+    #  - type: bind
+    #    source: ./env/site-config
+    #    target: /wwpdb/onedep/site-config
+
+#volumes:
+#  onedep_data:
+#  onedep_sessions:
+#  onedep_reference:
+#  onedep_webapps:
+#  onedep_resources_ro:

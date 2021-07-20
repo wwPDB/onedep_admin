@@ -3,7 +3,7 @@ FROM onedep_tools
 # force using bash shell
 SHELL ["/bin/bash", "-c"]
 
-# setup up ssh key used for accessing private repositories in git
+# setup up ssh key used for accessing private repositories in git (webapps and resources_ro)
 RUN mkdir -p -m 0600 ~/.ssh \
     && ssh-keyscan github.com >> ~/.ssh/known_hosts
 
@@ -11,6 +11,9 @@ RUN mkdir -p -m 0600 ~/.ssh \
 COPY ssh/ /ssh/
 RUN cp /ssh/id_rsa.pub ~/.ssh/id_rsa.pub && chmod 600 ~/.ssh/id_rsa.pub
 RUN cp /ssh/id_rsa ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
+
+# temp fix until rebuild onedep_tools package
+RUN rm -rm $BUILD_DIR/*
 
 # setup a venv
 ENV VENV=/venv
@@ -24,7 +27,6 @@ RUN pip install wwpdb.utils.config
 ARG CS_USER
 ARG CS_PW
 ARG CS_URL
-ARG CS_HOST_BASE
 
 # locations for checkouts
 ENV TOP_WWPDB_WEBAPPS_DIR=$ONEDEP_PATH/source/onedep-webfe/webapps

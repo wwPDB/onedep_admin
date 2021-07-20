@@ -13,7 +13,7 @@ RUN cp /ssh/id_rsa.pub ~/.ssh/id_rsa.pub && chmod 600 ~/.ssh/id_rsa.pub
 RUN cp /ssh/id_rsa ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
 
 # temp fix until rebuild onedep_tools package
-RUN rm -rm $BUILD_DIR/*
+RUN rm -rf $BUILD_DIR/*
 
 # setup a venv
 ENV VENV=/venv

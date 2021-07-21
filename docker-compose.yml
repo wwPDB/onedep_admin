@@ -14,19 +14,16 @@ services:
     environment:
       WWPDB_SITE_ID: ${WWPDB_SITE_ID}
       WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
-      TOP_WWPDB_SITE_CONFIG_DIR: /wwpdb/onedep/site-config
+      PYTHONPATH: "/env:/venv"
     ports:
       - target: 8080
         published: 8080
-    #volumes:
-    #  - onedep_data:/wwpdb/onedep/data
-    #  - type: bind
-    #    source: ./env/site-config
-    #    target: /wwpdb/onedep/site-config
+    volumes:
+      - onedep_data:/data
+      - type: bind
+        source: ./env
+        target: /env
 
-#volumes:
-#  onedep_data:
-#  onedep_sessions:
-#  onedep_reference:
-#  onedep_webapps:
-#  onedep_resources_ro:
+volumes:
+  onedep_data:
+

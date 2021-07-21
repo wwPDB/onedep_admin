@@ -28,7 +28,7 @@ ARG CS_URL
 
 # locations for checkouts
 ENV TOP_WWPDB_WEBAPPS_DIR=$ONEDEP_PATH/source/onedep-webfe/webapps
-ENV RO_RESOURCE_PATH=$ONEDEP_PATH/ro_resources
+ENV RO_RESOURCE_PATH=$ONEDEP_PATH/resources_ro
 
 WORKDIR $ONEDEP_PATH/onedep_admin
 COPY . .

@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   onedep:
-    entrypoint: /bin/sh
+    entrypoint: "cp /etc/httpd/sites-enabled/* /etc/httpd/conf.d/ && /usr/sbin/httpd -D FOREGROUND"
     image: onedep
     build:
       context: .
@@ -15,14 +15,19 @@ services:
       WWPDB_SITE_ID: ${WWPDB_SITE_ID}
       WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
       PYTHONPATH: "/env:/venv"
+      TOP_DATA_DIR: /data
+      TOP_WWPDB_SESSIONS_PATH: /data/sessions/sessions
     ports:
-      - target: 8080
-        published: 8080
+      - target: 80
+        published: 12000
     volumes:
       - onedep_data:/data
       - type: bind
-        source: ./env
+        source: ./env/site-config
         target: /env
+      - type: bind
+        source: ./env/apache
+        target: /etc/httpd/sites-enabled
 
 volumes:
   onedep_data:

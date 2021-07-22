@@ -418,7 +418,7 @@ show_info_message "checking if everything went ok..."
 echo "[*] $(highlight_text DEPLOY_DIR) is set to $(highlight_text $DEPLOY_DIR)"
 check_env_variable DEPLOY_DIR true
 
-show_info_message "cloning onedep repositories"
+show_info_message "cloning OneDep repositories"
 
 if [[ ! -d "onedep_admin" ]]; then
     git clone $ONEDEP_ADMIN_REPO_URL
@@ -708,19 +708,17 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
 
     show_info_message "checking out / updating mmcif dictionary"
 
-    python $ONEDEP_PATH/onedep-maintenance/common/update_mmcif_dictionary.py
+    python -m wwpdb.apps.site_admin.UpdateMmcifDictionary
     ret=$?
     if [[ $ret != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary from SVN' failed with exit code $ret"; fi
 
     show_info_message "checking out / updating taxonomy"
 
-    python $ONEDEP_PATH/onedep-maintenance/common/update_taxonomy_files.py
+    python -m wwpdb.apps.site_admin.UpdateTaxonomyFiles
     ret=$?
     if [[ $ret != 0 ]]; then show_error_message "step 'checking out / updating taxonomy from SVN' failed with exit code $ret"; fi
 
     # to checkout/ update  the chemical component dictionary (CCD) and PRD - this step can take a while
-    # using installed modules
-
     show_info_message "checking out / updating CCD and PRD"
 
     python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db CC
@@ -752,7 +750,7 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
 
     show_info_message "checking out / updating sequences in OneDep"
 
-    python ${ONEDEP_PATH}/onedep-maintenance/common/update_reference_sequences.py
+    python -m wwpdb.apps.site_admin.UpdateReferenceSequence
     ret=$?
     if [[ $ret != 0 ]]; then show_error_message "step 'update reference sequences' failed with exit code $ret"; fi
 

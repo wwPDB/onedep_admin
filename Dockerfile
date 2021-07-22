@@ -23,7 +23,7 @@ RUN pip config --site set global.no-cache-dir false
 
 # for running apache with this version of python
 RUN pip install mod-wsgi
-RUN mod_wsgi-express install-module > /etc/httpd/conf.modules.d/02-wsgi.conf
+RUN mod_wsgi-express install-module > /etc/httpd/conf.modules.d/10-wsgi.conf
 
 # access to content server
 ARG CS_USER

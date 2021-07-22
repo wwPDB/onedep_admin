@@ -706,54 +706,8 @@ fi
 
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
 
-    show_info_message "checking out / updating mmcif dictionary"
-
-    python -m wwpdb.apps.site_admin.UpdateMmcifDictionary
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary from SVN' failed with exit code $ret"; fi
-
-    show_info_message "checking out / updating taxonomy"
-
-    python -m wwpdb.apps.site_admin.UpdateTaxonomyFiles
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'checking out / updating taxonomy from SVN' failed with exit code $ret"; fi
-
-    # to checkout/ update  the chemical component dictionary (CCD) and PRD - this step can take a while
-    show_info_message "checking out / updating CCD and PRD"
-
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db CC
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'checking out CC' failed with exit code $ret"; fi
-
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --db CC --load
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'loading CC' failed with exit code $ret"; fi
-
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db PRD
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'checking out PRD' failed with exit code $ret"; fi
-
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --db PRD --load
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'loading PRD' failed with exit code $ret"; fi
-
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'compiling CCD and PRD data files' failed with exit code $ret"; fi
-
-  # get the taxonomy information for the depUI and load it into the OneDep database
-    show_info_message "loading taxonomy information into OneDep db"
-    
-    python -m wwpdb.apps.deposit.depui.taxonomy.loadTaxonomyFromFTP --write_sql
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $ret"; fi
-
-    show_info_message "checking out / updating sequences in OneDep"
-
-    python -m wwpdb.apps.site_admin.UpdateReferenceSequence
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'update reference sequences' failed with exit code $ret"; fi
-
+    show_info_message "Running setup maintenance"
+    python -m wwpdb.apps.site_admin.RunSetupMaintenance
 
 else
     show_warning_message "skipping maintenance tasks"

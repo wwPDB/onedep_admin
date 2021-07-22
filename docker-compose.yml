@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   onedep:
-    entrypoint: "cp /etc/httpd/sites-enabled/* /etc/httpd/conf.d/ && /usr/sbin/httpd -D FOREGROUND"
+    # command: cp /etc/httpd/sites-enabled/* /etc/httpd/conf.d/ && /usr/sbin/httpd -D FOREGROUND
     image: onedep
     build:
       context: .

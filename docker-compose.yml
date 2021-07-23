@@ -17,6 +17,8 @@ services:
       PYTHONPATH: "/env:/venv"
       TOP_DATA_DIR: /data
       TOP_WWPDB_SESSIONS_PATH: /data/sessions/sessions
+    #depends_on:
+    #  - db
     ports:
       - target: 80
         published: 12000
@@ -28,6 +30,23 @@ services:
       - type: bind
         source: ./env/apache
         target: /etc/httpd/sites-enabled
+
+  db:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD
+      MYSQL_USER: $MYSQL_USER
+      MYSQL_PASSWORD: $MYSQL_PASSWORD
+      MYSQL_DATABASE: depui_django
+    #volumes:
+    #    - ./env/db:/docker-entrypoint-initdb.d
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 3306:3306
 
 volumes:
   onedep_data:

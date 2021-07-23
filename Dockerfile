@@ -22,7 +22,6 @@ RUN pip install wwpdb.utils.config
 RUN pip config --site set global.no-cache-dir false
 
 # for running apache with this version of python
-RUN yum -y remove mod_wsgi
 RUN pip install mod-wsgi
 RUN mod_wsgi-express install-module > /etc/httpd/conf.modules.d/02-wsgi.conf
 

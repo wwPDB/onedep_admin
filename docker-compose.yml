@@ -41,6 +41,7 @@ services:
       WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
       PYTHONPATH: "/env:/venv"
     volumes:
+      - onedep_data:/data
       - type: bind
         source: ./env/site-config
         target: /env
@@ -54,6 +55,7 @@ services:
       WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
       PYTHONPATH: "/env:/venv"
     volumes:
+      - onedep_data:/data
       - type: bind
         source: ./env/site-config
         target: /env
@@ -67,6 +69,7 @@ services:
       WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
       PYTHONPATH: "/env:/venv"
     volumes:
+      - onedep_data:/data
       - type: bind
         source: ./env/site-config
         target: /env
@@ -80,6 +83,7 @@ services:
       WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
       PYTHONPATH: "/env:/venv"
     volumes:
+      - onedep_data:/data
       - type: bind
         source: ./env/site-config
         target: /env
@@ -110,6 +114,7 @@ services:
     depends_on:
       - db
     volumes:
+      - onedep_data:/data
       - type: bind
         source: ./env/site-config
         target: /env

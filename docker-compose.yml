@@ -35,18 +35,17 @@ services:
   # database - mysql database
   db:
     image: mysql
-    command: --default-authentication-plugin=mysql_native_password  --bind-address=0.0.0.0
+    command: --default-authentication-plugin=mysql_native_password --bind-address=0.0.0.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD
       MYSQL_USER: $MYSQL_USER
       MYSQL_PASSWORD: $MYSQL_PASSWORD
-      #MYSQL_DATABASE: depui_django
+      MYSQL_DATABASE: depui_django
     ports:
-      - target: 3306
-        published: 3306
-    volumes:
-        - ./env/db:/docker-entrypoint-initdb.d
+      - 3306:3306
+    #volumes:
+    #    - ./env/db:/docker-entrypoint-initdb.d
   adminer:
     image: adminer
     restart: always

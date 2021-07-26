@@ -17,9 +17,9 @@ ENV VENV=/venv
 ENV PATH=$VENV/bin:$PATH
 RUN python3 -m venv $VENV
 RUN pip install --no-cache-dir --upgrade setuptools pip
+RUN pip config --site set global.no-cache-dir false
 RUN pip install wheel
 RUN pip install wwpdb.utils.config
-RUN pip config --site set global.no-cache-dir false
 
 # for running apache with this version of python
 RUN pip install mod-wsgi

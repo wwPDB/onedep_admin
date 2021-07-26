@@ -17,7 +17,8 @@ services:
       PYTHONPATH: "/env:/venv"
       TOP_DATA_DIR: /data
       TOP_WWPDB_SESSIONS_PATH: /data/sessions/sessions
-    #depends_on:
+      MOGULPATH: /data/csd
+    # depends_on:
     #  - db
     ports:
       - target: 80
@@ -30,23 +31,40 @@ services:
       - type: bind
         source: ./env/apache
         target: /etc/httpd/sites-enabled
-
+        
+  # database - mysql database
   db:
     image: mysql
-    command: --default-authentication-plugin=mysql_native_password
+    command: --default-authentication-plugin=mysql_native_password  --bind-address=0.0.0.0
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD
       MYSQL_USER: $MYSQL_USER
       MYSQL_PASSWORD: $MYSQL_PASSWORD
-      MYSQL_DATABASE: depui_django
-    #volumes:
-    #    - ./env/db:/docker-entrypoint-initdb.d
+      #MYSQL_DATABASE: depui_django
+    ports:
+      - target: 3306
+        published: 3306
+    volumes:
+        - ./env/db:/docker-entrypoint-initdb.d
   adminer:
     image: adminer
     restart: always
     ports:
-      - 3306:3306
+      - 8181:8181
+
+  # message broker - used for APIs
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RMQ_PASS}
+      RABBITMQ_DEFAULT_VHOST: ${RMQ_VHOST}
+    ports:
+      - 5672:5672
+      - 5673:5673
+      - 15672:15672
 
 volumes:
   onedep_data:

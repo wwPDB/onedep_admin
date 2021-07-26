@@ -492,6 +492,7 @@ show_info_message "install some base packages"
 pip install wheel
 
 pip install wwpdb.utils.config
+pip install ansible~=3.0
 
 show_info_message "checking for updates in onedep_admin"
 

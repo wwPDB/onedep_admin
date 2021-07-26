@@ -35,7 +35,7 @@ OpenEye-toolkits-python2.7-ucs2-linux-x64 == 2016.6.1; python_version == '2.7' a
 --extra-index-url https://pypi.anaconda.org/OpenEye/simple
 OpenEye-toolkits ; python_version >= '3'
 
-# Ansible requested by PDBe
+# Ansible requested by PDBe - managed by install_onedep.sh
 # Transitioning between 2.9 and 2.10 requires uninstall... So pin python 2.7
-ansible < 2.10 ; python_version == '2.7'
-ansible ~= 3.0 ; python_version >= '3'
+#ansible < 2.10 ; python_version == '2.7'
+#ansible ~= 3.0 ; python_version >= '3'

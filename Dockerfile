@@ -42,6 +42,6 @@ RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers |& te
 WORKDIR $ONEDEP_PATH
 
 # temp branch for site_admin for setting up database
-RUN git clone --branch feature/db_ops git@github.com:wwPDB/py-wwpdb_apps_site_admin.git \
+RUN git clone --branch develop git@github.com:wwPDB/py-wwpdb_apps_site_admin.git \
     && cd py-wwpdb_apps_site_admin \
     && pip install .

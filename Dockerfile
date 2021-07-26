@@ -39,7 +39,6 @@ COPY . .
 
 RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers |& tee $ONEDEP_PATH/python_install.log
 
-# RUN yum install -y mariadb
 # RUN git clone git@github.com:wwPDB/py-wwpdb_apps_site_admin.git \
 #     && cd py-wwpdb_apps_site_admin && git checkout feature/db_ops \
 #     && pip install --edit . 

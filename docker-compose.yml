@@ -132,8 +132,6 @@ services:
       MYSQL_TCP_PORT: 3306
     ports:
       - 3306:3306
-    volumes:
-        - ./env/db:/docker-entrypoint-initdb.d
   adminer:
     image: adminer
     restart: always

@@ -589,92 +589,20 @@ if [[ $OPT_DO_DATABASE == true ]]; then
         exit 1
     fi
 
-    new_db_root_password=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9!@#$%&*+<>?=-' | fold -w 32 | head -n 1)
+    get_config_var SITE_ADMIN_DB_PASSWORD_ROOT; new_db_root_password=$retval
+    # new_db_root_password=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9!@#$%&*+<>?=-' | fold -w 32 | head -n 1)
 
     echo "[*] mysql temporary root password is $(highlight_text $temp_db_root_password)"
     echo "[*] setting mysql root password to $(highlight_text $new_db_root_password)"
 
     # not using the run_mysql_command here as this requires additional flags
     ./mysql/bin/mysql -P$db_port -uroot -p$temp_db_root_password --socket $DATABASE_DIR/mysql.sock --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$new_db_root_password'"
-    ./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE USER '$db_user'@'%' IDENTIFIED WITH mysql_native_password BY '$db_password'"
+    #./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE USER '$db_user'@'%' IDENTIFIED WITH mysql_native_password BY '$db_password'"
     # should we restrict permissions for this user?
-    ./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "GRANT ALL ON *.* TO '$db_user'@'%' WITH GRANT OPTION"
+    #./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "GRANT ALL ON *.* TO '$db_user'@'%' WITH GRANT OPTION"
 
     show_info_message "creating schemas"
-
-    # status and da_internal
-    get_config_var SITE_PACKAGES_PATH
-    db_loader_path=$retval/dbloader/bin/db-loader
-
-    # status db
-    get_config_var SITE_DB_DATABASE_NAME; db_name=$retval
-    mkdir -p status_schema && cd status_schema
-
-    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql status "SHOW DATABASES LIKE '$db_name';")
-    if [[ -z $db_exists ]]; then
-        python -m wwpdb.apps.deposit.depui.schema.DepUISchema > status_schema.sql
-        run_mysql_script $DATABASE_DIR/mysql/bin/mysql status status_schema.sql
-    else
-        show_warning_message "database $db_name already exists on server"
-    fi
-
-    cd ..
-
-    # should we be doing this using the python APIs (PdbxSchemaMapReader, SchemaDefBase, MyDbAdminSqlGen)? would have to
-    # create a new file to load this cif OR do it using an inline python command
-    get_config_var SITE_DA_INTERNAL_DB_NAME; db_name=$retval
-    mkdir -p da_internal_schema && cd da_internal_schema
-
-    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
-    if [[ -z $db_exists ]]; then
-        run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "CREATE DATABASE $db_name"
-
-        get_config_var RO_RESOURCE_PATH; RO_RESOURCE_PATH=$retval
-
-        da_internal_cif=$RO_RESOURCE_PATH/da_internal/status_rcsb_schema_da.cif
-        $($db_loader_path -sql -server mysql -map $da_internal_cif -schema -db da_internal)
-        run_mysql_script $DATABASE_DIR/mysql/bin/mysql da_internal DB_LOADER_SCHEMA.sql
-
-        da_internal_cif=$RO_RESOURCE_PATH/da_internal/database_status_history_schema.cif
-        $($db_loader_path -sql -server mysql -map $da_internal_cif -schema -db da_internal)
-        run_mysql_script $DATABASE_DIR/mysql/bin/mysql da_internal DB_LOADER_SCHEMA.sql
-    else
-        show_warning_message "database $db_name already exists on server"
-    fi
-
-    cd ..
-
-    # django tables
-    get_config_var SITE_DEP_DB_DATABASE_NAME; db_name=$retval
-
-    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
-    if [[ -z $db_exists ]]; then
-        run_mysql_command $DATABASE_DIR/mysql/bin/mysql depui "CREATE DATABASE $db_name"
-
-        python -m wwpdb.apps.deposit.manage makemigrations depui
-        python -m wwpdb.apps.deposit.manage migrate
-    else
-        show_warning_message "database $db_name already exists on server"
-    fi
-
-    # prdv4 and compv4 schemas
-    get_config_var SITE_REFDATA_PRD_DB_NAME; db_name=$retval
-
-    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
-    if [[ -z $db_exists ]]; then
-        run_mysql_command $DATABASE_DIR/mysql/bin/mysql prdv4 "CREATE DATABASE $db_name"
-    else
-        show_warning_message "database $db_name already exists on server"
-    fi
-
-    get_config_var SITE_REFDATA_CC_DB_NAME; db_name=$retval
-
-    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
-    if [[ -z $db_exists ]]; then
-        run_mysql_command $DATABASE_DIR/mysql/bin/mysql prdv4 "CREATE DATABASE $db_name"
-    else
-        show_warning_message "database $db_name already exists on server"
-    fi
+    python -m wwpdb.apps.site_admin.DbAdminExec --create-schemas
 
     # dummy codes
 

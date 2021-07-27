@@ -2,7 +2,8 @@ version: '3.8'
 
 services:
   onedep:
-    command: ["sh", "-c", "cp /etc/httpd/sites-enabled/* /etc/httpd/conf.d/ && /usr/sbin/httpd -D FOREGROUND"]
+    # command: ["sh", "-c", "cp /etc/httpd/sites-enabled/* /etc/httpd/conf.d/ && /usr/sbin/httpd -D FOREGROUND"]
+    command: ["sh", "-c", "cp /etc/httpd/sites-enabled/* /etc/httpd/conf.d/ && /usr/sbin/httpd; tail -f /etc/httpd/logs/error_log"]
     image: onedep
     build:
       context: .

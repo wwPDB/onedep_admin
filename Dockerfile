@@ -37,11 +37,15 @@ ENV RO_RESOURCE_PATH=$ONEDEP_PATH/resources_ro
 WORKDIR $ONEDEP_PATH/onedep_admin
 COPY . .
 
-RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers |& tee $ONEDEP_PATH/python_install.log
+# build-dev means this builds the latest development release with --edit installations of packages
+RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers --build-dev |& tee $ONEDEP_PATH/python_install.log
+
+# For building production system
+#RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers |& tee $ONEDEP_PATH/python_install.log
 
 WORKDIR $ONEDEP_PATH
 
-# temp branch for site_admin for setting up database
-RUN git clone --branch develop git@github.com:wwPDB/py-wwpdb_apps_site_admin.git \
-    && cd py-wwpdb_apps_site_admin \
-    && pip install .
+# temp develop install for site_admin for setting up database
+#RUN git clone --branch develop git@github.com:wwPDB/py-wwpdb_apps_site_admin.git \
+#    && cd py-wwpdb_apps_site_admin \
+#    && pip install .

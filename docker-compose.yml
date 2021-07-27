@@ -35,7 +35,7 @@ services:
   # wfe
   onedep_wfe:
     image: onedep
-    command: ["sh", "-c", "python -m wwpdb.apps.wf_engine.wf_engine_utils.run.WFEngineRunnerExec --start"]
+    command: ["sh", "-c", "python -m wwpdb.apps.wf_engine.wf_engine_utils.run.WFEngineRunnerExec --start; tail -f /dev/null"]
     environment:
       WWPDB_SITE_ID: ${WWPDB_SITE_ID}
       WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
@@ -49,7 +49,7 @@ services:
   # validation API consumer
   onedep_val_api_consumer:
     image: onedep
-    command: [ "sh", "-c", "python -m wwpdb.apps.val_ws_server.service.ValidationServiceHandler --start" ]
+    command: [ "sh", "-c", "python -m wwpdb.apps.val_ws_server.service.ValidationServiceHandler --start; tail -f /dev/null" ]
     environment:
       WWPDB_SITE_ID: ${WWPDB_SITE_ID}
       WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
@@ -63,7 +63,7 @@ services:
   # validation API consumer
   onedep_val_rel_consumer:
     image: onedep
-    command: [ "sh", "-c", "python -m wwpdb.apps.val_rel.service.ValidationReleaseServiceHandler --start" ]
+    command: [ "sh", "-c", "python -m wwpdb.apps.val_rel.service.ValidationReleaseServiceHandler --start; tail -f /dev/null" ]
     environment:
       WWPDB_SITE_ID: ${WWPDB_SITE_ID}
       WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
@@ -77,7 +77,7 @@ services:
   # validation API consumer
   onedep_content_api_consumer:
     image: onedep
-    command: [ "sh", "-c", "python -m wwpdb.apps.content_ws_server.service.ContentRequestServiceHandler --start" ]
+    command: [ "sh", "-c", "python -m wwpdb.apps.content_ws_server.service.ContentRequestServiceHandler --start; tail -f /dev/null" ]
     environment:
       WWPDB_SITE_ID: ${WWPDB_SITE_ID}
       WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}

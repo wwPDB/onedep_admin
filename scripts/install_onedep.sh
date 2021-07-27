@@ -435,10 +435,6 @@ if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
     git clone $ONEDEP_MAINTENANCE_REPO_URL
 fi
 
-#show_info_message "creating 'resources' folder"
-
-#mkdir -p $DEPLOY_DIR/resources
-
 if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
     cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER # maybe I should put the build version in a variable
@@ -679,13 +675,7 @@ fi
 # service startup
 # ----------------------------------------------------------------
 
-#show_info_message "restarting wfe service"
-#python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_wfe   # aliased to restart_wfe
-
-#show_info_message "restarting apache service"
-#python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_apache   # aliased to restart_apache
-
-start_service_command="python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py"
+start_service_command="python $ONEDEP_PATH/onedep_admin/scripts/restart_services.py"
 startWFE="$start_service_command --restart_wfe"
 startApache="$start_service_command --restart_apache"
 

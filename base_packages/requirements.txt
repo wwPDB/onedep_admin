@@ -31,9 +31,9 @@ pandas==0.23.4; python_version == '2.7'
 # We define OpenEye for python 2 - as building development should not depend on unspecified location
 # Install OpenEye toolkit - should be in the wwpdb.utils.oe.
 OpenEye-toolkits-python2.7-ucs2-linux-x64 == 2016.6.1; python_version == '2.7' and sys_platform=='linux2'
-# Newer OpenEye - we will pull in directly - instead of content server
+# Newer OpenEye - we will pull in directly - instead of content server -- RetHat 7 will not work with 2021 OpenEye due to libstdcc++ ABI
 --extra-index-url https://pypi.anaconda.org/OpenEye/simple
-OpenEye-toolkits ; python_version >= '3'
+OpenEye-toolkits<=2020.2.4 ; python_version >= '3'
 
 # Ansible requested by PDBe - managed by install_onedep.sh
 # Transitioning between 2.9 and 2.10 requires uninstall... So pin python 2.7

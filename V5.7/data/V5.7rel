@@ -90,9 +90,9 @@ va==0.0.0.dev97
 WebOb==1.8.7
 wrapt==1.12.1
 wwpdb.apps.ann-tasks-v2==0.22
-wwpdb.apps.ccmodule==0.18
+wwpdb.apps.ccmodule==0.18.2
 wwpdb.apps.chem-ref-data==0.12
-wwpdb.apps.chemeditor==0.11
+wwpdb.apps.chemeditor==0.11.1
 wwpdb.apps.content-ws-server==0.6
 wwpdb.apps.deposit==0.28
 wwpdb.apps.editormodule==0.9.2
@@ -104,7 +104,7 @@ wwpdb.apps.site-admin==0.11
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.10.2
 wwpdb.apps.val-ws-server==0.7.1
-wwpdb.apps.validation==2.23
+wwpdb.apps.validation==2.23.1
 wwpdb.apps.wf-engine==0.14
 wwpdb.apps.workmanager==0.17
 wwpdb.io==0.18

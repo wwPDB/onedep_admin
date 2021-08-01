@@ -47,7 +47,7 @@ class BuildTools(object):
             # Missing stanza - exit
             return
 
-        packs = packages.split(',')
+        packs = packages.split(' ')
         for pack in packs:
             p = pack.strip()
             if p:

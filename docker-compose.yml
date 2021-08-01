@@ -33,10 +33,43 @@ services:
         source: ./env/apache
         target: /etc/httpd/sites-enabled
 
+
+  onedep_python:
+    #command: ["sh", "-c", "cp /etc/httpd/sites-enabled/* /etc/httpd/conf.d/ && /usr/sbin/httpd; tail -f /etc/httpd/logs/error_log"]
+    image: onedep_python
+    build:
+      context: .
+      dockerfile: Dockerfile.pythononly
+      args:
+        CS_USER: ${CS_USER}
+        CS_PW: ${CS_PW}
+        CS_URL: ${CS_URL}
+    environment:
+      WWPDB_SITE_ID: ${WWPDB_SITE_ID}
+      WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
+      PYTHONPATH: "/env:/venv"
+      TOP_DATA_DIR: /data
+      TOP_WWPDB_SESSIONS_PATH: /data/sessions/sessions
+      MOGULPATH: /data/csd
+    #depends_on:
+    #  - db
+    ports:
+      - target: 80
+        published: 12000
+    volumes:
+      - onedep_data:/data
+      - type: bind
+        source: ./env/site-config
+        target: /env
+      - type: bind
+        source: ./env/apache
+        target: /etc/httpd/sites-enabled
+
   # wfe
   onedep_wfe:
     image: onedep
     command: ["sh", "-c", "python -m wwpdb.apps.wf_engine.wf_engine_utils.run.WFEngineRunnerExec --start; tail -f /dev/null"]
+    hostname: wfe
     environment:
       WWPDB_SITE_ID: ${WWPDB_SITE_ID}
       WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
@@ -143,10 +176,10 @@ services:
   rabbitmq:
     image: rabbitmq:3-management
     container_name: rabbitmq
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RMQ_USER}
-      RABBITMQ_DEFAULT_PASS: ${RMQ_PASS}
-      RABBITMQ_DEFAULT_VHOST: ${RMQ_VHOST}
+    volumes:
+      - type: bind
+        source: ./env/rabbitmq
+        target: /etc/rabbitmq
     ports:
       - 5672:5672
       - 5673:5673

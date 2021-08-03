@@ -16,6 +16,7 @@ RUN dnf clean all
 # force using bash shell
 SHELL ["/bin/bash", "-c"]
 
+# setup access to private repositories
 ARG SSH_PRIVATE_KEY
 RUN mkdir /root/.ssh/
 RUN echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa
@@ -37,14 +38,14 @@ RUN rpm -Uvh inchi.rpm
 # RUN wget -O openbabel-2.3.2.tar.gz http://sourceforge.net/projects/openbabel/files/openbabel/2.3.2/openbabel-2.3.2.tar.gz/download
 RUN wget -O openbabel-2.3.2.tar.gz https://github.com/openbabel/openbabel/archive/refs/tags/openbabel-2-3-2.tar.gz
 RUN tar -xvf openbabel-2.3.2.tar.gz
-RUN cd openbabel-2.3.2 \
+RUN cd openbabel-openbabel-2-3-2 \
     && cat ./include/openbabel/shared_ptr.h | sed -e 's/__GNUC__ == 4/__GNUC__ >= 4/g' > ./include/openbabel/shared_ptr.h.tmp \
     && mv ./include/openbabel/shared_ptr.h ./include/openbabel/shared_ptr.h__orig \
     && mv ./include/openbabel/shared_ptr.h.tmp ./include/openbabel/shared_ptr.h \
     && cat ./CMakeLists.txt | sed -e '0,/if(NOT MSVC)/s//set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wno-error -std=c++03")\nset(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wno-error")\n\nif(NOT MSVC)/g' > CMakeLists.txt.tmp \
     && mv ./CMakeLists.txt ./CMakeLists.txt__orig \
     && mv ./CMakeLists.txt.tmp ./CMakeLists.txt
-RUN mkdir build && cd build && cmake ../openbabel-2.3.2 && make && make install
+RUN mkdir build && cd build && cmake ../openbabel-openbabel-2-3-2 && make && make install
 
 
 # setup venv

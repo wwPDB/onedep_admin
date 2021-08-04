@@ -113,10 +113,14 @@ class UpdateManager(object):
 
         urlreq = urlparse(cs_url)
         urlpath = "{}://{}:{}@{}{}/dist/simple/".format(urlreq.scheme, cs_user, cs_pass, urlreq.netloc, urlreq.path)
-        pip_extra_urls = "--extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple ".format(
-                           urlpath, urlreq.netloc)
+        # pip_extra_urls = "--extra-index-url {} --trusted-host {} --extra-index-url https://pypi.anaconda.org/OpenEye/simple ".format(
+        #                   urlpath, urlreq.netloc)
 
-        pip_extra_urls += '-c {}'.format(constraintfile)
+        self.__exec("pip config --site set global.trusted-host {}".format(urlreq.netloc))
+        self.__exec('pip config --site set global.extra-index-url "{} https://pypi.anaconda.org/OpenEye/simple'.format(urlpath))
+        self.__exec("pip config --site set global.no-cache-dir false")
+
+        pip_extra_urls = '-c {}'.format(constraintfile)
 
         # pip installing from requirements.txt in base_packages
 

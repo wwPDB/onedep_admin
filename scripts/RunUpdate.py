@@ -117,7 +117,7 @@ class UpdateManager(object):
         #                   urlpath, urlreq.netloc)
 
         self.__exec("pip config --site set global.trusted-host {}".format(urlreq.netloc))
-        self.__exec('pip config --site set global.extra-index-url "{} https://pypi.anaconda.org/OpenEye/simple'.format(urlpath))
+        self.__exec('pip config --site set global.extra-index-url "{} https://pypi.anaconda.org/OpenEye/simple"'.format(urlpath))
         self.__exec("pip config --site set global.no-cache-dir false")
 
         pip_extra_urls = '-c {}'.format(constraintfile)

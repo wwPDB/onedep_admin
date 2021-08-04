@@ -19,7 +19,7 @@ SHELL ["/bin/bash", "-c"]
 # setup access to private repositories
 ARG SSH_PRIVATE_KEY
 RUN mkdir ~/.ssh/
-RUN echo -n "${SSH_PRIVATE_KEY}" | tr -d '\r' > ~/.ssh/id_rsa
+RUN echo ${SSH_PRIVATE_KEY} | tr -d '\r' > ~/.ssh/id_rsa
 RUN chmod 600 ~/.ssh/id_rsa
 RUN ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
 RUN touch ~/.ssh/known_hosts

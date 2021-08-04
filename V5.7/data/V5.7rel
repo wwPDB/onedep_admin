@@ -7,7 +7,6 @@ cffi==1.14.6
 chardet==4.0.0
 charset-normalizer==2.0.3
 cryptography==3.4.7
-cx-Oracle==8.2.1
 cycler==0.10.0
 debtcollector==2.2.0
 dill==0.3.4

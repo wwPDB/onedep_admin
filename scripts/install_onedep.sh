@@ -482,7 +482,7 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
   pip install wheel
 
   pip install wwpdb.utils.config
-  pip install ansible~=3.0
+  pip install ansible~=3.4
 
   show_info_message "checking for updates in onedep_admin"
 

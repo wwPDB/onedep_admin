@@ -7,7 +7,7 @@ RUN dnf config-manager --set-enabled powertools
 RUN dnf -y install python38 python38-devel httpd httpd-devel git cmake gcc gcc-c++ wget \
     libarchive bison flex gcc-gfortran
 RUN dnf -y install eigen3-devel zlib-devel libxml2-devel swig cairo-devel
-RUN dnf -y install mariadb mariadb-devel mariadb-client subversion cvs tcsh texlive texlive-multirow mailx  \
+RUN dnf -y install mariadb mariadb-devel subversion cvs tcsh texlive texlive-multirow mailx  \
     java-1.8.0-openjdk mesa-libGLU mesa-libOSMesa glx-utils
 
 # remove any caching

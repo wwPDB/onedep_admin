@@ -233,7 +233,7 @@ System preparation parameters:
 OneDep installation parameters:
     --config-version:           OneDep config version, defaults to 'latest'
     --python3-path:             path to a Python interpreter, defaults to 'python3'
-    --build-tools:              Compile OneDep tools - OneDep requires compiled tools to be compiled or sync'd from RCSB
+    --build-tools:              Compile OneDep tools - OneDep requires compiled tools to be compiled or syncd from RCSB
     --install-onedep:           Installs OneDep python packages
     --install-onedep-develop    installs OneDep python packages develop branches in edit mode
     --run-maintenance:          perform maintenance tasks as part of setup
@@ -263,10 +263,6 @@ do
         ;;
         --python3-path)
             PYTHON3="$2"
-            shift
-        ;;
-        --install-specific-package)
-            SPECIFIC_PACKAGE="$2"
             shift
         ;;
         --database-dir)
@@ -360,8 +356,10 @@ if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
         show_info_message "installing system packages for running OneDep"
         if [[ $CENTOS_MAJOR_VER == 8 ]]; then
           command=onedep-build/install-base/centos-8-host-packages.sh
-        else
+        elif [[ $CENTOS_MAJOR_VER == 7 ]]; then
           command=onedep-build/install-base/centos-7-host-packages.sh
+        else
+          show_warning_message "unsupported OS version"
         fi
     fi
     show_warning_message "running command: $command"
@@ -418,26 +416,9 @@ show_info_message "checking if everything went ok..."
 echo "[*] $(highlight_text DEPLOY_DIR) is set to $(highlight_text $DEPLOY_DIR)"
 check_env_variable DEPLOY_DIR true
 
-show_info_message "cloning OneDep repositories"
-
-if [[ ! -d "onedep_admin" ]]; then
-    git clone $ONEDEP_ADMIN_REPO_URL
-    
-    cd onedep_admin
-
-    git checkout master
-    git pull
-
-    cd ..
-fi
-
-if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
-    git clone $ONEDEP_MAINTENANCE_REPO_URL
-fi
-
 if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
-    cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER # maybe I should put the build version in a variable
+    cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER
     ./BUILD.sh |& tee build.log
 else
     show_warning_message "skipping build"
@@ -447,73 +428,78 @@ fi
 # setting up OneDep virtual env
 # ----------------------------------------------------------------
 
-show_info_message "setting up OneDep virtual environment"
-
-cd $ONEDEP_PATH
-unset PYTHONHOME
-
-if [[ -z "$VENV_PATH" ]]; then
-    VENV_PATH=$(echo $PYTHONPATH | cut -d":" -f1)
-fi
-
-if [[ -z "$VENV_PATH" ]]; then
-    show_error_message "VENV_PATH not set, quitting..."
-    exit 1
-fi
-
-show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH) with $(highlight_text $PYTHON3)"
-
-$PYTHON3 -m venv $VENV_PATH
-source $VENV_PATH/bin/activate
-
-show_info_message "updating setuptools and pip"
-pip install --no-cache-dir --upgrade setuptools pip
-
-show_info_message "creating pip configuration file"
-
-get_config_var CS_HOST_BASE; cs_host_base=$retval
-get_config_var CS_USER; cs_user=$retval
-get_config_var CS_PW; cs_pw=$retval
-get_config_var CS_DISTRIB_URL; cs_distrib_url=$retval
-
-if [[ ! -z "$cs_host_base" && ! -z "$cs_user" && ! -z "$cs_pw" && ! -z "$cs_distrib_url" ]]; then
-    pip config --site set global.trusted-host $cs_host_base
-    pip config --site set global.extra-index-url "http://${cs_user}:${cs_pw}@${cs_distrib_url} https://pypi.anaconda.org/OpenEye/simple"
-    pip config --site set global.no-cache-dir false
-else
-    show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
-fi
-
-show_info_message "install some base packages"
-pip install wheel
-
-pip install wwpdb.utils.config
-pip install ansible~=3.0
-
-show_info_message "checking for updates in onedep_admin"
-
-cd $ONEDEP_PATH/onedep_admin
-git checkout master
-git pull
-
-
 if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
+  show_info_message "setting up OneDep virtual environment"
+
+  cd $ONEDEP_PATH
+  unset PYTHONHOME
+
+  if [[ -z "$VENV_PATH" ]]; then
+      VENV_PATH=$(echo $PYTHONPATH | cut -d":" -f1)
+  fi
+
+  if [[ -z "$VENV_PATH" ]]; then
+      show_error_message "VENV_PATH not set, quitting..."
+      exit 1
+  fi
+
+  show_info_message "cloning OneDep admin repository"
+  if [[ ! -d "onedep_admin" ]]; then
+    git clone $ONEDEP_ADMIN_REPO_URL
+
+    cd onedep_admin
+
+    git checkout master
+    git pull
+
+    cd ..
+  fi
+
+  show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH) with $(highlight_text $PYTHON3)"
+
+  $PYTHON3 -m venv $VENV_PATH
+  source $VENV_PATH/bin/activate
+
+  show_info_message "updating setuptools and pip"
+  pip install --no-cache-dir --upgrade setuptools pip
+
+  show_info_message "creating pip configuration file"
+
+  get_config_var CS_HOST_BASE; cs_host_base=$retval
+  get_config_var CS_USER; cs_user=$retval
+  get_config_var CS_PW; cs_pw=$retval
+  get_config_var CS_DISTRIB_URL; cs_distrib_url=$retval
+
+  if [[ ! -z "$cs_host_base" && ! -z "$cs_user" && ! -z "$cs_pw" && ! -z "$cs_distrib_url" ]]; then
+      pip config --site set global.trusted-host $cs_host_base
+      pip config --site set global.extra-index-url "http://${cs_user}:${cs_pw}@${cs_distrib_url} https://pypi.anaconda.org/OpenEye/simple"
+      pip config --site set global.no-cache-dir false
+  else
+      show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
+  fi
+
+  show_info_message "install some base packages"
+  pip install wheel
+
+  pip install wwpdb.utils.config
+  pip install ansible~=3.0
+
+  show_info_message "checking for updates in onedep_admin"
+
+  cd $ONEDEP_PATH/onedep_admin
+  git checkout master
+  git pull
+
   show_info_message "running RunUpdate.py step"
   if [[ $OPT_DO_BUILD_DEV == true ]]; then
       python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-dev
   else
       python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools
   fi
+  pip list
 else
     show_warning_message "skipping RunUpdate step"
 fi
-
-if [[ ! -z $SPECIFIC_PACKAGE ]]; then
-  show_info_message "installing package $(highlight_text $SPECIFIC_PACKAGE)"
-  pip install $SPECIFIC_PACKAGE
-fi
-
-pip list
 
 # ----------------------------------------------------------------
 # database setup
@@ -630,6 +616,11 @@ fi
 
 
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
+
+  if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
+    show_info_message "cloning OneDep maintenance repository"
+    git clone $ONEDEP_MAINTENANCE_REPO_URL
+  fi
 
     show_info_message "Running setup maintenance"
     python -m wwpdb.apps.site_admin.RunSetupMaintenance

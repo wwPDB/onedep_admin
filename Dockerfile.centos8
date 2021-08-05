@@ -65,6 +65,9 @@ ARG CS_USER
 ARG CS_PW
 ARG CS_URL
 
+# build arg - should be null or set to --build-dev
+ARG BUILD_DEV
+
 # locations for checkouts
 ENV TOP_WWPDB_WEBAPPS_DIR=$ONEDEP_PATH/source/onedep-webfe/webapps
 ENV RO_RESOURCE_PATH=$ONEDEP_PATH/resources_ro
@@ -72,10 +75,8 @@ ENV RO_RESOURCE_PATH=$ONEDEP_PATH/resources_ro
 WORKDIR $ONEDEP_PATH/onedep_admin
 COPY . .
 
-# build-dev means this builds the latest development release with --edit installations of packages
-#RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers --build-dev |& tee $ONEDEP_PATH/python_install.log
+RUN cp apache/annotation.conf /etc/httpd/conf.d/
 
-# For building production system
-RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers |& tee $ONEDEP_PATH/python_install.log
+RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers $BUILD_DEV |& tee $ONEDEP_PATH/python_install.log
 
 WORKDIR $ONEDEP_PATH

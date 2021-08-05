@@ -18,7 +18,7 @@ biotempy; python_version >= '3'
 # TEMPy requires biopython.  biopython 1.76 is last python 2 compatible version and they did not provide proper metadata in 1.77.
 # biotempy pins version at 1.73 as well
 # Put python 3 biopython in constraints
-# biopython==1.73; python_version >= '3'
+#biopython==1.73; python_version >= '3'
 biopython==1.73; python_version == '2.7'
 
 # New VA will require emda. emda has pinned pandas - a dependency installs pandas so then we have conflicting needs. We pin here.
@@ -26,7 +26,7 @@ biopython==1.73; python_version == '2.7'
 # Python 3 will need a newer version as 0.23.4 cannot compile with it
 pandas==0.23.4; python_version == '2.7'
 # Issues compiling here - let float and install later
-# pandas; python_version >= '3'
+#pandas; python_version >= '3'
 
 # We define OpenEye for python 2 - as building development should not depend on unspecified location
 # Install OpenEye toolkit - should be in the wwpdb.utils.oe.
@@ -35,7 +35,7 @@ OpenEye-toolkits-python2.7-ucs2-linux-x64 == 2016.6.1; python_version == '2.7' a
 --extra-index-url https://pypi.anaconda.org/OpenEye/simple
 OpenEye-toolkits<=2020.2.4 ; python_version >= '3'
 
-# Ansible requested by PDBe - managed by install_onedep.sh
+# Ansible requested by PDBe
 # Transitioning between 2.9 and 2.10 requires uninstall... So pin python 2.7
-# ansible < 2.10 ; python_version == '2.7'
-# ansible ~= 3.0 ; python_version >= '3'
+#ansible < 2.10 ; python_version == '2.7'
+#ansible ~= 3.0 ; python_version >= '3'

@@ -7,8 +7,8 @@ RUN dnf config-manager --set-enabled powertools
 RUN dnf -y install python38 python38-devel httpd httpd-devel git cmake gcc gcc-c++ wget \
     libarchive bison flex gcc-gfortran
 RUN dnf -y install eigen3-devel zlib-devel libxml2-devel swig cairo-devel
-RUN dnf -y install mariadb mariadb-devel subversion cvs tcsh texlive texlive-multirow mailx java-1.8.0-openjdk \
-    mesa-libGLU mesa-libOSMesa glx-utils
+RUN dnf -y install mariadb mariadb-devel mariadb-client subversion cvs tcsh texlive texlive-multirow mailx  \
+    java-1.8.0-openjdk mesa-libGLU mesa-libOSMesa glx-utils
 
 # remove any caching
 RUN dnf clean all
@@ -16,27 +16,25 @@ RUN dnf clean all
 # force using bash shell
 SHELL ["/bin/bash", "-c"]
 
-# setup access to private repositories
+# setup access to private repositories using SSH_PRIVATE_KEY
 ARG SSH_PRIVATE_KEY
 RUN mkdir ~/.ssh/
 RUN echo "${SSH_PRIVATE_KEY}" | tr -d '\r' > ~/.ssh/id_rsa
 RUN chmod 600 ~/.ssh/id_rsa
 RUN ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
+# enable access to github.com
 RUN touch ~/.ssh/known_hosts
 RUN ssh-keyscan github.com >> ~/.ssh/known_hosts
-
-ENV ONEDEP_PATH=/wwpdb/onedep
 
 # setup a venv
 ENV VENV=/venv
 ENV PATH=$VENV/bin:$PATH
 
-# install inchi
+# install inchi - using CentOS 7 rpm
 RUN wget -O inchi.rpm https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/i/inchi-1.0.4-4.el7.x86_64.rpm
 RUN rpm -Uvh inchi.rpm
 
 # install openbabel
-# RUN wget -O openbabel-2.3.2.tar.gz http://sourceforge.net/projects/openbabel/files/openbabel/2.3.2/openbabel-2.3.2.tar.gz/download
 RUN wget -O openbabel-2.3.2.tar.gz https://github.com/openbabel/openbabel/archive/refs/tags/openbabel-2-3-2.tar.gz
 RUN tar -xvf openbabel-2.3.2.tar.gz
 RUN cd openbabel-openbabel-2-3-2 \
@@ -60,6 +58,10 @@ RUN pip install wwpdb.utils.config
 RUN pip install mod-wsgi
 RUN mod_wsgi-express install-module > /etc/httpd/conf.modules.d/02-wsgi.conf
 
+# setup the apache - expose port 8080 so that non-root users can run the image
+RUN chmod a+w /etc/httpd/logs
+RUN sed -i "s/Listen 80/Listen 8080/g" /etc/httpd/conf/httpd.conf
+
 # access to content server
 ARG CS_USER
 ARG CS_PW
@@ -68,15 +70,17 @@ ARG CS_URL
 # build arg - should be null or set to --build-dev
 ARG BUILD_DEV
 
+# set base OneDep path
+ENV ONEDEP_PATH=/wwpdb/onedep
+
 # locations for checkouts
 ENV TOP_WWPDB_WEBAPPS_DIR=$ONEDEP_PATH/source/onedep-webfe/webapps
 ENV RO_RESOURCE_PATH=$ONEDEP_PATH/resources_ro
 
+# copy this package
 WORKDIR $ONEDEP_PATH/onedep_admin
 COPY . .
-
 RUN cp apache/annotation.conf /etc/httpd/conf.d/
 
-RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers $BUILD_DEV |& tee $ONEDEP_PATH/python_install.log
-
-WORKDIR $ONEDEP_PATH
+# install OneDep python, webapps and resources_ro
+RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers $BUILD_DEV

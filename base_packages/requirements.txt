@@ -37,5 +37,5 @@ OpenEye-toolkits<=2020.2.4 ; python_version >= '3'
 
 # Ansible requested by PDBe
 # Transitioning between 2.9 and 2.10 requires uninstall... So pin python 2.7
-ansible < 2.10 ; python_version == '2.7'
-ansible ~= 3.0 ; python_version >= '3'
+#ansible < 2.10 ; python_version == '2.7'
+#ansible ~= 3.0 ; python_version >= '3'

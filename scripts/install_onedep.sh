@@ -377,7 +377,8 @@ fi
 # setting up directories used by onedep and python venv
 # ----------------------------------------------------------------
 
-show_info_message "setting up Python virtual env"
+show_info_message "setting up site-config"
+show_info_message "setting up temporary Python virtual env"
 
 # delete if it already exists
 if [[ -d "/tmp/venv" ]]; then

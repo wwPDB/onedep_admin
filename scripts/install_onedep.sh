@@ -216,6 +216,7 @@ OPT_DO_APACHE=false
 OPT_DO_RESTART_SERVICES=false
 OPT_VAL_SERVER_NUM_WORKERS="60"
 OPT_DO_BUILD_DEV=false
+OPT_DO_PULL_SINGULARITY=false
 
 # database flags
 OPT_DO_DATABASE=false
@@ -224,7 +225,7 @@ OPT_DB_SKIP_BUILD=false
 DATABASE_DIR="default"
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-build-base] [--install-runtime-base] [--build-tools] [--install-onedep] [--install-onedep-develop] [--setup-database [opts]] [--run-maintenance] [--start-services] [--val-num-workers]
+Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-build-base] [--install-runtime-base] [--build-tools] [--install-onedep] [--install-onedep-develop] [--setup-database [opts]] [--run-maintenance] [--start-services] [--val-num-workers] [--pull-singularity]
 
 System preparation parameters:
     --install-runtime-base:     install packages ready for running onedep - not building tools (run as root)
@@ -235,9 +236,10 @@ OneDep installation parameters:
     --python3-path:             path to a Python interpreter, defaults to 'python3'
     --build-tools:              Compile OneDep tools - OneDep requires compiled tools to be compiled or syncd from RCSB
     --install-onedep:           Installs OneDep python packages
-    --install-onedep-develop    installs OneDep python packages develop branches in edit mode
+    --install-onedep-develop:   installs OneDep python packages develop branches in edit mode
     --run-maintenance:          perform maintenance tasks as part of setup
     --setup-apache:             setup the apache
+    --pull-singularity:         pull latest singularity image from GitLab
 
 Database parameters:
     --setup-database:           setup database (installs server as non-root and setup tables)
@@ -280,6 +282,8 @@ do
 
         --install-onedep) OPT_DO_RUNUPDATE=true;;
         --install-onedep-develop) OPT_DO_BUILD_DEV=true;;
+        --pull-singularity) OPT_DO_PULL_SINGULARITY=true;;
+
         --setup-database) OPT_DO_DATABASE=true;;
         --skip-db-build) OPT_DB_SKIP_BUILD=true;;
 
@@ -416,12 +420,56 @@ show_info_message "checking if everything went ok..."
 echo "[*] $(highlight_text DEPLOY_DIR) is set to $(highlight_text $DEPLOY_DIR)"
 check_env_variable DEPLOY_DIR true
 
+echo "[*] $(highlight_text TOOLS_DIR) is set to $(highlight_text $TOOLS_DIR)"
+check_env_variable TOOLS_DIR true
+
+# export some useful variables for building tools
+export TOP_INSTALL_DIR=$TOOLS_DIR
+export DISTRIB_DIR=$TOP_INSTALL_DIR/distrib
+export DISTRIB_SOURCE=$TOP_INSTALL_DIR/distrib_source
+export DISTRIB_SOURCE_DIR=$TOP_INSTALL_DIR/distrib_source
+export BUILD_DIR=$TOP_INSTALL_DIR/build
+export BUILD_PY_DIR=$TOP_INSTALL_DIR/build/python
+export PREFIX=$TOP_INSTALL_DIR
+export PACKAGE_DIR=$TOP_INSTALL_DIR/packages
+export INSTALL_KERNEL=Linux
+
 if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
     cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER
     ./BUILD.sh |& tee build.log
 else
     show_warning_message "skipping build"
+fi
+
+# ----------------------------------------------------------------
+# cloning OneDep admin pack
+# ----------------------------------------------------------------
+if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true || $OPT_DO_PULL_SINGULARITY == true ]]; then
+
+  cd $ONEDEP_PATH
+  if [[ ! -d "onedep_admin" ]]; then
+    show_info_message "cloning OneDep admin repository"
+    git clone $ONEDEP_ADMIN_REPO_URL
+  fi
+  show_info_message "checking for updates in onedep_admin"
+
+  cd $ONEDEP_PATH/onedep_admin
+  git checkout master
+  git pull
+  cd $ONEDEP_PATH
+fi
+
+# ----------------------------------------------------------------
+# pull singularity image from GitLab
+# ----------------------------------------------------------------
+
+if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
+  cd $ONEDEP_PATH/singularity
+  singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:feature-dbsetup
+  cd $ONEDEP_PATH
+
+  python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --build-tools --skip-pip --skip-resources --skip-webfe
 fi
 
 # ----------------------------------------------------------------
@@ -441,18 +489,6 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
   if [[ -z "$VENV_PATH" ]]; then
       show_error_message "VENV_PATH not set, quitting..."
       exit 1
-  fi
-
-  show_info_message "cloning OneDep admin repository"
-  if [[ ! -d "onedep_admin" ]]; then
-    git clone $ONEDEP_ADMIN_REPO_URL
-
-    cd onedep_admin
-
-    git checkout master
-    git pull
-
-    cd ..
   fi
 
   show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH) with $(highlight_text $PYTHON3)"
@@ -483,12 +519,6 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
 
   pip install wwpdb.utils.config
   pip install ansible~=3.4
-
-  show_info_message "checking for updates in onedep_admin"
-
-  cd $ONEDEP_PATH/onedep_admin
-  git checkout master
-  git pull
 
   show_info_message "running RunUpdate.py step"
   if [[ $OPT_DO_BUILD_DEV == true ]]; then

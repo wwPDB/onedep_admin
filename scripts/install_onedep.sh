@@ -481,7 +481,31 @@ if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
   cd $ONEDEP_PATH
 
   show_info_message "checking for any updates to OneDep tools"
+
+  show_info_message "use temp venv for config"
+  # delete temp venv it already exists
+  if [[ -d "/tmp/venv" ]]; then
+      rm -rf /tmp/venv
+  fi
+
+  unset PYTHONHOME
+  $PYTHON3 -m venv /tmp/venv
+  source /tmp/venv/bin/activate
+  show_info_message "updating setuptools"
+  pip install --no-cache-dir --upgrade setuptools==40.8.0 pip
+
+  show_info_message "installing wheel"
+  pip install --no-cache-dir wheel
+
+  show_info_message "installing wwpdb.utils.config"
+  pip install --no-cache-dir PyYaml==3.10 wwpdb.utils.config
+
+  show_info_message "updating tools"
   python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --build-tools --skip-pip --skip-resources --skip-webfe
+
+  show_info_message "remove temp venv"
+  deactivate
+  rm -rf /tmp/venv
 fi
 
 # ----------------------------------------------------------------

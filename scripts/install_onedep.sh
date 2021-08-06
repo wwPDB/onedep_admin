@@ -466,7 +466,11 @@ fi
 # ----------------------------------------------------------------
 
 if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
-  cd $ONEDEP_PATH/singularity
+  singularity_path=$ONEDEP_PATH/singularity
+  if [[ ! -d $singularity_path ]]; then
+    mkdir -p $singularity_path
+  fi
+  cd $singularity_path
   singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:feature-dbsetup
   cd $ONEDEP_PATH
 

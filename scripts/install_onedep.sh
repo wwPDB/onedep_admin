@@ -466,7 +466,13 @@ fi
 # ----------------------------------------------------------------
 
 if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
+  show_info_message "checking out singularity image from GitLab"
+  show_info_message "checking for required username and access token (password)"
+  check_env_variable SINGULARITY_DOCKER_USERNAME true
+  check_env_variable  SINGULARITY_DOCKER_PASSWORD true
+
   singularity_path=$ONEDEP_PATH/singularity
+  show_info_message "checking out singularity image into $(highlight_text $singularity_path)"
   if [[ ! -d $singularity_path ]]; then
     mkdir -p $singularity_path
   fi
@@ -474,6 +480,7 @@ if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
   singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:feature-dbsetup
   cd $ONEDEP_PATH
 
+  show_info_message "checking for any updates to OneDep tools"
   python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --build-tools --skip-pip --skip-resources --skip-webfe
 fi
 

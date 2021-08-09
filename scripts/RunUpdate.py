@@ -358,7 +358,7 @@ def get_latest_version_no():
     return latest_version
     
 
-def get_latest_version_filepath()
+def get_latest_version_filepath():
     latest_version = get_latest_version_no()
     version_filepath = os.path.join(parent_dir, latest_version, '{}rel.conf'.format(latest_version.replace('.', '')))
 
@@ -378,11 +378,16 @@ def main():
     parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
     parser.add_argument("--build-version", default='v-5200', help='Version of tools to build from')
     parser.add_argument("--build-dev", default=False, action='store_true', help='pip installs repos with edit param')
+    parser.add_argument("--get-latest-version", default=False, action='store_true', help='get latest version number')
 
     args = parser.parse_args()
     print(args)
 
     config_version = args.config
+    
+    if args.get_latest_version:
+        print(get_latest_version_no())
+        sys.exit(0)
 
     if config_version == 'latest':
         # getting the latest config version available

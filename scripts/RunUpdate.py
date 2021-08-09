@@ -326,7 +326,7 @@ class UpdateManager(object):
 
 #        pass
 
-def get_latest_version_filepath():
+def get_latest_version_no():
     """
     Get the latest config version from the parent directory
     using the pattern V[0-9]*
@@ -354,6 +354,12 @@ def get_latest_version_filepath():
         return None
 
     latest_version = sorted(versions)[-1]
+    
+    return latest_version
+    
+
+def get_latest_version_filepath()
+    latest_version = get_latest_version_no()
     version_filepath = os.path.join(parent_dir, latest_version, '{}rel.conf'.format(latest_version.replace('.', '')))
 
     return version_filepath

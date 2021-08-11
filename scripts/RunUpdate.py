@@ -359,6 +359,7 @@ def get_latest_version_no():
     
 
 def get_latest_version_filepath():
+    parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
     latest_version = get_latest_version_no()
     version_filepath = os.path.join(parent_dir, latest_version, '{}rel.conf'.format(latest_version.replace('.', '')))
 

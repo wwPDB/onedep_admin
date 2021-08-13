@@ -471,17 +471,39 @@ if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
   check_env_variable SINGULARITY_DOCKER_USERNAME true
   check_env_variable  SINGULARITY_DOCKER_PASSWORD true
 
-  singularity_path=$ONEDEP_PATH/singularity
-  show_info_message "checking out singularity image into $(highlight_text $singularity_path)"
-  if [[ ! -d $singularity_path ]]; then
-    mkdir -p $singularity_path
+  SINGULARITY_PATH=$ONEDEP_PATH/singularity
+  show_info_message "checking out singularity image into $(highlight_text $SINGULARITY_PATH)"
+
+
+  SINGULARITY_BRANCH=feature-dbsetup
+  SINGULARITY_FILE=onedep_admin_${SINGULARITY_BRANCH}.sif
+
+  LATEST_VERSION=V1.0
+  if [[ -f ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} ]]; then
+    LATEST_VERSION=singulrity exec ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} python ${ONEDEP_PATH}/onedep_admin/scripts/RunUpdate.py --get-latest-version
   fi
-  cd $singularity_path
-  singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:feature-dbsetup
-  cd $ONEDEP_PATH
+
+  show_info_message "OneDep version is $(highlight_text $LATEST_VERSION)"
+
+  if [[ ! -d $SINGULARITY_PATH/$LATEST_VERSION ]]; then
+    mkdir -p $SINGULARITY_PATH/$LATEST_VERSION
+  fi
+
+  show_info_message "pulling singularity image to $(highlight_text ${SINGULARITY_PATH}/$LATEST_VERSION)"
+
+  cd ${SINGULARITY_PATH}/$LATEST_VERSION
+  singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:${SINGULARITY_BRANCH}
+
+  if [[ ! -e $SINGULARITY_PATH/current ]]; then
+    rm $SINGULARITY_PATH/current
+  fi
+  ln -s ${SINGULARITY_PATH}/$LATEST_VERSION ${SINGULARITY_PATH}/current
+
+  cd ${ONEDEP_PATH}
 
   show_info_message "updating tools"
-  singulrity exec $singularity_path/onedep_admin_feature-dbsetup.sif python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --build-tools --skip-pip --skip-resources --skip-webfe
+  singulrity exec ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} python ${ONEDEP_PATH}/onedep_admin/scripts/RunUpdate.py --build-tools --skip-pip --skip-resources --skip-webfe
+
 fi
 
 # ----------------------------------------------------------------

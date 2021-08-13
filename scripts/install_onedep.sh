@@ -503,7 +503,7 @@ if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
   cd ${ONEDEP_PATH}
 
   show_info_message "updating tools"
-  singulrity exec ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} python $SCRIPT_DIR/RunUpdate.py --build-tools --skip-pip --skip-resources --skip-webfe
+  singularity exec ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} python $SCRIPT_DIR/RunUpdate.py --build-tools --skip-pip --skip-resources --skip-webfe
 
 fi
 

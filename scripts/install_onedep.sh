@@ -481,7 +481,7 @@ if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
 
   LATEST_VERSION=V1.0
   if [[ -f ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} ]]; then
-    LATEST_VERSION=$(singulrity exec ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} python $SCRIPT_DIR/RunUpdate.py --get-latest-version)
+    LATEST_VERSION=$(singularity exec ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} python $SCRIPT_DIR/RunUpdate.py --get-latest-version)
   fi
 
   show_info_message "OneDep version is $(highlight_text $LATEST_VERSION)"

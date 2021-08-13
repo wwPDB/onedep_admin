@@ -382,7 +382,6 @@ def main():
     parser.add_argument("--get-latest-version", default=False, action='store_true', help='get latest version number')
 
     args = parser.parse_args()
-    print(args)
 
     config_version = args.config
     

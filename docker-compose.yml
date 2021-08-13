@@ -39,7 +39,7 @@ services:
     image: onedep_python
     build:
       context: .
-      dockerfile: Dockerfile.pythononly
+      dockerfile: Dockerfile.centos8
       args:
         CS_USER: ${CS_USER}
         CS_PW: ${CS_PW}

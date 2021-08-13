@@ -496,11 +496,11 @@ if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
   singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:${SINGULARITY_BRANCH}
   cd ${SINGULARITY_PATH}
 
-  if [[ ! -e $SINGULARITY_PATH/current ]]; then
-    rm $SINGULARITY_PATH/current
+  if [[ ! -e current ]]; then
+    rm current
   fi
 
-  ln -s ${SINGULARITY_PATH}/$LATEST_VERSION ${SINGULARITY_PATH}/current
+  ln -s $LATEST_VERSION current
 
   cd ${ONEDEP_PATH}
 

@@ -86,3 +86,6 @@ RUN cp apache/annotation.conf /etc/httpd/conf.d/
 
 # install OneDep python, webapps and resources_ro
 RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers $BUILD_DEV
+
+WORKDIR $ONEDEP_PATH
+RUN rm -rf $ONEDEP_PATH/onedep_admin

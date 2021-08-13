@@ -10,6 +10,7 @@ HOSTNAME=$(hostname)
 PYTHON3="python3"
 ONEDEP_BUILD_VER="v-5200"
 THIS_SCRIPT="${BASH_SOURCE[0]}"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 CENTOS_MAJOR_VER=`cat /etc/redhat-release | cut -d' ' -f4  | cut -d'.' -f1`
 
 # repositories
@@ -480,7 +481,7 @@ if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
 
   LATEST_VERSION=V1.0
   if [[ -f ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} ]]; then
-    LATEST_VERSION=singulrity exec ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} python ${ONEDEP_PATH}/onedep_admin/scripts/RunUpdate.py --get-latest-version
+    LATEST_VERSION=singulrity exec ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} python $SCRIPT_DIR/RunUpdate.py --get-latest-version
   fi
 
   show_info_message "OneDep version is $(highlight_text $LATEST_VERSION)"
@@ -502,7 +503,7 @@ if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
   cd ${ONEDEP_PATH}
 
   show_info_message "updating tools"
-  singulrity exec ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} python ${ONEDEP_PATH}/onedep_admin/scripts/RunUpdate.py --build-tools --skip-pip --skip-resources --skip-webfe
+  singulrity exec ${SINGULARITY_PATH}/current/${SINGULARITY_FILE} python $SCRIPT_DIR/RunUpdate.py --build-tools --skip-pip --skip-resources --skip-webfe
 
 fi
 

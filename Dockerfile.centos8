@@ -43,7 +43,6 @@ RUN cd eigen-2.0.17 \
     && cmake -DCMAKE_INSTALL_PREFIX=/eigen-2-0.17-install   /eigen-2.0.17 \
     && make install
 
-RUN rm -rf /eigen-2
 
 # install openbabel
 RUN wget -O openbabel-2.3.2.tar.gz https://github.com/openbabel/openbabel/archive/refs/tags/openbabel-2-3-2.tar.gz

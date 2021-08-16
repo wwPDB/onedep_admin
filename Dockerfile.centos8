@@ -35,16 +35,18 @@ RUN wget -O inchi.rpm https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/
 RUN rpm -Uvh inchi.rpm
 
 # install openbabel
-RUN wget -O openbabel-2.3.2.tar.gz https://github.com/openbabel/openbabel/archive/refs/tags/openbabel-2-3-2.tar.gz
-RUN tar -xvf openbabel-2.3.2.tar.gz
-RUN cd openbabel-openbabel-2-3-2 \
-    && cat ./include/openbabel/shared_ptr.h | sed -e 's/__GNUC__ == 4/__GNUC__ >= 4/g' > ./include/openbabel/shared_ptr.h.tmp \
-    && mv ./include/openbabel/shared_ptr.h ./include/openbabel/shared_ptr.h__orig \
-    && mv ./include/openbabel/shared_ptr.h.tmp ./include/openbabel/shared_ptr.h \
-    && cat ./CMakeLists.txt | sed -e '0,/if(NOT MSVC)/s//set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wno-error -std=c++03")\nset(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wno-error")\n\nif(NOT MSVC)/g' > CMakeLists.txt.tmp \
-    && mv ./CMakeLists.txt ./CMakeLists.txt__orig \
-    && mv ./CMakeLists.txt.tmp ./CMakeLists.txt
-RUN mkdir build && cd build && cmake ../openbabel-openbabel-2-3-2 && make && make install
+RUN wget -o openbabellibs-2.3.2.rpm https://download-ib01.fedoraproject.org/pub/epel/7/aarch64/Packages/o/openbabel-libs-2.3.2-2.el7.aarch64.rpm
+RUN rpm -Uvh openbabellibs-2.3.2.rpm
+#RUN wget -O openbabel-2.3.2.tar.gz https://github.com/openbabel/openbabel/archive/refs/tags/openbabel-2-3-2.tar.gz
+#RUN tar -xvf openbabel-2.3.2.tar.gz
+#RUN cd openbabel-openbabel-2-3-2 \
+#    && cat ./include/openbabel/shared_ptr.h | sed -e 's/__GNUC__ == 4/__GNUC__ >= 4/g' > ./include/openbabel/shared_ptr.h.tmp \
+#    && mv ./include/openbabel/shared_ptr.h ./include/openbabel/shared_ptr.h__orig \
+#    && mv ./include/openbabel/shared_ptr.h.tmp ./include/openbabel/shared_ptr.h \
+#    && cat ./CMakeLists.txt | sed -e '0,/if(NOT MSVC)/s//set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wno-error -std=c++03")\nset(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wno-error")\n\nif(NOT MSVC)/g' > CMakeLists.txt.tmp \
+#    && mv ./CMakeLists.txt ./CMakeLists.txt__orig \
+#    && mv ./CMakeLists.txt.tmp ./CMakeLists.txt
+#RUN mkdir build && cd build && cmake ../openbabel-openbabel-2-3-2 && make && make install
 
 
 # setup venv

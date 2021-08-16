@@ -47,9 +47,9 @@ RUN cd openbabel-openbabel-2-3-2 \
 RUN mkdir build \
     && cd build \
     && cmake ../openbabel-openbabel-2-3-2 \
-      -DPYTHON_BINDINGS=ON \
+      -DPYTHON_BINDINGS=OFF \
       -DBUILD_GUI=OFF \
-    && make \
+    && make -j 2 \
     && make test \
     && make install
 

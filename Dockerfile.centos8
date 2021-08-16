@@ -63,6 +63,9 @@ RUN mkdir build \
     && make -j 2 \
     && make install
 
+# add additional library paths
+RUN echo /usr/local/lib > /etc/ld.so.conf.d/usrlocal.conf
+RUN ldconfig
 
 # setup venv
 RUN python3 -m venv $VENV

@@ -35,13 +35,12 @@ RUN wget -O inchi.rpm https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/
 RUN rpm -Uvh inchi.rpm
 
 # eigen2
-RUN wget -O eigen2.tar.gz http://bitbucket.org/eigen/eigen/get/2.0.17.tar.gz
-RUN tar -xvf eigen2.tar.gz
-RUN mv eigen-eigen-* eigen-2
-RUN cd eigen-2 \
+RUN wget -O eigen-2.0.17.tar.gz https://gitlab.com/libeigen/eigen/-/archive/2.0.17/eigen-2.0.17.tar.gz
+RUN tar -xvf eigen-2.0.17.tar.gz
+RUN cd eigen-2.0.17 \
     && mkdir builddir \
     && cd builddir \
-    && cmake -DCMAKE_INSTALL_PREFIX=/eigen-2-install   /eigen-2 \
+    && cmake -DCMAKE_INSTALL_PREFIX=/eigen-2-0.17-install   /eigen-2.0.17 \
     && make install
 
 RUN rm -rf /eigen-2
@@ -61,7 +60,7 @@ RUN mkdir build \
     && cmake ../openbabel-openbabel-2-3-2 \
       -DPYTHON_BINDINGS=OFF \
       -DBUILD_GUI=OFF \
-      -DEIGEN2_INCLUDE_DIR=/eigen-2-install \
+      -DEIGEN2_INCLUDE_DIR=/eigen-2-0.17-install \
     && make -j 2 \
     && make test \
     && make install

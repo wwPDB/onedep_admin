@@ -61,7 +61,6 @@ RUN mkdir build \
       -DBUILD_GUI=OFF \
       -DEIGEN2_INCLUDE_DIR=/eigen-2-0.17-install \
     && make -j 2 \
-    && make test \
     && make install
 
 

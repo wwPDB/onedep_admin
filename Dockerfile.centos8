@@ -35,7 +35,7 @@ RUN wget -O inchi.rpm https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/
 RUN rpm -Uvh inchi.rpm
 
 # install openbabel
-RUN wget -o openbabellibs-2.3.2.rpm https://download-ib01.fedoraproject.org/pub/epel/7/aarch64/Packages/o/openbabel-libs-2.3.2-2.el7.aarch64.rpm
+RUN wget -O openbabellibs-2.3.2.rpm https://download-ib01.fedoraproject.org/pub/epel/7/aarch64/Packages/o/openbabel-libs-2.3.2-2.el7.aarch64.rpm
 RUN rpm -Uvh openbabellibs-2.3.2.rpm
 #RUN wget -O openbabel-2.3.2.tar.gz https://github.com/openbabel/openbabel/archive/refs/tags/openbabel-2-3-2.tar.gz
 #RUN tar -xvf openbabel-2.3.2.tar.gz

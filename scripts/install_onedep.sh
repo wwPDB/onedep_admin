@@ -496,6 +496,7 @@ if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
   singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:${SINGULARITY_BRANCH}
   cd ${SINGULARITY_PATH}
   singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:${SINGULARITY_BRANCH}-develop
+  singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:${SINGULARITY_BRANCH}-python-develop
 
   rm -f current
   ln -s $LATEST_VERSION current

@@ -58,5 +58,14 @@ build_adhoc_non_master_develop:
       - master
   when: manual
 
+build_adhoc_non_master_python_develop:
+  stage: build
+  script:
+    - docker build -t ${IMAGE_TAG}-develop --build-arg BUILD_DEV="--build-dev" --build-arg CS_USER=$CS_USER --build-arg CS_PW=$CS_PW --build-arg CS_URL=$CS_URL --build-arg SSH_PRIVATE_KEY="$SSH_PRIVATE_KEY" -f Dockerfile.python .
+    - docker push ${IMAGE_TAG}-develop
+  except:
+    refs:
+      - master
+  when: manual
 
 

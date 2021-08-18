@@ -6,6 +6,7 @@
 import os
 import argparse
 import subprocess
+import sys
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
@@ -233,7 +234,12 @@ def main():
     sub_c.set_defaults(func="check")
 
     args = parser.parse_args()
+    if 'func' not in args:
+        parser.print_usage()
+        sys.exit(1)
+
     dbs = DbSchemaManager(args.noop)
+
 
     if args.func == 'update':
        dbs.updateschema()

@@ -179,13 +179,15 @@ class DbSchemaManager(object):
                     
             mydb.closeConnection()
 
-        # Update missing tables
+        self.__updatemissingtables()
+
+    def __updatemissingtables(self):
+        """Update missing tables"""
         for upd in self.__tableexists:
             name = upd[0]
             resource = upd[1]
             table = upd[2]
             func = upd[3]
-            #getattr(self, upd[3], None)
             mth = getattr(self, func, None)
             commands = upd[4]
             #print(name, resource, table, func, mth)
@@ -212,6 +214,7 @@ class DbSchemaManager(object):
 
                         
             mydb.closeConnection()
+
 
     def prettyprintcommands(self, cmds):
         for c in cmds:
@@ -357,23 +360,34 @@ class DbSchemaManager(object):
             with open(schemapath, 'r') as fin:
                 prd = PdbxReader(fin)
                 self.__daintschema = []
-                prd.read(containerList = self.__daintschema, selectList=['rcsb_attribute_def'])
+                prd.read(containerList = self.__daintschema, selectList=['rcsb_attribute_def', 'rcsb_table_abbrev'])
 
 
     def _dainttablenotexists(self, dbconn, table):
-        """Return True if _rcsb_attribute_def.table_name == table and
-        _rcsb_attribute_def.attribute_name == colname is present in 
-        SITE_DA_INTERNAL_SCHEMA_PATH and colname is not present in table my da_internal"""
+        """Return True if _rcsb_attribute_def.table_name == table and table does not exist
+        Handles alias
+        """
 
         self.__loaddaintschema()
 
         block = self.__daintschema[0]
+
+
+        # Handle aliases
+        tb = block.getObj('rcsb_table_abbrev')
+        if tb:
+            for row in range(tb.getRowCount()):
+                table_name = tb.getValue('table_name', row)
+                table_abbrev = tb.getValue('table_abbrev', row)
+                if table_abbrev == table:
+                    # print("Switch table %s to %s" %(table, table_name))
+                    table = table_name
+                    break
+
         tb = block.getObj('rcsb_attribute_def')
         if not tb:
             print("ERROR: Schema file does not contain rcsb_attribute_def")
             return False
-        #print dir(tb)
-        #block.printIt()
         found = False
         for row in range(tb.getRowCount()):
             table_name = tb.getValue('table_name', row)
@@ -383,7 +397,7 @@ class DbSchemaManager(object):
 
         if not found:
             # schema mapping file does not list - we should not need to add
-            #print("{}.{} not found -- skipping".format(table, colname))
+            print("{} not found -- skipping".format(table))
             return False
 
 

@@ -52,7 +52,7 @@ class DbSchemaManager(object):
             ['V5.8 da_internal cell table', 'DA_INTERNAL', 'cell1', '_dainttablenotexists', 
              ["""CREATE TABLE IF NOT EXISTS cell1
                 (
-             Structure_ID                                                 varchar(10)    not null,
+             Structure_ID                                                 varchar(15)    not null,
              angle_alpha                                                  float              null,
              angle_beta                                                   float              null,
              angle_gamma                                                  float              null,
@@ -77,7 +77,7 @@ class DbSchemaManager(object):
             ['V5.8 da_internal pdbx_struct_oper_list table', 'DA_INTERNAL', 'pdbx_struct_oper_list', '_dainttablenotexists', 
              ["""CREATE TABLE IF NOT EXISTS pdbx_struct_oper_list
              (
-             Structure_ID                                                 varchar(10)    not null,
+             Structure_ID                                                 varchar(15)    not null,
              id                                                           varchar(10)    not null,
              type                                                         varchar(80)        null,
              name                                                         varchar(80)        null,
@@ -94,7 +94,7 @@ class DbSchemaManager(object):
             ['V5.8 da_internal pdbx_struct_assembly_gen table', 'DA_INTERNAL', 'pdbx_struct_assembly_gen', '_dainttablenotexists', 
              ["""CREATE TABLE IF NOT EXISTS pdbx_struct_assembly_gen
              (
-             Structure_ID                                                 varchar(10)    not null,
+             Structure_ID                                                 varchar(15)    not null,
              assembly_id                                                  varchar(80)    not null,
              entity_inst_id                                               varchar(10)        null,
              asym_id_list                                                 varchar(32000) not null,
@@ -106,7 +106,7 @@ class DbSchemaManager(object):
             ['V5.8 da_internal symmetry table', 'DA_INTERNAL', 'symmetry', '_dainttablenotexists', 
              ["""CREATE TABLE IF NOT EXISTS symmetry
              (
-             Structure_ID                                                 varchar(10)    not null,
+             Structure_ID                                                 varchar(15)    not null,
              entry_id                                                     varchar(10)    not null,
              cell_setting                                                 varchar(13)        null,
              Int_Tables_number                                            int                null,

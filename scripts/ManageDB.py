@@ -374,6 +374,7 @@ class DbSchemaManager(object):
 
 
         # Handle aliases
+        orig_table = table
         tb = block.getObj('rcsb_table_abbrev')
         if tb:
             for row in range(tb.getRowCount()):
@@ -397,11 +398,11 @@ class DbSchemaManager(object):
 
         if not found:
             # schema mapping file does not list - we should not need to add
-            print("{} not found -- skipping".format(table))
+            # print("{} not found -- skipping".format(table))
             return False
 
 
-        ret = self._nottableexists(dbconn, table)
+        ret = self._nottableexists(dbconn, orig_table)
 
         return ret
 

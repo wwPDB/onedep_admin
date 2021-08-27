@@ -220,7 +220,6 @@ OPT_PREPARE_RUNTIME=false
 OPT_PREPARE_BUILD=false
 OPT_DO_COMPILE_SITE_CONFIG=false
 OPT_DO_CLONE_DEPS=false
-OPT_DO_SETUP_VENV=false
 OPT_DO_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
@@ -229,6 +228,7 @@ OPT_DO_RESTART_SERVICES=false
 OPT_DO_HARD_RESET=false
 OPT_VAL_SERVER_NUM_WORKERS="60"
 OPT_DO_BUILD_DEV=false
+OPT_DO_PULL_SINGULARITY=false
 
 # database flags
 OPT_DO_DATABASE=false
@@ -256,6 +256,7 @@ OneDep installation parameters:
     --install-onedep-develop    installs OneDep python packages develop branches in edit mode
     --run-maintenance:          perform maintenance tasks as part of setup
     --setup-apache:             setup the apache
+    --pull-singularity:         pull latest singularity image from GitLab
     --hard-reset:               clean up tools, deployment subtree for the provided site, sessions and site references
                                     this will be run before all steps
 
@@ -285,10 +286,6 @@ do
             PYTHON3="$2"
             shift
         ;;
-        --install-specific-package)
-            SPECIFIC_PACKAGE="$2"
-            shift
-        ;;
         --database-dir)
             DATABASE_DIR="$2"
             shift
@@ -303,7 +300,6 @@ do
             OPT_DO_BUILD=true
             OPT_DO_COMPILE_SITE_CONFIG=true
             OPT_DO_CLONE_DEPS=true
-            OPT_DO_SETUP_VENV=true
             OPT_DO_RUNUPDATE=true
             OPT_DO_BUILD_DEV=true
             OPT_DO_DATABASE=true
@@ -320,10 +316,10 @@ do
 
         --compile-site-config) OPT_DO_COMPILE_SITE_CONFIG=true;;
         --clone-deps) OPT_DO_CLONE_DEPS=true;;
-        --setup-venv) OPT_DO_SETUP_VENV=true;;
         --install-onedep) OPT_DO_RUNUPDATE=true;;
         --install-onedep-develop) OPT_DO_BUILD_DEV=true;;
         --hard-reset) OPT_DO_HARD_RESET=true;;
+        --pull-singularity) OPT_DO_PULL_SINGULARITY=true;;
 
         --setup-database) OPT_DO_DATABASE=true;;
         --skip-db-build) OPT_DB_SKIP_BUILD=true;;
@@ -421,8 +417,10 @@ if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
 
         if [[ $CENTOS_MAJOR_VER == 8 ]]; then
           command=onedep-build/install-base/centos-8-host-packages.sh
-        else
+        elif [[ $CENTOS_MAJOR_VER == 7 ]]; then
           command=onedep-build/install-base/centos-7-host-packages.sh
+        else
+          show_warning_message "unsupported OS version"
         fi
     fi
 
@@ -500,67 +498,117 @@ fi
 #show_info_message "creating 'resources' folder"
 #mkdir -p $DEPLOY_DIR/resources
 
+echo "[*] $(highlight_text TOOLS_DIR) is set to $(highlight_text $TOOLS_DIR)"
+check_env_variable TOOLS_DIR true
+
+# export some useful variables for building tools
+export TOP_INSTALL_DIR=$TOOLS_DIR
+export DISTRIB_DIR=$TOP_INSTALL_DIR/distrib
+export DISTRIB_SOURCE=$TOP_INSTALL_DIR/distrib_source
+export DISTRIB_SOURCE_DIR=$TOP_INSTALL_DIR/distrib_source
+export BUILD_DIR=$TOP_INSTALL_DIR/build
+export BUILD_PY_DIR=$TOP_INSTALL_DIR/build/python
+export PREFIX=$TOP_INSTALL_DIR
+export PACKAGE_DIR=$TOP_INSTALL_DIR/packages
+export INSTALL_KERNEL=Linux
+
 if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
-    cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER # maybe I should put the build version in a variable
-
+    cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER
     sudo ./BUILD.sh |& tee build.log
 else
     show_warning_message "skipping build"
 fi
 
 # ----------------------------------------------------------------
+# cloning OneDep admin pack
+# ----------------------------------------------------------------
+if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true || $OPT_DO_PULL_SINGULARITY == true ]]; then
+
+  cd $ONEDEP_PATH
+  if [[ ! -d "onedep_admin" ]]; then
+    show_info_message "cloning OneDep admin repository"
+    git clone $ONEDEP_ADMIN_REPO_URL
+  fi
+  show_info_message "checking for updates in onedep_admin"
+
+  cd $ONEDEP_PATH/onedep_admin
+  git checkout master
+  git pull
+  cd $ONEDEP_PATH
+fi
+
+# ----------------------------------------------------------------
+# pull singularity image from GitLab
+# ----------------------------------------------------------------
+
+if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
+  show_info_message "checking out singularity image from GitLab"
+  show_info_message "checking for required username and access token (password)"
+  check_env_variable SINGULARITY_DOCKER_USERNAME true
+  check_env_variable  SINGULARITY_DOCKER_PASSWORD true
+
+  singularity_path=$ONEDEP_PATH/singularity
+  show_info_message "checking out singularity image into $(highlight_text $singularity_path)"
+  if [[ ! -d $singularity_path ]]; then
+    mkdir -p $singularity_path
+  fi
+  cd $singularity_path
+  singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:feature-dbsetup
+  cd $ONEDEP_PATH
+
+  show_info_message "updating tools"
+  singulrity exec $singularity_path/onedep_admin_feature-dbsetup.sif python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --build-tools --skip-pip --skip-resources --skip-webfe
+fi
+
+# ----------------------------------------------------------------
 # setting up OneDep virtual env
 # ----------------------------------------------------------------
 
-show_info_message "setting up OneDep virtual environment"
-
-cd $ONEDEP_PATH
-unset PYTHONHOME
-
-if [[ -z "$VENV_PATH" ]]; then
-    VENV_PATH=$(echo $PYTHONPATH | cut -d":" -f1)
-fi
-
-if [[ -z "$VENV_PATH" ]]; then
-    show_error_message "VENV_PATH not set, quitting..."
-    exit 1
-fi
-
-if [[ $OPT_DO_SETUP_VENV == true ]]; then
-    show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH) with $(highlight_text $PYTHON3)"
-
-    rm -rf $VENV_PATH
-
-    $PYTHON3 -m venv $VENV_PATH
-    source $VENV_PATH/bin/activate
-
-    show_info_message "updating setuptools and pip"
-    pip install --no-cache-dir --upgrade setuptools pip
-
-    show_info_message "creating pip configuration file"
-
-    if [[ ! -z "$CS_HOST_BASE" && ! -z "$CS_USER" && ! -z "$CS_PW" && ! -z "$CS_DISTRIB_URL" ]]; then
-        pip config --site set global.trusted-host $CS_HOST_BASE
-        pip config --site set global.extra-index-url "http://${CS_USER}:${CS_PW}@${CS_DISTRIB_URL} https://pypi.anaconda.org/OpenEye/simple"
-        pip config --site set global.no-cache-dir false
-    else
-        show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
-    fi
-
-    show_info_message "install some base packages"
-    pip install wheel
-
-    pip install wwpdb.utils.config
-
-    show_info_message "checking for updates in onedep_admin"
-
-    cd $ONEDEP_PATH/onedep_admin
-    git checkout master
-    git pull
-fi
-
 if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
+  show_info_message "setting up OneDep virtual environment"
+
+  cd $ONEDEP_PATH
+  unset PYTHONHOME
+
+  if [[ -z "$VENV_PATH" ]]; then
+      VENV_PATH=$(echo $PYTHONPATH | cut -d":" -f1)
+  fi
+
+  if [[ -z "$VENV_PATH" ]]; then
+      show_error_message "VENV_PATH not set, quitting..."
+      exit 1
+  fi
+
+  show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH) with $(highlight_text $PYTHON3)"
+
+  $PYTHON3 -m venv $VENV_PATH
+  source $VENV_PATH/bin/activate
+
+  show_info_message "updating setuptools and pip"
+  pip install --no-cache-dir --upgrade setuptools pip
+
+  show_info_message "creating pip configuration file"
+
+  get_config_var CS_HOST_BASE; cs_host_base=$retval
+  get_config_var CS_USER; cs_user=$retval
+  get_config_var CS_PW; cs_pw=$retval
+  get_config_var CS_DISTRIB_URL; cs_distrib_url=$retval
+
+  if [[ ! -z "$cs_host_base" && ! -z "$cs_user" && ! -z "$cs_pw" && ! -z "$cs_distrib_url" ]]; then
+      pip config --site set global.trusted-host $cs_host_base
+      pip config --site set global.extra-index-url "http://${cs_user}:${cs_pw}@${cs_distrib_url} https://pypi.anaconda.org/OpenEye/simple"
+      pip config --site set global.no-cache-dir false
+  else
+      show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
+  fi
+
+  show_info_message "install some base packages"
+  pip install wheel
+
+  pip install wwpdb.utils.config
+  pip install ansible~=3.4
+
   show_info_message "running RunUpdate.py step"
 
   if [[ $OPT_DO_BUILD_DEV == true ]]; then
@@ -568,16 +616,10 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
   else
       python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools
   fi
+  pip list
 else
     show_warning_message "skipping RunUpdate step"
 fi
-
-if [[ ! -z $SPECIFIC_PACKAGE ]]; then
-  show_info_message "installing package $(highlight_text $SPECIFIC_PACKAGE)"
-  pip install $SPECIFIC_PACKAGE
-fi
-
-pip list
 
 # ----------------------------------------------------------------
 # database setup
@@ -619,7 +661,7 @@ if [[ $OPT_DO_DATABASE == true ]]; then
 
     cd $DATABASE_DIR
 
-    # killing all mysqld instances initiated by this used
+    # killing all mysqld instances initiated by this user
     killall mysqld
 
     ls -A $DATABASE_DIR/data
@@ -629,7 +671,7 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     fi
 
     show_info_message "starting mysql server, please wait"
-    ./mysql/bin/mysqld --user=w3_pdb05 --bind-address=0.0.0.0 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port &
+    ./mysql/bin/mysqld --user=$USER --bind-address=0.0.0.0 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port &
     mysql_pid=$!
 
     while :; do
@@ -662,90 +704,20 @@ if [[ $OPT_DO_DATABASE == true ]]; then
         exit 1
     fi
 
-    new_db_root_password=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9!@#$%&*+<>?=-' | fold -w 32 | head -n 1)
+    get_config_var SITE_ADMIN_DB_PASSWORD_ROOT; new_db_root_password=$retval
+    # new_db_root_password=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9!@#$%&*+<>?=-' | fold -w 32 | head -n 1)
 
     echo "[*] mysql temporary root password is $(highlight_text $temp_db_root_password)"
     echo "[*] setting mysql root password to $(highlight_text $new_db_root_password)"
 
     # not using the run_mysql_command here as this requires additional flags
     ./mysql/bin/mysql -P$db_port -uroot -p$temp_db_root_password --socket $DATABASE_DIR/mysql.sock --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$new_db_root_password'"
-    ./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE USER '$db_user'@'%' IDENTIFIED WITH mysql_native_password BY '$db_password'"
+    #./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE USER '$db_user'@'%' IDENTIFIED WITH mysql_native_password BY '$db_password'"
     # should we restrict permissions for this user?
-    ./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "GRANT ALL ON *.* TO '$db_user'@'%' WITH GRANT OPTION"
+    #./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "GRANT ALL ON *.* TO '$db_user'@'%' WITH GRANT OPTION"
 
     show_info_message "creating schemas"
-
-    # status and da_internal
-    get_config_var SITE_PACKAGES_PATH
-    db_loader_path=$retval/dbloader/bin/db-loader
-
-    # status db
-    get_config_var SITE_DB_DATABASE_NAME; db_name=$retval
-    mkdir -p status_schema && cd status_schema
-
-    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql status "SHOW DATABASES LIKE '$db_name';")
-    if [[ -z $db_exists ]]; then
-        python -m wwpdb.apps.deposit.depui.schema.DepUISchema > status_schema.sql
-        run_mysql_script $DATABASE_DIR/mysql/bin/mysql status status_schema.sql
-    else
-        show_warning_message "database $db_name already exists on server"
-    fi
-
-    cd ..
-
-    # should we be doing this using the python APIs (PdbxSchemaMapReader, SchemaDefBase, MyDbAdminSqlGen)? would have to
-    # create a new file to load this cif OR do it using an inline python command
-    get_config_var SITE_DA_INTERNAL_DB_NAME; db_name=$retval
-    mkdir -p da_internal_schema && cd da_internal_schema
-
-    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
-    if [[ -z $db_exists ]]; then
-        run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "CREATE DATABASE $db_name"
-
-        da_internal_cif=$RO_RESOURCE_PATH/da_internal/status_rcsb_schema_da.cif
-        $($db_loader_path -sql -server mysql -map $da_internal_cif -schema -db da_internal)
-        run_mysql_script $DATABASE_DIR/mysql/bin/mysql da_internal DB_LOADER_SCHEMA.sql
-
-        da_internal_cif=$RO_RESOURCE_PATH/da_internal/database_status_history_schema.cif
-        $($db_loader_path -sql -server mysql -map $da_internal_cif -schema -db da_internal)
-        run_mysql_script $DATABASE_DIR/mysql/bin/mysql da_internal DB_LOADER_SCHEMA.sql
-    else
-        show_warning_message "database $db_name already exists on server"
-    fi
-
-    cd ..
-
-    # django tables
-    get_config_var SITE_DEP_DB_DATABASE_NAME; db_name=$retval
-
-    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
-    if [[ -z $db_exists ]]; then
-        run_mysql_command $DATABASE_DIR/mysql/bin/mysql depui "CREATE DATABASE $db_name"
-
-        python -m wwpdb.apps.deposit.manage makemigrations depui
-        python -m wwpdb.apps.deposit.manage migrate
-    else
-        show_warning_message "database $db_name already exists on server"
-    fi
-
-    # prdv4 and compv4 schemas
-    get_config_var SITE_REFDATA_PRD_DB_NAME; db_name=$retval
-
-    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
-    if [[ -z $db_exists ]]; then
-        run_mysql_command $DATABASE_DIR/mysql/bin/mysql prdv4 "CREATE DATABASE $db_name"
-    else
-        show_warning_message "database $db_name already exists on server"
-    fi
-
-    get_config_var SITE_REFDATA_CC_DB_NAME; db_name=$retval
-
-    db_exists=$(run_mysql_command $DATABASE_DIR/mysql/bin/mysql da_internal "SHOW DATABASES LIKE '$db_name';")
-    if [[ -z $db_exists ]]; then
-        run_mysql_command $DATABASE_DIR/mysql/bin/mysql prdv4 "CREATE DATABASE $db_name"
-    else
-        show_warning_message "database $db_name already exists on server"
-    fi
+    python -m wwpdb.apps.site_admin.DbAdminExec --create-schemas
 
     # dummy codes
 
@@ -776,69 +748,13 @@ fi
 
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
 
-    show_info_message "checking out / updating mmcif dictionary"
+  if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
+    show_info_message "cloning OneDep maintenance repository"
+    git clone $ONEDEP_MAINTENANCE_REPO_URL
+  fi
 
-    python $ONEDEP_PATH/onedep-maintenance/common/update_mmcif_dictionary.py
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'checking out / updating mmcif dictionary from SVN' failed with exit code $ret"; fi
-
-    show_info_message "checking out / updating taxonomy"
-
-    python $ONEDEP_PATH/onedep-maintenance/common/update_taxonomy_files.py
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'checking out / updating taxonomy from SVN' failed with exit code $ret"; fi
-
-    # to checkout/ update  the chemical component dictionary (CCD) and PRD - this step can take a while
-    # using installed modules
-
-    show_info_message "checking out / updating CCD and PRD"
-
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db CC
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'checking out CC' failed with exit code $ret"; fi
-
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --db CC --load
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'loading CC' failed with exit code $ret"; fi
-
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --checkout --db PRD
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'checking out PRD' failed with exit code $ret"; fi
-
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --db PRD --load
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'loading PRD' failed with exit code $ret"; fi
-
-    python -m wwpdb.apps.chem_ref_data.utils.ChemRefDataDbExec -v --update
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'compiling CCD and PRD data files' failed with exit code $ret"; fi
-
-  # get the taxonomy information for the depUI and load it into the OneDep database
-    show_info_message "loading taxonomy information into OneDep db"
-    
-    python -m wwpdb.apps.deposit.depui.taxonomy.loadTaxonomyFromFTP --write_sql
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "step 'loading taxonomy information into OneDep db' failed with exit code $ret"; fi
-
-    # checkout / update sequences in OneDep - it now runs from anywhere using RunRemote
-    # using https://github.com/wwPDB/onedep-maintenance/blob/master/common/Update-reference-sequences.sh
-
-    show_info_message "checking out / updating sequences in OneDep"
-
-    SCRIPT_PATH=${ONEDEP_PATH}/onedep-maintenance/common/sequence
-
-    ${SCRIPT_PATH}/Fetch-db-unp.sh
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "script 'Fetch-db-unp.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $ret"; fi
-
-    ${SCRIPT_PATH}/Fetch-db-gb.sh
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "script 'Fetch-db-gb.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $ret"; fi
-
-    ${SCRIPT_PATH}/Format-db.sh
-    ret=$?
-    if [[ $ret != 0 ]]; then show_error_message "script 'Format-db.sh' in step 'checking out / updating sequences in OneDep' failed with exit code $ret"; fi
-
+    show_info_message "Running setup maintenance"
+    python -m wwpdb.apps.site_admin.RunSetupMaintenance
 
 else
     show_warning_message "skipping maintenance tasks"
@@ -883,13 +799,7 @@ fi
 # service startup
 # ----------------------------------------------------------------
 
-#show_info_message "restarting wfe service"
-#python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_wfe   # aliased to restart_wfe
-
-#show_info_message "restarting apache service"
-#python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py --restart_apache   # aliased to restart_apache
-
-start_service_command="python $ONEDEP_PATH/onedep-maintenance/common/restart_services.py"
+start_service_command="python $ONEDEP_PATH/onedep_admin/scripts/restart_services.py"
 startWFE="$start_service_command --restart_wfe"
 startApache="$start_service_command --restart_apache"
 

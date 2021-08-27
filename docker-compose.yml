@@ -1,0 +1,190 @@
+version: '3.8'
+
+services:
+  onedep:
+    # command: ["sh", "-c", "cp /etc/httpd/sites-enabled/* /etc/httpd/conf.d/ && /usr/sbin/httpd -D FOREGROUND"]
+    command: ["sh", "-c", "cp /etc/httpd/sites-enabled/* /etc/httpd/conf.d/ && /usr/sbin/httpd; tail -f /etc/httpd/logs/error_log"]
+    image: onedep
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        CS_USER: ${CS_USER}
+        CS_PW: ${CS_PW}
+        CS_URL: ${CS_URL}
+    environment:
+      WWPDB_SITE_ID: ${WWPDB_SITE_ID}
+      WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
+      PYTHONPATH: "/env:/venv"
+      TOP_DATA_DIR: /data
+      TOP_WWPDB_SESSIONS_PATH: /data/sessions/sessions
+      MOGULPATH: /data/csd
+    depends_on:
+      - db
+    ports:
+      - target: 80
+        published: 12000
+    volumes:
+      - onedep_data:/data
+      - type: bind
+        source: ./env/site-config
+        target: /env
+      - type: bind
+        source: ./env/apache
+        target: /etc/httpd/sites-enabled
+
+
+  onedep_python:
+    #command: ["sh", "-c", "cp /etc/httpd/sites-enabled/* /etc/httpd/conf.d/ && /usr/sbin/httpd; tail -f /etc/httpd/logs/error_log"]
+    image: onedep_python
+    build:
+      context: .
+      dockerfile: Dockerfile.pythononly
+      args:
+        CS_USER: ${CS_USER}
+        CS_PW: ${CS_PW}
+        CS_URL: ${CS_URL}
+    environment:
+      WWPDB_SITE_ID: ${WWPDB_SITE_ID}
+      WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
+      PYTHONPATH: "/env:/venv"
+      TOP_DATA_DIR: /data
+      TOP_WWPDB_SESSIONS_PATH: /data/sessions/sessions
+      MOGULPATH: /data/csd
+    #depends_on:
+    #  - db
+    ports:
+      - target: 80
+        published: 12000
+    volumes:
+      - onedep_data:/data
+      - type: bind
+        source: ./env/site-config
+        target: /env
+      - type: bind
+        source: ./env/apache
+        target: /etc/httpd/sites-enabled
+
+  # wfe
+  onedep_wfe:
+    image: onedep
+    command: ["sh", "-c", "python -m wwpdb.apps.wf_engine.wf_engine_utils.run.WFEngineRunnerExec --start; tail -f /dev/null"]
+    hostname: wfe
+    environment:
+      WWPDB_SITE_ID: ${WWPDB_SITE_ID}
+      WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
+      PYTHONPATH: "/env:/venv"
+    volumes:
+      - onedep_data:/data
+      - type: bind
+        source: ./env/site-config
+        target: /env
+
+  # validation API consumer
+  onedep_val_api_consumer:
+    image: onedep
+    command: [ "sh", "-c", "python -m wwpdb.apps.val_ws_server.service.ValidationServiceHandler --start; tail -f /dev/null" ]
+    environment:
+      WWPDB_SITE_ID: ${WWPDB_SITE_ID}
+      WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
+      PYTHONPATH: "/env:/venv"
+    volumes:
+      - onedep_data:/data
+      - type: bind
+        source: ./env/site-config
+        target: /env
+
+  # validation API consumer
+  onedep_val_rel_consumer:
+    image: onedep
+    command: [ "sh", "-c", "python -m wwpdb.apps.val_rel.service.ValidationReleaseServiceHandler --start; tail -f /dev/null" ]
+    environment:
+      WWPDB_SITE_ID: ${WWPDB_SITE_ID}
+      WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
+      PYTHONPATH: "/env:/venv"
+    volumes:
+      - onedep_data:/data
+      - type: bind
+        source: ./env/site-config
+        target: /env
+
+  # validation API consumer
+  onedep_content_api_consumer:
+    image: onedep
+    command: [ "sh", "-c", "python -m wwpdb.apps.content_ws_server.service.ContentRequestServiceHandler --start; tail -f /dev/null" ]
+    environment:
+      WWPDB_SITE_ID: ${WWPDB_SITE_ID}
+      WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
+      PYTHONPATH: "/env:/venv"
+    volumes:
+      - onedep_data:/data
+      - type: bind
+        source: ./env/site-config
+        target: /env
+
+  # db setup
+  onedep_db_setup:
+    image: onedep
+    command: [ "sh", "-c", "python -m wwpdb.apps.site_admin.DbAdminExec --create-schemas" ]
+    environment:
+      WWPDB_SITE_ID: ${WWPDB_SITE_ID}
+      WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
+      PYTHONPATH: "/env:/venv"
+    depends_on:
+      - db
+    volumes:
+      - type: bind
+        source: ./env/site-config
+        target: /env
+
+  # run maintenance setup
+  onedep_maintenance_setup:
+    image: onedep
+    command: [ "sh", "-c", "python -m wwpdb.apps.site_admin.RunSetupMaintenance" ]
+    environment:
+      WWPDB_SITE_ID: ${WWPDB_SITE_ID}
+      WWPDB_SITE_LOC: ${WWPDB_SITE_LOC}
+      PYTHONPATH: "/env:/venv"
+    depends_on:
+      - db
+    volumes:
+      - onedep_data:/data
+      - type: bind
+        source: ./env/site-config
+        target: /env
+
+  # database - mysql database
+  db:
+    image: mysql
+    command: --default-authentication-plugin=mysql_native_password --bind-address=0.0.0.0
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: $MYSQL_ROOT_PASSWORD
+      MYSQL_USER: $MYSQL_USER
+      MYSQL_PASSWORD: $MYSQL_PASSWORD
+      MYSQL_DATABASE: depui_django
+      MYSQL_TCP_PORT: 3306
+    ports:
+      - 3306:3306
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8181:8181
+
+  # message broker - used for APIs
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    volumes:
+      - type: bind
+        source: ./env/rabbitmq
+        target: /etc/rabbitmq
+    ports:
+      - 5672:5672
+      - 5673:5673
+      - 15672:15672
+
+volumes:
+  onedep_data:
+

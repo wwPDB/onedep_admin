@@ -252,7 +252,7 @@ OneDep installation parameters:
     --clone-deps:               clone onedep_admin and onedep-maintenance
     --setup-venv:               setup onedep virtual environment
     --python3-path:             path to a Python interpreter, defaults to 'python3'
-    --build-tools:              compile OneDep tools - OneDep requires compiled tools to be compiled or sync'd from RCSB
+    --build-tools:              compile OneDep tools - OneDep requires compiled tools to be compiled or syncd from RCSB
     --install-onedep:           installs OneDep python packages
     --install-onedep-develop    installs OneDep python packages develop branches in edit mode
     --run-maintenance:          perform maintenance tasks as part of setup

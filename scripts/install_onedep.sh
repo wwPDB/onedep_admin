@@ -199,6 +199,15 @@ function run_mysql_script {
     echo $(eval "$conn_string < $script_file")
 }
 
+# checking if we're running as root
+
+user=$(whoami)
+
+if [[ $user == 'root' ]]; then
+    show_warning_message "you should not run this script as root, run as a normal user instead and provide superuser credentials when asked"
+    exit -1
+fi
+
 # ----------------------------------------------------------------
 # arguments parsing
 # ----------------------------------------------------------------
@@ -210,11 +219,14 @@ SITE_LOC="${WWPDB_SITE_LOC}"
 MACHINE_ENV="production"
 OPT_PREPARE_RUNTIME=false
 OPT_PREPARE_BUILD=false
+OPT_DO_COMPILE_SITE_CONFIG=false
+OPT_DO_CLONE_DEPS=false
 OPT_DO_BUILD=false
 OPT_DO_RUNUPDATE=false
 OPT_DO_MAINTENANCE=false
 OPT_DO_APACHE=false
 OPT_DO_RESTART_SERVICES=false
+OPT_DO_HARD_RESET=false
 OPT_VAL_SERVER_NUM_WORKERS="60"
 OPT_DO_BUILD_DEV=false
 OPT_DO_PULL_SINGULARITY=false
@@ -223,35 +235,42 @@ OPT_DO_PULL_SINGULARITY=false
 OPT_DO_DATABASE=false
 OPT_DB_ADD_DUMMY_CODES=false
 OPT_DB_SKIP_BUILD=false
+OPT_DB_RESET=false
 DATABASE_DIR="default"
 
 read -r -d '' USAGE << EOM
-Usage: ${THIS_SCRIPT} [--config-version] [--python3-path] [--install-build-base] [--install-runtime-base] [--build-tools] [--install-onedep] [--install-onedep-develop] [--setup-database [opts]] [--run-maintenance] [--start-services] [--val-num-workers] [--pull-singularity]
+Usage: ${THIS_SCRIPT} [--full-install] [opts]
 
 System preparation parameters:
+    --full-install:             run all installation steps
     --install-runtime-base:     install packages ready for running onedep - not building tools (run as root)
     --install-build-base:       install packages ready for building tools (run as root)
 
 OneDep installation parameters:
     --config-version:           OneDep config version, defaults to 'latest'
+    --compile-site-config:      (re)compile site-config
+    --clone-deps:               clone onedep_admin and onedep-maintenance
+    --setup-venv:               setup onedep virtual environment
     --python3-path:             path to a Python interpreter, defaults to 'python3'
-    --build-tools:              Compile OneDep tools - OneDep requires compiled tools to be compiled or syncd from RCSB
-    --install-onedep:           Installs OneDep python packages
-    --install-onedep-develop:   installs OneDep python packages develop branches in edit mode
+    --build-tools:              compile OneDep tools - OneDep requires compiled tools to be compiled or sync'd from RCSB
+    --install-onedep:           installs OneDep python packages
+    --install-onedep-develop    installs OneDep python packages develop branches in edit mode
     --run-maintenance:          perform maintenance tasks as part of setup
     --setup-apache:             setup the apache
     --pull-singularity:         pull latest singularity image from GitLab
+    --hard-reset:               clean up tools, deployment subtree for the provided site, sessions and site references
+                                    this will be run before all steps
 
 Database parameters:
     --setup-database:           setup database (installs server as non-root and setup tables)
     --database-dir:             directory where database will be setup, defaults to '$DEPLOY_DIR/onedep_database'
     --skip-db-build:            will skip downloading of mysql and building steps
+    --reset-db:                 reset local database by removing files under 'data' dir
     --dummy-codes:              add PDB and EMDB dummy codes to database - useful for development installation
 
 Post install parameters:
     --start-services:           start all onedep services (workflow engine, consumers, apache servers)
     --val-num-workers:          how many workers validation servers should have
-
 
 EOM
 
@@ -276,17 +295,36 @@ do
             OPT_VAL_SERVER_NUM_WORKERS="$2"
             shift
         ;;
+        --full-install)
+            OPT_PREPARE_RUNTIME=true
+            OPT_PREPARE_BUILD=true
+            OPT_DO_BUILD=true
+            OPT_DO_COMPILE_SITE_CONFIG=true
+            OPT_DO_CLONE_DEPS=true
+            OPT_DO_RUNUPDATE=true
+            OPT_DO_BUILD_DEV=true
+            OPT_DO_DATABASE=true
+            OPT_DB_SKIP_BUILD=true
+            OPT_DO_MAINTENANCE=true
+            OPT_DO_APACHE=true
+            OPT_DB_ADD_DUMMY_CODES=true
+            OPT_DO_RESTART_SERVICES=true
+        ;;
         --install-runtime-base) OPT_PREPARE_RUNTIME=true;;
         --install-build-base) OPT_PREPARE_BUILD=true;;
 
         --build-tools) OPT_DO_BUILD=true;;
 
+        --compile-site-config) OPT_DO_COMPILE_SITE_CONFIG=true;;
+        --clone-deps) OPT_DO_CLONE_DEPS=true;;
         --install-onedep) OPT_DO_RUNUPDATE=true;;
         --install-onedep-develop) OPT_DO_BUILD_DEV=true;;
+        --hard-reset) OPT_DO_HARD_RESET=true;;
         --pull-singularity) OPT_DO_PULL_SINGULARITY=true;;
 
         --setup-database) OPT_DO_DATABASE=true;;
         --skip-db-build) OPT_DB_SKIP_BUILD=true;;
+        --reset-db) OPT_DB_RESET=true;;
 
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
@@ -317,14 +355,13 @@ check_env_variable WWPDB_SITE_ID true
 check_env_variable WWPDB_SITE_LOC true
 check_env_variable ONEDEP_PATH true
 
+export SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
+export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
+
 echo -e "----------------------------------------------------------------"
 echo -e "[*] $(highlight_text WWPDB_SITE_ID) is set to $(highlight_text $WWPDB_SITE_ID)"
 echo -e "[*] $(highlight_text WWPDB_SITE_LOC) is set to $(highlight_text $WWPDB_SITE_LOC)"
 echo -e "[*] $(highlight_text ONEDEP_PATH) is set to $(highlight_text $ONEDEP_PATH)"
-
-export SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
-export TOP_WWPDB_SITE_CONFIG_DIR=$ONEDEP_PATH/site-config
-
 echo -e "[*] $(highlight_text SITE_CONFIG_DIR) is set to $(highlight_text $SITE_CONFIG_DIR)"
 echo -e "[*] $(highlight_text TOP_WWPDB_SITE_CONFIG_DIR) is set to $(highlight_text $TOP_WWPDB_SITE_CONFIG_DIR)"
 echo -e "[*] using $(highlight_text $PYTHON3) as Python 3 interpreter"
@@ -345,6 +382,25 @@ fi
 
 cd $ONEDEP_PATH
 
+if [[ $OPT_DO_HARD_RESET == true ]]; then
+    show_info_message "removing tools and site related data"
+    
+    show_warning_message "the following directories will be completely removed:\n \
+    $TOOLS_DIR\n \
+    $DEPLOY_DIR"
+
+    read -p "[>] do you want to proceed (y/n)? " answer
+    case ${answer:0:1} in
+        y|Y )
+            rm -rf $TOOLS_DIR
+            rm -rf $DEPLOY_DIR
+        ;;
+        * )
+            show_warning_message "clean up cancelled"
+        ;;
+    esac
+fi
+
 if [[ ( $OPT_PREPARE_RUNTIME == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE == true || $OPT_PREPARE_BUILD == true ) && ! -d "onedep-build" ]]; then
     show_info_message "cloning onedep-build repository"
     git clone $ONEDEP_BUILD_REPO_URL
@@ -359,6 +415,7 @@ if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
         command=onedep-build/install-base/centos-7-build-packages.sh
     else
         show_info_message "installing system packages for running OneDep"
+
         if [[ $CENTOS_MAJOR_VER == 8 ]]; then
           command=onedep-build/install-base/centos-8-host-packages.sh
         elif [[ $CENTOS_MAJOR_VER == 7 ]]; then
@@ -367,9 +424,11 @@ if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
           show_warning_message "unsupported OS version"
         fi
     fi
+
     show_warning_message "running command: $command"
+    
     chmod +x $command
-    $command
+    sudo $command
 else
     show_warning_message "skipping installation of required packages"
 fi
@@ -378,37 +437,33 @@ fi
 # setting up directories used by onedep and python venv
 # ----------------------------------------------------------------
 
-show_info_message "setting up site-config"
-show_info_message "setting up temporary Python virtual env"
+if [[ $OPT_DO_COMPILE_SITE_CONFIG == true ]]; then
+    show_info_message "setting up Python virtual env"
 
-# delete if it already exists
-if [[ -d "/tmp/venv" ]]; then
+    # delete if it already exists
+    if [[ -d "/tmp/venv" ]]; then
+        rm -rf /tmp/venv
+    fi
+
+    unset PYTHONHOME
+    $PYTHON3 -m venv /tmp/venv
+    source /tmp/venv/bin/activate
+
+    show_info_message "updating setuptools"
+    pip install --no-cache-dir --upgrade setuptools==40.8.0 pip
+
+    show_info_message "installing wheel"
+    pip install --no-cache-dir wheel
+
+    show_info_message "installing wwpdb.utils.config"
+    pip install --no-cache-dir PyYaml==3.10 wwpdb.utils.config
+
+    show_info_message "compiling site-config for the new site"
+    ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
+
+    deactivate
     rm -rf /tmp/venv
 fi
-
-unset PYTHONHOME
-$PYTHON3 -m venv /tmp/venv
-source /tmp/venv/bin/activate
-
-# ----------------------------------------------------------------
-# setting up directories used by OneDep and python venv
-# ----------------------------------------------------------------
-
-
-show_info_message "updating setuptools"
-pip install --no-cache-dir --upgrade setuptools==40.8.0 pip
-
-show_info_message "installing wheel"
-pip install --no-cache-dir wheel
-
-show_info_message "installing wwpdb.utils.config"
-pip install --no-cache-dir PyYaml==3.10 wwpdb.utils.config
-
-show_info_message "compiling site-config for the new site"
-ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
-
-deactivate
-rm -rf /tmp/venv
 
 cd $ONEDEP_PATH
 
@@ -421,6 +476,28 @@ show_info_message "checking if everything went ok..."
 
 echo "[*] $(highlight_text DEPLOY_DIR) is set to $(highlight_text $DEPLOY_DIR)"
 check_env_variable DEPLOY_DIR true
+
+if [[ $OPT_DO_CLONE_DEPS == true ]]; then
+    show_info_message "cloning onedep repositories"
+
+    if [[ ! -d "onedep_admin" ]]; then
+        git clone $ONEDEP_ADMIN_REPO_URL
+        
+        cd onedep_admin
+
+        git checkout master
+        git pull
+
+        cd ..
+    fi
+
+    if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
+        git clone $ONEDEP_MAINTENANCE_REPO_URL
+    fi
+fi
+
+#show_info_message "creating 'resources' folder"
+#mkdir -p $DEPLOY_DIR/resources
 
 echo "[*] $(highlight_text TOOLS_DIR) is set to $(highlight_text $TOOLS_DIR)"
 check_env_variable TOOLS_DIR true
@@ -439,7 +516,7 @@ export INSTALL_KERNEL=Linux
 if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
     cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER
-    ./BUILD.sh |& tee build.log
+    sudo ./BUILD.sh |& tee build.log
 else
     show_warning_message "skipping build"
 fi
@@ -557,6 +634,7 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
   pip install ansible~=3.4
 
   show_info_message "running RunUpdate.py step"
+
   if [[ $OPT_DO_BUILD_DEV == true ]]; then
       python $ONEDEP_PATH/onedep_admin/scripts/RunUpdate.py --config $ONEDEP_VERSION --build-tools --build-dev
   else
@@ -584,6 +662,13 @@ if [[ $OPT_DO_DATABASE == true ]]; then
         mkdir -p $DATABASE_DIR
     fi
 
+    if [[ $OPT_DB_RESET == true ]]; then
+        show_info_message "resetting local database"
+
+        rm -rf $DATABASE_DIR/data
+        echo > $DATABASE_DIR/log.err
+    fi
+
     # site-config variables
     get_config_var SITE_DB_USER; db_user=$retval
     get_config_var SITE_DB_PASSWORD; db_password=$retval
@@ -600,8 +685,14 @@ if [[ $OPT_DO_DATABASE == true ]]; then
 
     cd $DATABASE_DIR
 
-    show_info_message "initializing mysql server"
-    ./mysql/bin/mysqld --user=$USER --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port --initialize
+    # killing all mysqld instances initiated by this user
+    killall mysqld
+
+    ls -A $DATABASE_DIR/data
+    if [[ ! "$(ls -A $DATABASE_DIR/data)" ]]; then
+        show_info_message "initializing mysql server"
+        ./mysql/bin/mysqld --user=w3_pdb05 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port --initialize
+    fi
 
     show_info_message "starting mysql server, please wait"
     ./mysql/bin/mysqld --user=$USER --bind-address=0.0.0.0 --basedir=$DATABASE_DIR/mysql --datadir=$DATABASE_DIR/data --socket=$DATABASE_DIR/mysql.sock --log-error=$DATABASE_DIR/log --pid-file=$DATABASE_DIR/mysql.pid --port=$db_port &
@@ -679,8 +770,6 @@ fi
 # so keeping this to the minimum
 # ----------------------------------------------------------------
 
-
-
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
 
   if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
@@ -698,6 +787,7 @@ fi
 # ----------------------------------------------------------------
 # apache setup
 # ----------------------------------------------------------------
+
 if [[ $OPT_DO_APACHE == true ]]; then
     show_info_message "copying httpd.conf"
 
@@ -715,6 +805,7 @@ fi
 # ----------------------------------------------------------------
 # restart services
 # ----------------------------------------------------------------
+
 if [[ $OPT_DO_RESTART_SERVICES == true ]]; then
     show_info_message "restarting all services"
 

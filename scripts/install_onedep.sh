@@ -794,6 +794,8 @@ if [[ $OPT_DO_APACHE == true ]]; then
     cd $APACHE_PREFIX_DIR/conf
     mv httpd.conf httpd.conf.safe
     ln -s $SITE_CONFIG_DIR/apache_config/httpd.conf httpd.conf
+    mkdir $APACHE_PREFIX_DIR/conf.d
+    ln -s $SITE_CONFIG_DIR/apache_config/development.conf $APACHE_PREFIX_DIR/conf.d
 else
   show_warning_message "skipping setting up the apache"
 fi

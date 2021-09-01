@@ -56,7 +56,7 @@ class DbSchemaManager(object):
              angle_alpha                                                  float              null,
              angle_beta                                                   float              null,
              angle_gamma                                                  float              null,
-             entry_id                                                     varchar(10)    not null,
+             entry_id                                                     varchar(15)    not null,
              details                                                      varchar(200)       null,
              length_a                                                     float              null,
              length_b                                                     float              null,
@@ -107,7 +107,7 @@ class DbSchemaManager(object):
              ["""CREATE TABLE IF NOT EXISTS symmetry
              (
              Structure_ID                                                 varchar(15)    not null,
-             entry_id                                                     varchar(10)    not null,
+             entry_id                                                     varchar(15)    not null,
              cell_setting                                                 varchar(13)        null,
              Int_Tables_number                                            int                null,
              space_group_name_Hall                                        varchar(80)        null,
@@ -374,6 +374,7 @@ class DbSchemaManager(object):
 
 
         # Handle aliases
+        orig_table = table
         tb = block.getObj('rcsb_table_abbrev')
         if tb:
             for row in range(tb.getRowCount()):
@@ -397,11 +398,11 @@ class DbSchemaManager(object):
 
         if not found:
             # schema mapping file does not list - we should not need to add
-            print("{} not found -- skipping".format(table))
+            # print("{} not found -- skipping".format(table))
             return False
 
 
-        ret = self._nottableexists(dbconn, table)
+        ret = self._nottableexists(dbconn, orig_table)
 
         return ret
 

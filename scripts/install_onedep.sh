@@ -636,7 +636,9 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
       pip config --site set global.extra-index-url "http://${cs_user}:${cs_pw}@${cs_distrib_url} https://pypi.anaconda.org/OpenEye/simple"
       pip config --site set global.no-cache-dir false
   else
-      show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
+      show_error_message "some of the environment variables for the private RCSB Python repository are not set"
+      show_error_message "need to set CS_HOST_BASE, CS_USER, CS_PW and CS_DISTRIB_URL"
+      exit 1
   fi
 
   show_info_message "running RunUpdate.py step"

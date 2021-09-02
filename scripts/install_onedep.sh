@@ -230,6 +230,7 @@ OPT_DO_HARD_RESET=false
 OPT_VAL_SERVER_NUM_WORKERS="60"
 OPT_DO_BUILD_DEV=false
 OPT_DO_PULL_SINGULARITY=false
+OPT_DO_INSTALL_ANSIBLE=false
 
 # database flags
 OPT_DO_DATABASE=false
@@ -260,6 +261,7 @@ OneDep installation parameters:
     --pull-singularity:         pull latest singularity image from GitLab
     --hard-reset:               clean up tools, deployment subtree for the provided site, sessions and site references
                                     this will be run before all steps
+    --install-ansible           Install ansible to the OneDep Venv
 
 Database parameters:
     --setup-database:           setup database (installs server as non-root and setup tables)
@@ -321,6 +323,7 @@ do
         --install-onedep-develop) OPT_DO_BUILD_DEV=true;;
         --hard-reset) OPT_DO_HARD_RESET=true;;
         --pull-singularity) OPT_DO_PULL_SINGULARITY=true;;
+        --install-ansible) OPT_DO_INSTALL_ANSIBLE=true;;
 
         --setup-database) OPT_DO_DATABASE=true;;
         --skip-db-build) OPT_DB_SKIP_BUILD=true;;
@@ -612,6 +615,15 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
   show_info_message "updating setuptools and pip"
   pip install --no-cache-dir --upgrade setuptools pip
 
+  show_info_message "install some base packages"
+  pip install wheel
+  pip install wwpdb.utils.config
+
+  if [[ $OPT_DO_INSTALL_ANSIBLE == true ]]; then
+    show_info_message "installing ansible"
+    pip install ansible~=3.4
+  fi
+
   show_info_message "creating pip configuration file"
 
   get_config_var CS_HOST_BASE; cs_host_base=$retval
@@ -626,12 +638,6 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
   else
       show_warning_message "some of the environment variables for the private RCSB Python repository are not set"
   fi
-
-  show_info_message "install some base packages"
-  pip install wheel
-
-  pip install wwpdb.utils.config
-  pip install ansible~=3.4
 
   show_info_message "running RunUpdate.py step"
 

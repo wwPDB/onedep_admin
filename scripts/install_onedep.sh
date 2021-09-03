@@ -432,6 +432,7 @@ if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
     
     chmod +x $command
     sudo -E $command
+    sudo -E yum install -y mysql
 else
     show_warning_message "skipping installation of required packages"
 fi

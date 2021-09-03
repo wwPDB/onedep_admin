@@ -19,7 +19,7 @@ ONEDEP_ADMIN_REPO_URL=git@github.com:wwPDB/onedep_admin.git # OneDep package man
 ONEDEP_MAINTENANCE_REPO_URL=git@github.com:wwPDB/onedep-maintenance.git # scripts to setup and maintain OneDep
 
 # download links
-MYSQL_COMMUNITY_SERVER=https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-5.7.35.tar.gz
+MYSQL_COMMUNITY_SERVER=https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-boost-5.7.35.tar.gz
 
 # ----------------------------------------------------------------
 # helper functions

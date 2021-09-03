@@ -431,7 +431,7 @@ if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
     show_warning_message "running command: $command"
     
     chmod +x $command
-    sudo $command
+    sudo -E $command
 else
     show_warning_message "skipping installation of required packages"
 fi
@@ -519,7 +519,7 @@ export INSTALL_KERNEL=Linux
 if [[ $OPT_DO_BUILD == true ]]; then
     show_info_message "now building, this may take a while"
     cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER
-    sudo ./BUILD.sh |& tee build.log
+    ./BUILD.sh |& tee build.log
 else
     show_warning_message "skipping build"
 fi

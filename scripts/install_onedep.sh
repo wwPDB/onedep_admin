@@ -117,7 +117,7 @@ function build_mysql {
     export CC=/usr/bin/gcc
     export CXX=/usr/bin/g++
 
-    cmake .. -DCMAKE_INSTALL_PREFIX=$DATABASE_DIR/mysql -DMYSQL_UNIX_ADDR=$DATABASE_DIR/mysql.sock -DDOWNLOAD_BOOST=1 -DWITH_BOOST=$DATABASE_DIR/mysql-source/boost
+    cmake .. -DCMAKE_INSTALL_PREFIX=$DATABASE_DIR/mysql -DMYSQL_UNIX_ADDR=$DATABASE_DIR/mysql.sock -DDOWNLOAD_BOOST=1 -DENABLE_DOWNLOADS=1 -DWITH_BOOST=$DATABASE_DIR/mysql-source/boost
     make
     make install
 }

@@ -107,5 +107,9 @@ RUN cp apache/annotation.conf /etc/httpd/conf.d/
 # install OneDep python, webapps and resources_ro
 RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers $BUILD_DEV
 
+# temp getting DAOTHER-5845 branch of validation
+RUN if [[ -n "$BUILD_DEV" ]]; then cd $ONEDEP_PATH/source/py-wwpdb_apps_validation && git checkout DAOTHER-5845; fi
+
+
 WORKDIR $ONEDEP_PATH
 RUN rm -rf $ONEDEP_PATH/onedep_admin

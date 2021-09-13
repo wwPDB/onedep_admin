@@ -162,7 +162,7 @@ class UpdateManager(object):
 
         if opt_req:
             command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U {} -r {}'.format(
-                cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, urlpath, urlreq.netloc, opt_req, constraintfile)
+                cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, pip_extra_urls, opt_req)
             self.__exec(command)
 
     def updateresources(self):

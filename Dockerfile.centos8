@@ -80,9 +80,9 @@ RUN pip install mod-wsgi
 RUN mod_wsgi-express install-module > /etc/httpd/conf.modules.d/02-wsgi.conf
 
 # setup the apache - expose port 8080 so that non-root users can run the image
-RUN chmod -R a+rw /var/log/httpd
-RUN chmod -R a+rw /run/httpd
-RUN chmod -R a+rw /var/lib/httpd
+RUN chmod -R a+rwx /var/log/httpd
+RUN chmod -R a+rwx /run/httpd
+RUN chmod -R a+rwx /var/lib/httpd
 RUN sed -i "s/Listen 80/Listen 8080/g" /etc/httpd/conf/httpd.conf
 
 # access to content server

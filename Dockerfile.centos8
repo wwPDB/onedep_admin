@@ -139,15 +139,15 @@ RUN pip install wwpdb.utils.config
 
 # for running apache with this version of python
 RUN pip install mod-wsgi
-RUN mod_wsgi-express install-module > /etc/httpd/conf.modules.d/02-wsgi.conf
+# RUN mod_wsgi-express install-module > /etc/httpd/conf.modules.d/02-wsgi.conf
 
 # setup the apache - expose port 8080 so that non-root users can run the image
-RUN chmod -R a+rwx /var/log/httpd
-RUN chmod -R a+rwx /run/httpd
-RUN chmod -R a+rwx /var/lib/httpd
-RUN sed -i "s/Listen 80/Listen 8080/g" /etc/httpd/conf/httpd.conf
+# RUN chmod -R a+rwx /var/log/httpd
+# RUN chmod -R a+rwx /run/httpd
+# RUN chmod -R a+rwx /var/lib/httpd
+# RUN sed -i "s/Listen 80/Listen 8080/g" /etc/httpd/conf/httpd.conf
 
-# setup the build apache
+# setup the apache
 RUN mkdir $APACHE_PREFIX_DIR/conf.d
 RUN mod_wsgi-express install-module > $APACHE_PREFIX_DIR/conf.d/02-wsgi.conf
 RUN sed -i "s/Listen 80/Listen 8080/g" $APACHE_PREFIX_DIR/conf/httpd.conf

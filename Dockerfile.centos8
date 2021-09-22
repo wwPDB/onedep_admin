@@ -73,7 +73,7 @@ ENV APACHE_PREFIX_DIR=/apache
 WORKDIR /apache-build
 RUN wget -O apr-util-1.6.1.tar.gz http://mirrors.ibiblio.org/apache//apr/apr-util-1.6.1.tar.gz
 RUN wget -O apr-1.6.5.tar.gz      http://mirrors.ibiblio.org/apache//apr/apr-1.6.5.tar.gz
-RUN wget -O httpd-2.4.37.tar.gz   http://supergsego.com/apache//httpd/httpd-2.4.33.tar.gz
+RUN wget -O httpd-2.4.37.tar.gz   http://archive.apache.org/dist/httpd/httpd-2.4.37.tar.gz
 RUN gzip -d -c httpd-2.4.37.tar.gz | tar -xf -
 RUN cd httpd-2.4.37/srclib \
   && gzip -d -c /apache-build/apr-util-1.6.1.tar.gz | tar -xf - \

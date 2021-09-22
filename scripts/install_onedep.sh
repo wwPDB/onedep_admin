@@ -219,7 +219,6 @@ SITE_LOC="${WWPDB_SITE_LOC}"
 MACHINE_ENV="production"
 OPT_PREPARE_RUNTIME=false
 OPT_PREPARE_BUILD=false
-OPT_DO_COMPILE_SITE_CONFIG=false
 OPT_DO_CLONE_DEPS=false
 OPT_DO_BUILD=false
 OPT_DO_RUNUPDATE=false
@@ -249,9 +248,7 @@ System preparation parameters:
 
 OneDep installation parameters:
     --config-version:           OneDep config version, defaults to 'latest'
-    --compile-site-config:      (re)compile site-config
     --clone-deps:               clone onedep_admin and onedep-maintenance
-    --setup-venv:               setup onedep virtual environment
     --python3-path:             path to a Python interpreter, defaults to 'python3'
     --build-tools:              compile OneDep tools - OneDep requires compiled tools to be compiled or syncd from RCSB
     --install-onedep:           installs OneDep python packages
@@ -271,7 +268,7 @@ Database parameters:
     --dummy-codes:              add PDB and EMDB dummy codes to database - useful for development installation
 
 Post install parameters:
-    --start-services:           start all onedep services (workflow engine, consumers, apache servers)
+    --restart-services:         start all onedep services (workflow engine, consumers, apache servers)
     --val-num-workers:          how many workers validation servers should have
 
 EOM
@@ -317,7 +314,6 @@ do
 
         --build-tools) OPT_DO_BUILD=true;;
 
-        --compile-site-config) OPT_DO_COMPILE_SITE_CONFIG=true;;
         --clone-deps) OPT_DO_CLONE_DEPS=true;;
         --install-onedep) OPT_DO_RUNUPDATE=true;;
         --install-onedep-develop) OPT_DO_BUILD_DEV=true;;
@@ -441,33 +437,31 @@ fi
 # setting up directories used by onedep and python venv
 # ----------------------------------------------------------------
 
-if [[ $OPT_DO_COMPILE_SITE_CONFIG == true ]]; then
-    show_info_message "setting up Python virtual env"
+show_info_message "setting up Python virtual env"
 
-    # delete if it already exists
-    if [[ -d "/tmp/venv" ]]; then
-        rm -rf /tmp/venv
-    fi
-
-    unset PYTHONHOME
-    $PYTHON3 -m venv /tmp/venv
-    source /tmp/venv/bin/activate
-
-    show_info_message "updating setuptools"
-    pip install --no-cache-dir --upgrade setuptools==40.8.0 pip
-
-    show_info_message "installing wheel"
-    pip install --no-cache-dir wheel
-
-    show_info_message "installing wwpdb.utils.config"
-    pip install --no-cache-dir PyYaml==3.10 wwpdb.utils.config
-
-    show_info_message "compiling site-config for the new site"
-    ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
-
-    deactivate
+# delete if it already exists
+if [[ -d "/tmp/venv" ]]; then
     rm -rf /tmp/venv
 fi
+
+unset PYTHONHOME
+$PYTHON3 -m venv /tmp/venv
+source /tmp/venv/bin/activate
+
+show_info_message "updating setuptools"
+pip install --no-cache-dir --upgrade setuptools==40.8.0 pip
+
+show_info_message "installing wheel"
+pip install --no-cache-dir wheel
+
+show_info_message "installing wwpdb.utils.config"
+pip install --no-cache-dir PyYaml==3.10 wwpdb.utils.config
+
+show_info_message "compiling site-config for the new site"
+ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
+
+deactivate
+rm -rf /tmp/venv
 
 cd $ONEDEP_PATH
 

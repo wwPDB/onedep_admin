@@ -68,6 +68,68 @@ RUN mkdir build \
 RUN echo /usr/local/lib > /etc/ld.so.conf.d/usrlocal.conf
 RUN ldconfig
 
+# setup apache
+ENV APACHE_PREFIX_DIR=/apache
+WORKDIR /apache-build
+RUN wget -O apr-util-1.6.1.tar.gz http://mirrors.ibiblio.org/apache//apr/apr-util-1.6.1.tar.gz
+RUN wget -O apr-1.6.5.tar.gz      http://mirrors.ibiblio.org/apache//apr/apr-1.6.5.tar.gz
+RUN wget -O httpd-2.4.37.tar.gz   http://supergsego.com/apache//httpd/httpd-2.4.33.tar.gz
+RUN gzip -d -c httpd-2.4.37.tar.gz | tar -xf -
+RUN cd httpd-2.4.37/srclib \
+  && gzip -d -c /apache-build/apr-util-1.6.1.tar.gz | tar -xf - \
+  && gzip -d -c /apache-build/apr-1.6.5.tar.gz      | tar -xf - \
+  && ln -s apr-1.6.5 apr  \
+  && ln -s apr-util-1.6.1 apr-util
+RUN cd httpd-2.4.37 \
+    && ./configure \
+    --prefix=${APACHE_PREFIX_DIR} \
+    --enable-modules-shared=all \
+    --enable-nonportable-atomics \
+    --enable-auth-anon \
+    --enable-auth-dbm \
+    --enable-auth-digest \
+    --enable-file-cache \
+    --enable-echo \
+    --enable-charset-lite \
+    --enable-cache \
+    --enable-disk-cache \
+    --enable-mem-cache \
+    --enable-ext-filter \
+    --enable-case-filter \
+    --enable-case-filter-in \
+    --enable-deflate \
+    --enable-mime-magic \
+    --enable-cern-meta \
+    --enable-expires \
+    --enable-headers \
+    --enable-usertrack \
+    --enable-unique-id \
+    --enable-proxy \
+    --enable-proxy-connect \
+    --enable-proxy-ftp \
+    --enable-proxy-http \
+    --enable-proxy-ajp \
+    --enable-proxy-balancer \
+    --enable-bucketeer \
+    --enable-http \
+    --enable-info \
+    --enable-suexec \
+    --enable-cgid \
+    --enable-vhost-alias \
+    --enable-speling \
+    --enable-rewrite \
+    --enable-so \
+    --enable-dav \
+    --enable-dav-fs \
+    --enable-ssl=shared \
+    --enable-mods-shared=most \
+    --with-mpm=prefork \
+    --enable-ipv6 \
+    --enable-dbd \
+    --with-included-apr \
+    && make \
+    && make install
+
 # setup venv
 RUN python3 -m venv $VENV
 RUN pip install --no-cache-dir --upgrade setuptools pip
@@ -84,6 +146,12 @@ RUN chmod -R a+rwx /var/log/httpd
 RUN chmod -R a+rwx /run/httpd
 RUN chmod -R a+rwx /var/lib/httpd
 RUN sed -i "s/Listen 80/Listen 8080/g" /etc/httpd/conf/httpd.conf
+
+# setup the build apache
+RUN mkdir $APACHE_PREFIX_DIR/conf.d
+RUN mod_wsgi-express install-module > $APACHE_PREFIX_DIR/conf.d/02-wsgi.conf
+RUN sed -i "s/Listen 80/Listen 8080/g" $APACHE_PREFIX_DIR/conf/httpd.conf
+RUN echo "IncludeOptional conf.d/*.conf" >> $APACHE_PREFIX_DIR/conf/httpd.conf
 
 # access to content server
 ARG CS_USER
@@ -104,6 +172,7 @@ ENV RO_RESOURCE_PATH=$ONEDEP_PATH/resources_ro
 WORKDIR $ONEDEP_PATH/onedep_admin
 COPY . .
 RUN cp apache/annotation.conf /etc/httpd/conf.d/
+RUN cp apache/annotation.conf $APACHE_PREFIX_DIR/conf.d/
 
 # install OneDep python, webapps and resources_ro
 RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers $BUILD_DEV

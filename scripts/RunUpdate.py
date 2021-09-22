@@ -256,7 +256,8 @@ class UpdateManager(object):
                  ['webfever', 'TOP_WWPDB_WEBAPPS_DIR', 'version.json', ''],
                  ['resourcever', 'RO_RESOURCE_PATH', 'version.json', ''],
                  ['cctoolsver', 'SITE_CC_APPS_PATH', 'etc/bundleversion.json', 'get_site_cc_apps_path'],
-                 ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json', 'get_site_packages_path']
+                 ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json', 'get_site_packages_path'],
+                 ['dictver', 'SITE_PACKAGES_PATH', 'dict/etc/bundleversion.json', 'get_site_packages_path'],
                  ]
 
         for c in confs:

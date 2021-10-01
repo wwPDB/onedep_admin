@@ -8,8 +8,8 @@ RUN dnf -y install python38 python38-devel httpd httpd-devel git cmake gcc gcc-c
     libarchive bison flex gcc-gfortran
 RUN dnf -y install eigen3-devel zlib-devel libxml2-devel swig cairo-devel glibc
 RUN dnf -y install mariadb mariadb-devel subversion cvs tcsh texlive texlive-multirow mailx  \
-    java-1.8.0-openjdk mesa-libGLU mesa-libOSMesa glx-utils
-RUN dnf -y install glibc.i686 libXmu.i686
+    java-1.8.0-openjdk mesa-libGLU mesa-libOSMesa glx-utils gnuplot
+RUN dnf -y install glibc.i686 libXmu.i686 compat-libgfortran-48
 
 # remove any caching
 RUN dnf clean all

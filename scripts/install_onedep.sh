@@ -16,7 +16,6 @@ CENTOS_MAJOR_VER=`cat /etc/redhat-release | cut -d' ' -f4  | cut -d'.' -f1`
 # repositories
 ONEDEP_BUILD_REPO_URL=git@github.com:wwPDB/onedep-build.git # scripts to build tools for OneDep
 ONEDEP_ADMIN_REPO_URL=git@github.com:wwPDB/onedep_admin.git # OneDep package management
-ONEDEP_MAINTENANCE_REPO_URL=git@github.com:wwPDB/onedep-maintenance.git # scripts to setup and maintain OneDep
 
 # download links
 MYSQL_COMMUNITY_SERVER=https://dev.mysql.com/get/Downloads/MySQL-5.7/mysql-boost-5.7.35.tar.gz
@@ -489,29 +488,23 @@ if [[ $OPT_DO_CLONE_DEPS == true ]]; then
         cd ..
     fi
 
-    if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
-        git clone $ONEDEP_MAINTENANCE_REPO_URL
-    fi
 fi
 
-#show_info_message "creating 'resources' folder"
-#mkdir -p $DEPLOY_DIR/resources
-
-echo "[*] $(highlight_text TOOLS_DIR) is set to $(highlight_text $TOOLS_DIR)"
-check_env_variable TOOLS_DIR true
-
-# export some useful variables for building tools
-export TOP_INSTALL_DIR=$TOOLS_DIR
-export DISTRIB_DIR=$TOP_INSTALL_DIR/distrib
-export DISTRIB_SOURCE=$TOP_INSTALL_DIR/distrib_source
-export DISTRIB_SOURCE_DIR=$TOP_INSTALL_DIR/distrib_source
-export BUILD_DIR=$TOP_INSTALL_DIR/build
-export BUILD_PY_DIR=$TOP_INSTALL_DIR/build/python
-export PREFIX=$TOP_INSTALL_DIR
-export PACKAGE_DIR=$TOP_INSTALL_DIR/packages
-export INSTALL_KERNEL=Linux
-
 if [[ $OPT_DO_BUILD == true ]]; then
+    echo "[*] $(highlight_text TOOLS_DIR) is set to $(highlight_text $TOOLS_DIR)"
+    check_env_variable TOOLS_DIR true
+    check_env_variable REFERENCE_PATH true
+
+    # export some useful variables for building tools
+    export TOP_INSTALL_DIR=$TOOLS_DIR
+    export DISTRIB_DIR=$TOP_INSTALL_DIR/distrib
+    export DISTRIB_SOURCE=$TOP_INSTALL_DIR/distrib_source
+    export DISTRIB_SOURCE_DIR=$TOP_INSTALL_DIR/distrib_source
+    export BUILD_DIR=$TOP_INSTALL_DIR/build
+    export BUILD_PY_DIR=$TOP_INSTALL_DIR/build/python
+    export PREFIX=$TOP_INSTALL_DIR
+    export PACKAGE_DIR=$TOP_INSTALL_DIR/packages
+    export INSTALL_KERNEL=Linux
     show_info_message "now building, this may take a while"
     cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER
     ./BUILD.sh |& tee build.log
@@ -769,16 +762,9 @@ fi
 
 # ----------------------------------------------------------------
 # maintenance tasks
-# according to the Confluence doc, there are many more maintenance tasks
-# so keeping this to the minimum
 # ----------------------------------------------------------------
 
 if [[ $OPT_DO_MAINTENANCE == true ]]; then
-
-  if [[ $OPT_DO_MAINTENANCE == true && ! -d "onedep-maintenance" ]]; then
-    show_info_message "cloning OneDep maintenance repository"
-    git clone $ONEDEP_MAINTENANCE_REPO_URL
-  fi
 
     show_info_message "Running setup maintenance"
     python -m wwpdb.apps.site_admin.maintenance.RunSetupMaintenance

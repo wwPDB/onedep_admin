@@ -781,7 +781,7 @@ if [[ $OPT_DO_MAINTENANCE == true ]]; then
   fi
 
     show_info_message "Running setup maintenance"
-    python -m wwpdb.apps.site_admin.RunSetupMaintenance
+    python -m wwpdb.apps.site_admin.maintenance.RunSetupMaintenance
 
 else
     show_warning_message "skipping maintenance tasks"

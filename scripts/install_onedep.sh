@@ -471,33 +471,6 @@ show_info_message "checking if everything went ok..."
 echo "[*] $(highlight_text DEPLOY_DIR) is set to $(highlight_text $DEPLOY_DIR)"
 check_env_variable DEPLOY_DIR true
 
-
-if [[ $OPT_DO_BUILD == true ]]; then
-  show_info_message "Ensuring that the mmCIF dictionary is checked out for the annotation pack build"
-  show_info_message "creating pip configuration file in temp venv"
-
-  get_config_var CS_HOST_BASE; cs_host_base=$retval
-  get_config_var CS_USER; cs_user=$retval
-  get_config_var CS_PW; cs_pw=$retval
-  get_config_var CS_DISTRIB_URL; cs_distrib_url=$retval
-
-  if [[ ! -z "$cs_host_base" && ! -z "$cs_user" && ! -z "$cs_pw" && ! -z "$cs_distrib_url" ]]; then
-      pip config --site set global.trusted-host $cs_host_base
-      pip config --site set global.extra-index-url "http://${cs_user}:${cs_pw}@${cs_distrib_url} https://pypi.anaconda.org/OpenEye/simple"
-      pip config --site set global.no-cache-dir false
-  else
-      show_error_message "some of the environment variables for the private RCSB Python repository are not set"
-      show_error_message "need to set CS_HOST_BASE, CS_USER, CS_PW and CS_DISTRIB_URL"
-      exit 1
-  fi
-
-  show_info_message "installing site_admin pack"
-  pip install wwpdb.apps.site_admin
-  show_info_message "check out the mmCIF dictionary - needed for annotation pack"
-  python -m wwpdb.apps.site_admin.maintenance.UpdateMmcifDictionary
-
-fi
-
 show_info_message "deactivate and remove the temp venv"
 deactivate
 rm -rf /tmp/venv
@@ -506,8 +479,6 @@ rm -rf /tmp/venv
 if [[ $OPT_DO_BUILD == true ]]; then
     echo "[*] $(highlight_text TOOLS_DIR) is set to $(highlight_text $TOOLS_DIR)"
     check_env_variable TOOLS_DIR true
-    echo "[*] $(highlight_text REFERENCE_PATH) is set to $(highlight_text $REFERENCE_PATH)"
-    check_env_variable REFERENCE_PATH true
 
     # export some useful variables for building tools
     export TOP_INSTALL_DIR=$TOOLS_DIR

@@ -242,8 +242,8 @@ Usage: ${THIS_SCRIPT} [--full-install] [opts]
 
 System preparation parameters:
     --full-install:             run all installation steps
-    --install-runtime-base:     install packages ready for running onedep - not building tools (run as root)
-    --install-build-base:       install packages ready for building tools (run as root)
+    --install-runtime-base:     install packages ready for running onedep - not building tools (run with sudo privilages)
+    --install-build-base:       install packages ready for building tools (run with sudo privilages)
 
 OneDep installation parameters:
     --config-version:           OneDep config version, defaults to 'latest'
@@ -297,7 +297,6 @@ do
             OPT_PREPARE_RUNTIME=true
             OPT_PREPARE_BUILD=true
             OPT_DO_BUILD=true
-            OPT_DO_COMPILE_SITE_CONFIG=true
             OPT_DO_CLONE_DEPS=true
             OPT_DO_RUNUPDATE=true
             OPT_DO_BUILD_DEV=true
@@ -436,7 +435,7 @@ fi
 # setting up directories used by onedep and python venv
 # ----------------------------------------------------------------
 
-show_info_message "setting up Python virtual env"
+show_info_message "setting up a temp Python virtual env"
 
 # delete if it already exists
 if [[ -d "/tmp/venv" ]]; then
@@ -459,14 +458,12 @@ pip install --no-cache-dir PyYaml==3.10 wwpdb.utils.config
 show_info_message "compiling site-config for the new site"
 ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache
 
-deactivate
-rm -rf /tmp/venv
 
 cd $ONEDEP_PATH
 
 show_info_message "activating the new configuration"
 # activate_configuration
-. site-config/init/env.sh --siteid $WWPDB_SITE_ID --location $WWPDB_SITE_LOC
+. $ONEDEP_PATH/site-config/init/env.sh --siteid $WWPDB_SITE_ID --location $WWPDB_SITE_LOC
 
 # now checking if DEPLOY_DIR has been set
 show_info_message "checking if everything went ok..."
@@ -474,25 +471,42 @@ show_info_message "checking if everything went ok..."
 echo "[*] $(highlight_text DEPLOY_DIR) is set to $(highlight_text $DEPLOY_DIR)"
 check_env_variable DEPLOY_DIR true
 
-if [[ $OPT_DO_CLONE_DEPS == true ]]; then
-    show_info_message "cloning onedep repositories"
 
-    if [[ ! -d "onedep_admin" ]]; then
-        git clone $ONEDEP_ADMIN_REPO_URL
-        
-        cd onedep_admin
+if [[ $OPT_DO_BUILD == true ]]; then
+  show_info_message "Ensuring that the mmCIF dictionary is checked out for the annotation pack build"
+  show_info_message "creating pip configuration file in temp venv"
 
-        git checkout master
-        git pull
+  get_config_var CS_HOST_BASE; cs_host_base=$retval
+  get_config_var CS_USER; cs_user=$retval
+  get_config_var CS_PW; cs_pw=$retval
+  get_config_var CS_DISTRIB_URL; cs_distrib_url=$retval
 
-        cd ..
-    fi
+  if [[ ! -z "$cs_host_base" && ! -z "$cs_user" && ! -z "$cs_pw" && ! -z "$cs_distrib_url" ]]; then
+      pip config --site set global.trusted-host $cs_host_base
+      pip config --site set global.extra-index-url "http://${cs_user}:${cs_pw}@${cs_distrib_url} https://pypi.anaconda.org/OpenEye/simple"
+      pip config --site set global.no-cache-dir false
+  else
+      show_error_message "some of the environment variables for the private RCSB Python repository are not set"
+      show_error_message "need to set CS_HOST_BASE, CS_USER, CS_PW and CS_DISTRIB_URL"
+      exit 1
+  fi
+
+  show_info_message "installing site_admin pack"
+  pip install wwpdb.apps.site_admin
+  show_info_message "check out the mmCIF dictionary - needed for annotation pack"
+  python -m wwpdb.apps.site_admin.maintenance.UpdateMmcifDictionary
 
 fi
+
+show_info_message "deactivate and remove the temp venv"
+deactivate
+rm -rf /tmp/venv
+
 
 if [[ $OPT_DO_BUILD == true ]]; then
     echo "[*] $(highlight_text TOOLS_DIR) is set to $(highlight_text $TOOLS_DIR)"
     check_env_variable TOOLS_DIR true
+    echo "[*] $(highlight_text REFERENCE_PATH) is set to $(highlight_text $REFERENCE_PATH)"
     check_env_variable REFERENCE_PATH true
 
     # export some useful variables for building tools
@@ -515,7 +529,7 @@ fi
 # ----------------------------------------------------------------
 # cloning OneDep admin pack
 # ----------------------------------------------------------------
-if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true || $OPT_DO_PULL_SINGULARITY == true ]]; then
+if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true || $OPT_DO_PULL_SINGULARITY == true ||  $OPT_DO_CLONE_DEPS == true ]]; then
 
   cd $ONEDEP_PATH
   if [[ ! -d "onedep_admin" ]]; then
@@ -564,7 +578,6 @@ if [[ $OPT_DO_PULL_SINGULARITY == true ]]; then
   singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:${SINGULARITY_BRANCH}
   cd ${SINGULARITY_PATH}
   singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:${SINGULARITY_BRANCH}-develop
-  singularity pull --force docker://dockerhub.ebi.ac.uk/wwpdb/onedep_admin:${SINGULARITY_BRANCH}-python-develop
 
   rm -f current
   ln -s $LATEST_VERSION current

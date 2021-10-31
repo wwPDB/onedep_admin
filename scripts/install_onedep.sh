@@ -249,7 +249,6 @@ function bootstrap_site_config {
     for v in "${variables[@]}"; do
         var_name=$(echo $v | cut -d"=" -f1 | xargs)
         var_value=$(echo $v | cut -d"=" -f2 | xargs)
-        echo "$var_name = $var_value"
         
         set_config_var $var_name $var_value
         sed -i "s#$v#$var_name = $retval#" $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/$site_name_lc/site.cfg

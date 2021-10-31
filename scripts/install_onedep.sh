@@ -243,7 +243,7 @@ function bootstrap_site_config {
     mv $ONEDEP_PATH/site-config/example/example_site1 $ONEDEP_PATH/site-config/example/$site_name_lc
     mv $ONEDEP_PATH/site-config/example $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC
 
-    sed -i "s/[example]/[$site_name_lc]/" $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/$site_name_lc/site.cfg
+    sed -i "s/\[example\]/\[$site_name_lc\]/" $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/$site_name_lc/site.cfg
     mapfile -t variables < <(grep -E '^\w+\s*=\s*\{.*\}' $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/$site_name_lc/site.cfg)
     
     for v in "${variables[@]}"; do

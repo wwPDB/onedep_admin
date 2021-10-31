@@ -198,6 +198,63 @@ function run_mysql_script {
     echo $(eval "$conn_string < $script_file")
 }
 
+#
+# helper function to set a value for a variable in the
+#   site-config template
+#   $1: variable name
+#   $2: variable value
+function set_config_var {
+    local var_name=$1
+    local var_value=$(echo $2 | sed 's/[}{]//g')
+    local value=""
+
+    local default_value=$(echo $var_value | cut -d"|" -f1)
+    local case=$(echo $var_value | cut -d"|" -f2)
+
+    if [[ $default_value == \$* ]]; then
+        default_value=$(printenv ${default_value#\$})
+    fi
+
+    case $case in
+        uc) default_value=$(echo $default_value | tr '[:lower:]' '[:upper:]') ;;
+        lc) default_value=$(echo $default_value | tr '[:upper:]' '[:lower:]') ;;
+        *) ;;
+    esac
+
+    # echo "$(highlight_text $var_name) ($default_value): "
+    read -p "$(highlight_text $var_name) ($(highlight_text $default_value)): " value
+
+    if [[ -z $value ]]; then
+        value=$default_value
+    fi
+
+    retval=$value
+}
+
+#
+# interactively fills the site-config template for a new
+#   installation
+function bootstrap_site_config {
+    local site_name_lc=$(echo $WWPDB_SITE_ID | tr '[:upper:]' '[:lower:]')
+    cd $ONEDEP_PATH
+
+    git clone --branch add_site_config git@github.com:wwPDB/onedep-resources_ro.git
+    cp -r onedep-resources_ro/site-config $ONEDEP_PATH
+    mv $ONEDEP_PATH/site-config/example/example_site1 $ONEDEP_PATH/site-config/example/$site_name_lc
+    mv $ONEDEP_PATH/site-config/example $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC
+
+    mapfile -t variables < <(grep -E '^\w+\s*=\s*\{.*\}' $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/example_site1/site.cfg)
+    
+    for v in "${variables[@]}"; do
+        var_name=$(echo $v | cut -d"=" -f1 | xargs)
+        var_value=$(echo $v | cut -d"=" -f2 | xargs)
+        echo "$var_name = $var_value"
+        
+        set_config_var $var_name $var_value
+        sed -i "s#$v#$var_name = $retval#" onedep-resources_ro/site-config/example/example_site1/site.cfg
+    done
+}
+
 # checking if we're running as root
 
 user=$(whoami)
@@ -216,6 +273,7 @@ ONEDEP_VERSION="latest"
 SITE_ID="${WWPDB_SITE_ID}"
 SITE_LOC="${WWPDB_SITE_LOC}"
 MACHINE_ENV="production"
+OPT_BOOTSTRAP_SITE_CONFIG=false
 OPT_PREPARE_RUNTIME=false
 OPT_PREPARE_BUILD=false
 OPT_DO_CLONE_DEPS=false
@@ -242,6 +300,7 @@ Usage: ${THIS_SCRIPT} [--full-install] [opts]
 
 System preparation parameters:
     --full-install:             run all installation steps
+    --bootstrap-config:         clone resources_ro repository with template site-config and fill it interactively
     --install-runtime-base:     install packages ready for running onedep - not building tools (run with sudo privilages)
     --install-build-base:       install packages ready for building tools (run with sudo privilages)
 
@@ -307,6 +366,7 @@ do
             OPT_DB_ADD_DUMMY_CODES=true
             OPT_DO_RESTART_SERVICES=true
         ;;
+        --bootstrap-config) OPT_BOOTSTRAP_SITE_CONFIG=true;;
         --install-runtime-base) OPT_PREPARE_RUNTIME=true;;
         --install-build-base) OPT_PREPARE_BUILD=true;;
 
@@ -396,6 +456,10 @@ if [[ $OPT_DO_HARD_RESET == true ]]; then
             show_warning_message "clean up cancelled"
         ;;
     esac
+fi
+
+if [[ $OPT_BOOTSTRAP_SITE_CONFIG == true ]]; then
+    bootstrap_site_config
 fi
 
 if [[ ( $OPT_PREPARE_RUNTIME == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE == true || $OPT_PREPARE_BUILD == true ) && ! -d "onedep-build" ]]; then

@@ -460,6 +460,11 @@ fi
 
 if [[ $OPT_BOOTSTRAP_SITE_CONFIG == true ]]; then
     bootstrap_site_config
+    show_info_message "configuration for new site created succesfully"
+
+    # we have to exit now because this is probably a brand new setup
+    # without python3 and other required programs
+    exit 0
 fi
 
 if [[ ( $OPT_PREPARE_RUNTIME == true || $OPT_DO_BUILD == true || $OPT_DO_RUNUPDATE == true || $OPT_PREPARE_BUILD == true ) && ! -d "onedep-build" ]]; then

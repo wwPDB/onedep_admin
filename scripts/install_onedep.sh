@@ -243,7 +243,7 @@ function bootstrap_site_config {
     mv $ONEDEP_PATH/site-config/example/example_site1 $ONEDEP_PATH/site-config/example/$site_name_lc
     mv $ONEDEP_PATH/site-config/example $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC
 
-    mapfile -t variables < <(grep -E '^\w+\s*=\s*\{.*\}' $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/example_site1/site.cfg)
+    mapfile -t variables < <(grep -E '^\w+\s*=\s*\{.*\}' $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/$site_name_lc/site.cfg)
     
     for v in "${variables[@]}"; do
         var_name=$(echo $v | cut -d"=" -f1 | xargs)
@@ -251,7 +251,7 @@ function bootstrap_site_config {
         echo "$var_name = $var_value"
         
         set_config_var $var_name $var_value
-        sed -i "s#$v#$var_name = $retval#" onedep-resources_ro/site-config/example/example_site1/site.cfg
+        sed -i "s#$v#$var_name = $retval#" $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/$site_name_lc/site.cfg
     done
 }
 

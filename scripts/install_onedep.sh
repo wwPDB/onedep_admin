@@ -257,6 +257,62 @@ function bootstrap_site_config {
     done
 }
 
+#
+# add configuration for the current host and site id
+#   to .bashrc and a few useful aliases
+function add_bashrc_statements {
+    local hostname=`hostname`
+    local config_entry=$(grep "# - start onedep config ($hostname) - .* #" ~/.bashrc)
+    
+    if [[ ! -z $config_entry ]]; then
+        echo "[+] configuration found $(highlight_text $config_entry)"
+        return
+    fi
+
+    echo >> ~/.bashrc
+    echo "# - start onedep config ($hostname) - $WWPDB_SITE_ID #" >> ~/.bashrc
+    echo >> ~/.bashrc
+    echo "if [[ \`hostname\` = "$hostname" ]]; then" >> ~/.bashrc
+    echo "  export ONEDEP_PATH='$ONEDEP_PATH'" >> ~/.bashrc
+    echo "  export WWPDB_SITE_ID='$WWPDB_SITE_ID'" >> ~/.bashrc
+    echo "  export WWPDB_SITE_LOC='$WWPDB_SITE_LOC'" >> ~/.bashrc
+    echo "  export ONEDEP_SITE_CONFIG=\"\$ONEDEP_PATH/site-config\"" >> ~/.bashrc
+    echo >> ~/.bashrc
+    echo "  . \$ONEDEP_SITE_CONFIG/init/env.sh --siteid \$WWPDB_SITE_ID --location \$WWPDB_SITE_LOC > /dev/null" >> ~/.bashrc
+    echo "  cd \$ONEDEP_PATH" >> ~/.bashrc
+    echo "fi" >> ~/.bashrc
+    echo >> ~/.bashrc
+
+    echo "export service_restart_command=\"python \$ONEDEP_PATH/onedep-maintenance/common/restart_services.py\"" >> ~/.bashrc
+    echo "alias restart_my_apache=\"killall httpd; sleep 2s; killall -9 httpd; $APACHE_PREFIX_DIR/bin/apachectl start\"" >> ~/.bashrc
+    echo "alias restart_workflow_engines=\"\$service_restart_command --restart_wfe\"" >> ~/.bashrc
+    echo "alias stop_workflow_engines=\"\$service_restart_command --stop_wfe\"" >> ~/.bashrc
+    echo "alias start_workflow_engines=\"\$service_restart_command --start_wfe\"" >> ~/.bashrc
+    echo "alias status_of_workflow_engines=\"\$service_restart_command --status_of_wfe\"" >> ~/.bashrc
+    echo "alias rebuild_site_config_wwpdb_site_id=\"\$TOP_WWPDB_SITE_CONFIG_DIR/init/rebuild_site_config.sh\"" >> ~/.bashrc
+    echo "alias rebuild_site_config=\"\$TOP_WWPDB_SITE_CONFIG_DIR/init/rebuild_site_config_current_host.sh\"" >> ~/.bashrc
+    echo >> ~/.bashrc
+    echo "alias restart_all_apaches=\"\$service_restart_command --restart_apache\"" >> ~/.bashrc
+    echo "alias stop_all_apaches=\"\$service_restart_command --stop_apache\"" >> ~/.bashrc
+    echo >> ~/.bashrc
+    echo "alias rmq_consumer_start=\"\$service_restart_command --start_api_consumers\"" >> ~/.bashrc
+    echo "alias rmq_consumer_stop=\"\$service_restart_command --stop_api_consumers\"" >> ~/.bashrc
+    echo "alias rmq_consumer_restart=\"\$service_restart_command --restart_api_consumers\"" >> ~/.bashrc
+    echo "alias rmq_consumer_status=\"\$service_restart_command --status_of_api_consumers\"" >> ~/.bashrc
+    echo >> ~/.bashrc
+    echo "alias val_rel_consumer_start=\"\$service_restart_command --start_val_rel_consumers 40\"" >> ~/.bashrc
+    echo "alias val_rel_consumer_restart=\"\$service_restart_command --restart_val_rel_consumers 40\"" >> ~/.bashrc
+    echo "alias val_rel_consumer_stop=\"\$service_restart_command --stop_val_rel_consumers 40\"" >> ~/.bashrc
+    echo >> ~/.bashrc
+    echo "alias val_api_consumer_start=\"\$service_restart_command --start_val_api_consumers 20\"" >> ~/.bashrc
+    echo "alias val_api_consumer_restart=\"\$service_restart_command --restart_val_api_consumers 20\"" >> ~/.bashrc
+    echo "alias val_api_consumer_stop=\"\$service_restart_command --stop_val_api_consumers 20\"" >> ~/.bashrc
+    echo >> ~/.bashrc
+    echo "# - end onedep config ($hostname) - $WWPDB_SITE_ID #" >> ~/.bashrc
+
+    show_info_message "configuration for the current host written to ~/.bashrc"
+}
+
 # checking if we're running as root
 
 user=$(whoami)
@@ -462,6 +518,7 @@ fi
 
 if [[ $OPT_BOOTSTRAP_SITE_CONFIG == true ]]; then
     bootstrap_site_config
+    add_bashrc_statements
     show_info_message "configuration for new site created succesfully"
 
     # we have to exit now because this is probably a brand new setup

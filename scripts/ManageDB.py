@@ -119,6 +119,23 @@ class DbSchemaManager(object):
               Structure_ID,
               entry_id
               );"""
+          ]],
+
+            ['V5.8.1 da_internal pdbx_struct_assembly', 'DA_INTERNAL', 'pdbx_struct_assembly', '_dainttablenotexists', 
+             ["""CREATE TABLE pdbx_struct_assembly
+             (
+             Structure_ID                       varchar(15)    not null,
+             method_details                     varchar(200)       null,
+             oligomeric_details                 varchar(255)       null,
+             oligomeric_count                   int                null,
+             details                            varchar(200)       null,
+             id                                 varchar(80)    not null
+             );""",
+              """CREATE UNIQUE INDEX primary_index ON pdbx_struct_assembly
+              (
+              Structure_ID,
+              id
+              );"""
           ]]
 
         ]

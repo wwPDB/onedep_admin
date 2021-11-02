@@ -539,8 +539,15 @@ show_info_message "activating the new configuration"
 # now checking if DEPLOY_DIR has been set
 show_info_message "checking if everything went ok..."
 
-echo "[*] $(highlight_text DEPLOY_DIR) is set to $(highlight_text $DEPLOY_DIR)"
-check_env_variable DEPLOY_DIR true
+get_config_var "SITE_DEPLOY_PATH"; site_deploy_path=$retval
+
+if [[ $site_deploy_path == "None" ]]; then
+    site_name_lc=$(echo $WWPDB_SITE_ID | tr '[:upper:]' '[:lower:]')
+    show_error_message "SITE_DEPLOY_PATH not set, you may have to fix your site-config configuration file ($SITE_CONFIG_DIR/$WWPDB_SITE_LOC/$site_name_lc/site.cfg)"
+    exit -1
+fi
+
+echo "[*] $(highlight_text SITE_DEPLOY_PATH) is set to $(highlight_text $site_deploy_path)"
 
 show_info_message "deactivate and remove the temp venv"
 deactivate

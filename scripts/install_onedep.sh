@@ -541,6 +541,12 @@ show_info_message "checking if everything went ok..."
 
 get_config_var "SITE_DEPLOY_PATH"; site_deploy_path=$retval
 
+if [[ -z $site_deploy_path ]]; then
+    # this can happen in a new system that does not
+    # have wwpdb.utils.config installed yet
+    check_env_variable DEPLOY_DIR true
+fi
+
 if [[ $site_deploy_path == "None" ]]; then
     site_name_lc=$(echo $WWPDB_SITE_ID | tr '[:upper:]' '[:lower:]')
     show_error_message "SITE_DEPLOY_PATH not set, you may have to fix your site-config configuration file ($SITE_CONFIG_DIR/$WWPDB_SITE_LOC/$site_name_lc/site.cfg)"
@@ -658,6 +664,13 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
   fi
 
   show_info_message "setting up OneDep virtual environment in $(highlight_text $VENV_PATH) with $(highlight_text $PYTHON3)"
+
+  if [[ ! -z $VENV_PATH ]]; then
+    # extra check here and not using -f because
+    # if $VENV_PATH is not set, it will try to
+    # remove the root directory
+    rm -rv $VENV_PATH
+  fi
 
   $PYTHON3 -m venv $VENV_PATH
   source $VENV_PATH/bin/activate

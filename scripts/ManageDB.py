@@ -9,6 +9,7 @@ import subprocess
 import sys
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon
 from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
 from wwpdb.utils.db.MyDbUtil import MyDbQuery
 from mmcif.io.PdbxReader import PdbxReader
@@ -19,6 +20,7 @@ class DbSchemaManager(object):
     def __init__(self, noop):
         self.__noop = noop
         self.__ci = ConfigInfo()
+        self.__ci_common = ConfigInfoAppCommon()
         self.__daintschema = []
 
         self.__configuration = [
@@ -118,6 +120,23 @@ class DbSchemaManager(object):
               (
               Structure_ID,
               entry_id
+              );"""
+          ]],
+
+            ['V5.8.1 da_internal pdbx_struct_assembly', 'DA_INTERNAL', 'pdbx_struct_assembly', '_dainttablenotexists', 
+             ["""CREATE TABLE pdbx_struct_assembly
+             (
+             Structure_ID                       varchar(15)    not null,
+             method_details                     varchar(200)       null,
+             oligomeric_details                 varchar(255)       null,
+             oligomeric_count                   int                null,
+             details                            varchar(200)       null,
+             id                                 varchar(80)    not null
+             );""",
+              """CREATE UNIQUE INDEX primary_index ON pdbx_struct_assembly
+              (
+              Structure_ID,
+              id
               );"""
           ]]
 
@@ -233,7 +252,8 @@ class DbSchemaManager(object):
                 print("ERROR: Could not open resource %s" % 'STATUS')
                 return
 
-        defpath = self.__ci.get('SITE_WF_XML_PATH')
+        # defpath = self.__ci.get('SITE_WF_XML_PATH')
+        defpath = self.__ci_common.get_wf_defs_path()
 
         for taskid, fname in self.__wftasks:
 
@@ -351,7 +371,8 @@ class DbSchemaManager(object):
 
     def __loaddaintschema(self):
         """load da_internal schema from configuration"""
-        schemapath = self.__ci.get('SITE_DA_INTERNAL_SCHEMA_PATH')
+        # schemapath = self.__ci.get('SITE_DA_INTERNAL_SCHEMA_PATH')
+        schemapath = self.__ci_common.get_site_da_internal_schema_path()
         if not schemapath:
             print("ERROR: SITE_DA_INTERNAL_SCHEMA_PATH not in site-config")
             return False

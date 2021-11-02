@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+now=$(date +"%F_%H-%M-%S")
+
 (
 
 # ----------------------------------------------------------------
@@ -116,7 +118,7 @@ function build_mysql {
     export CC=/usr/bin/gcc
     export CXX=/usr/bin/g++
 
-    cmake .. -DCMAKE_INSTALL_PREFIX=$DATABASE_DIR/mysql -DMYSQL_UNIX_ADDR=$DATABASE_DIR/mysql.sock -DDOWNLOAD_BOOST=1 -DENABLE_DOWNLOADS=1 -DWITH_BOOST=$DATABASE_DIR/mysql-source/boost
+    cmake .. -DWITH_UNIT_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$DATABASE_DIR/mysql -DMYSQL_UNIX_ADDR=$DATABASE_DIR/mysql.sock -DDOWNLOAD_BOOST=1 -DENABLE_DOWNLOADS=1 -DWITH_BOOST=$DATABASE_DIR/mysql-source/boost
     make
     make install
 }
@@ -875,7 +877,7 @@ echo "[*] deposition url: $(highlight_text http://$HOSTNAME/deposition)"
 echo "[*] start wfe service: $(highlight_text $startWFE)"
 echo "[*] start apache service: $(highlight_text $startApache)"
 
-) |& tee install_script.log
+) |& tee install_script-$now.log
 
 # cleaning up log file
-sed -i 's,\x1b\[[0-9]*m,,g' install_script.log
+sed -i 's,\x1b\[[0-9]*m,,g' install_script-$now.log

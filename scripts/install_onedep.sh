@@ -283,7 +283,7 @@ function add_bashrc_statements {
     echo "fi" >> ~/.bashrc
     echo >> ~/.bashrc
 
-    echo "export service_restart_command=\"python \$ONEDEP_PATH/onedep-maintenance/common/restart_services.py\"" >> ~/.bashrc
+    echo "export service_restart_command=\"python -m wwpdb.apps.site_admin.maintenance.RestartServices\"" >> ~/.bashrc
     echo "alias restart_my_apache=\"killall httpd; sleep 2s; killall -9 httpd; $APACHE_PREFIX_DIR/bin/apachectl start\"" >> ~/.bashrc
     echo "alias restart_workflow_engines=\"\$service_restart_command --restart_wfe\"" >> ~/.bashrc
     echo "alias stop_workflow_engines=\"\$service_restart_command --stop_wfe\"" >> ~/.bashrc

@@ -1,0 +1,77 @@
+image: docker:18
+
+stages:
+  - build
+
+services:
+  - docker:18-dind
+
+variables:
+  IMAGE_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  COMMIT_TAG: $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+  CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:latest
+
+before_script:
+  - docker info
+  - docker login $CI_REGISTRY -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD
+
+build_auto_master:
+  stage: build
+  script:
+    - docker build -t ${COMMIT_TAG} --build-arg CS_USER=$CS_USER --build-arg CS_PW=$CS_PW --build-arg CS_URL=$CS_URL --build-arg SSH_PRIVATE_KEY="$SSH_PRIVATE_KEY" -f Dockerfile.centos8 .
+    - docker push ${COMMIT_TAG}
+    - docker tag ${COMMIT_TAG} ${CONTAINER_RELEASE_IMAGE}
+    - docker push ${CONTAINER_RELEASE_IMAGE}
+  only:
+    refs:
+      - master
+
+build_adhoc_master:
+  stage: build
+  script:
+    - docker build -t ${COMMIT_TAG} --build-arg CS_USER=$CS_USER --build-arg CS_PW=$CS_PW --build-arg CS_URL=$CS_URL --build-arg SSH_PRIVATE_KEY="$SSH_PRIVATE_KEY" -f Dockerfile.centos8 .
+    - docker push ${COMMIT_TAG}
+    - docker tag ${COMMIT_TAG} ${CONTAINER_RELEASE_IMAGE}
+    - docker push ${CONTAINER_RELEASE_IMAGE}
+  only:
+    refs:
+      - master
+  when: manual
+
+build_auto_non_master:
+  stage: build
+  script:
+    - docker build -t ${IMAGE_TAG} --build-arg CS_USER=$CS_USER --build-arg CS_PW=$CS_PW --build-arg CS_URL=$CS_URL --build-arg SSH_PRIVATE_KEY="$SSH_PRIVATE_KEY" -f Dockerfile.centos8 .
+    - docker push ${IMAGE_TAG}
+  except:
+    refs:
+      - master
+
+build_adhoc_non_master:
+  stage: build
+  script:
+    - docker build -t ${IMAGE_TAG} --build-arg CS_USER=$CS_USER --build-arg CS_PW=$CS_PW --build-arg CS_URL=$CS_URL --build-arg SSH_PRIVATE_KEY="$SSH_PRIVATE_KEY" -f Dockerfile.centos8 .
+    - docker push ${IMAGE_TAG}
+  except:
+    refs:
+      - master
+  when: manual
+
+build_auto_non_master_develop:
+  stage: build
+  script:
+    - docker build -t ${IMAGE_TAG}-develop --build-arg BUILD_DEV="--build-dev" --build-arg CS_USER=$CS_USER --build-arg CS_PW=$CS_PW --build-arg CS_URL=$CS_URL --build-arg SSH_PRIVATE_KEY="$SSH_PRIVATE_KEY" -f Dockerfile.centos8 .
+    - docker push ${IMAGE_TAG}-develop
+  except:
+    refs:
+      - master
+
+build_adhoc_non_master_develop:
+  stage: build
+  script:
+    - docker build -t ${IMAGE_TAG}-develop --build-arg BUILD_DEV="--build-dev" --build-arg CS_USER=$CS_USER --build-arg CS_PW=$CS_PW --build-arg CS_URL=$CS_URL --build-arg SSH_PRIVATE_KEY="$SSH_PRIVATE_KEY" -f Dockerfile.centos8 .
+    - docker push ${IMAGE_TAG}-develop
+  except:
+    refs:
+      - master
+  when: manual

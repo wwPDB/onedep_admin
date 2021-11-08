@@ -1,0 +1,185 @@
+FROM centos:8
+
+RUN dnf group install -y "Development Tools"
+RUN dnf install -y epel-release
+RUN dnf install -y dnf-plugins-core
+RUN dnf config-manager --set-enabled powertools
+RUN dnf -y install python38 python38-devel httpd httpd-devel git cmake gcc gcc-c++ wget \
+    libarchive bison flex gcc-gfortran
+RUN dnf -y install eigen3-devel zlib-devel libxml2-devel swig cairo-devel glibc
+RUN dnf -y install mariadb mariadb-devel subversion cvs tcsh texlive texlive-multirow mailx  \
+    java-1.8.0-openjdk mesa-libGLU mesa-libOSMesa glx-utils gnuplot
+RUN dnf -y install glibc.i686 libXmu.i686 compat-libgfortran-48
+
+# remove any caching
+RUN dnf clean all
+
+# force using bash shell
+SHELL ["/bin/bash", "-c"]
+
+# setup access to private repositories using SSH_PRIVATE_KEY
+ARG SSH_PRIVATE_KEY
+RUN mkdir ~/.ssh/
+RUN echo "${SSH_PRIVATE_KEY}" | tr -d '\r' > ~/.ssh/id_rsa
+RUN chmod 600 ~/.ssh/id_rsa
+RUN ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
+# enable access to github.com
+RUN touch ~/.ssh/known_hosts
+RUN ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+# setup a venv
+ENV VENV=/venv
+ENV PATH=$VENV/bin:$PATH
+
+# install inchi - using CentOS 7 rpm
+RUN wget -O inchi.rpm https://download-ib01.fedoraproject.org/pub/epel/7/x86_64/Packages/i/inchi-1.0.4-4.el7.x86_64.rpm
+RUN rpm -Uvh inchi.rpm
+
+# eigen2
+RUN wget -O eigen-2.0.17.tar.gz https://gitlab.com/libeigen/eigen/-/archive/2.0.17/eigen-2.0.17.tar.gz
+RUN tar -xvf eigen-2.0.17.tar.gz
+RUN cd eigen-2.0.17 \
+    && mkdir builddir \
+    && cd builddir \
+    && cmake -DCMAKE_INSTALL_PREFIX=/eigen-2-0.17-install   /eigen-2.0.17 \
+    && make install
+
+
+# install openbabel
+RUN wget -O openbabel-2.3.2.tar.gz https://github.com/openbabel/openbabel/archive/refs/tags/openbabel-2-3-2.tar.gz
+RUN tar -xvf openbabel-2.3.2.tar.gz
+RUN cd openbabel-openbabel-2-3-2 \
+    && cat ./include/openbabel/shared_ptr.h | sed -e 's/__GNUC__ == 4/__GNUC__ >= 4/g' > ./include/openbabel/shared_ptr.h.tmp \
+    && mv ./include/openbabel/shared_ptr.h ./include/openbabel/shared_ptr.h__orig \
+    && mv ./include/openbabel/shared_ptr.h.tmp ./include/openbabel/shared_ptr.h \
+    && cat ./CMakeLists.txt | sed -e '0,/if(NOT MSVC)/s//set(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} -Wno-error -std=c++03")\nset(CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wno-error")\n\nif(NOT MSVC)/g' > CMakeLists.txt.tmp \
+    && mv ./CMakeLists.txt ./CMakeLists.txt__orig \
+    && mv ./CMakeLists.txt.tmp ./CMakeLists.txt
+RUN mkdir build \
+    && cd build \
+    && cmake ../openbabel-openbabel-2-3-2 \
+      -DPYTHON_BINDINGS=OFF \
+      -DBUILD_GUI=OFF \
+      -DEIGEN2_INCLUDE_DIR=/eigen-2-0.17-install \
+    && make -j 2 \
+    && make install
+
+# add additional library paths
+RUN echo /usr/local/lib > /etc/ld.so.conf.d/usrlocal.conf
+RUN ldconfig
+
+# setup apache
+ENV APACHE_PREFIX_DIR=/apache
+WORKDIR /apache-build
+RUN wget -O apr-util-1.6.1.tar.gz http://mirrors.ibiblio.org/apache//apr/apr-util-1.6.1.tar.gz
+RUN wget -O apr-1.6.5.tar.gz      http://mirrors.ibiblio.org/apache//apr/apr-1.6.5.tar.gz
+RUN wget -O httpd-2.4.37.tar.gz   http://archive.apache.org/dist/httpd/httpd-2.4.37.tar.gz
+RUN gzip -d -c httpd-2.4.37.tar.gz | tar -xf -
+RUN cd httpd-2.4.37/srclib \
+  && gzip -d -c /apache-build/apr-util-1.6.1.tar.gz | tar -xf - \
+  && gzip -d -c /apache-build/apr-1.6.5.tar.gz      | tar -xf - \
+  && ln -s apr-1.6.5 apr  \
+  && ln -s apr-util-1.6.1 apr-util
+RUN cd httpd-2.4.37 \
+    && ./configure \
+    --prefix=${APACHE_PREFIX_DIR} \
+    --enable-modules-shared=all \
+    --enable-nonportable-atomics \
+    --enable-auth-anon \
+    --enable-auth-dbm \
+    --enable-auth-digest \
+    --enable-file-cache \
+    --enable-echo \
+    --enable-charset-lite \
+    --enable-cache \
+    --enable-disk-cache \
+    --enable-mem-cache \
+    --enable-ext-filter \
+    --enable-case-filter \
+    --enable-case-filter-in \
+    --enable-deflate \
+    --enable-mime-magic \
+    --enable-cern-meta \
+    --enable-expires \
+    --enable-headers \
+    --enable-usertrack \
+    --enable-unique-id \
+    --enable-proxy \
+    --enable-proxy-connect \
+    --enable-proxy-ftp \
+    --enable-proxy-http \
+    --enable-proxy-ajp \
+    --enable-proxy-balancer \
+    --enable-bucketeer \
+    --enable-http \
+    --enable-info \
+    --enable-suexec \
+    --enable-cgid \
+    --enable-vhost-alias \
+    --enable-speling \
+    --enable-rewrite \
+    --enable-so \
+    --enable-dav \
+    --enable-dav-fs \
+    --enable-ssl=shared \
+    --enable-mods-shared=most \
+    --with-mpm=prefork \
+    --enable-ipv6 \
+    --enable-dbd \
+    --with-included-apr \
+    && make \
+    && make install
+
+# setup venv
+RUN python3 -m venv $VENV
+RUN pip install --no-cache-dir --upgrade setuptools pip
+RUN pip config --site set global.no-cache-dir false
+RUN pip install wheel
+RUN pip install wwpdb.utils.config
+
+# for running apache with this version of python
+RUN pip install mod-wsgi
+# RUN mod_wsgi-express install-module > /etc/httpd/conf.modules.d/02-wsgi.conf
+
+# setup the apache - expose port 8080 so that non-root users can run the image
+# RUN chmod -R a+rwx /var/log/httpd
+# RUN chmod -R a+rwx /run/httpd
+# RUN chmod -R a+rwx /var/lib/httpd
+# RUN sed -i "s/Listen 80/Listen 8080/g" /etc/httpd/conf/httpd.conf
+
+# setup the apache
+RUN mkdir $APACHE_PREFIX_DIR/conf.d
+RUN mod_wsgi-express install-module > $APACHE_PREFIX_DIR/conf.d/02-wsgi.conf
+RUN sed -i "s/Listen 80/Listen 8080/g" $APACHE_PREFIX_DIR/conf/httpd.conf
+RUN echo "IncludeOptional conf.d/*.conf" >> $APACHE_PREFIX_DIR/conf/httpd.conf
+
+# access to content server
+ARG CS_USER
+ARG CS_PW
+ARG CS_URL
+
+# build arg - should be null or set to --build-dev
+ARG BUILD_DEV
+
+# set base OneDep path
+ENV ONEDEP_PATH=/wwpdb/onedep
+
+# locations for checkouts
+ENV TOP_WWPDB_WEBAPPS_DIR=$ONEDEP_PATH/source/onedep-webfe/webapps
+ENV RO_RESOURCE_PATH=$ONEDEP_PATH/resources_ro
+
+# copy this package
+WORKDIR $ONEDEP_PATH/onedep_admin
+COPY . .
+RUN cp apache/annotation.conf /etc/httpd/conf.d/
+RUN cp apache/annotation.conf $APACHE_PREFIX_DIR/conf.d/
+
+# install OneDep python, webapps and resources_ro
+RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers $BUILD_DEV
+
+# temp getting DAOTHER-5845 branch of validation
+RUN if [[ -n "$BUILD_DEV" ]]; then cd $ONEDEP_PATH/source/py-wwpdb_apps_validation && git checkout DAOTHER-5845; fi
+
+
+WORKDIR $ONEDEP_PATH
+RUN rm -rf $ONEDEP_PATH/onedep_admin

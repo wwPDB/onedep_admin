@@ -1,4 +1,0 @@
-## for apache 
-mod_wsgi
-
--r requirements.txt

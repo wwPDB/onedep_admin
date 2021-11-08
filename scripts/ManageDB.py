@@ -6,8 +6,10 @@
 import os
 import argparse
 import subprocess
+import sys
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon
 from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
 from wwpdb.utils.db.MyDbUtil import MyDbQuery
 from mmcif.io.PdbxReader import PdbxReader
@@ -18,6 +20,7 @@ class DbSchemaManager(object):
     def __init__(self, noop):
         self.__noop = noop
         self.__ci = ConfigInfo()
+        self.__ci_common = ConfigInfoAppCommon()
         self.__daintschema = []
 
         self.__configuration = [
@@ -41,7 +44,105 @@ class DbSchemaManager(object):
               ['date_hold_nmr_data', 'ADD COLUMN `date_hold_nmr_data` DATE NULL AFTER `date_nmr_data`'],
               ['dep_release_code_nmr_data', 'ADD COLUMN `dep_release_code_nmr_data` VARCHAR(24) NULL AFTER `date_hold_nmr_data`'],
               ['date_of_nmr_data_release', 'ADD COLUMN `date_of_nmr_data_release` DATE NULL AFTER `dep_release_code_nmr_data`']]],
+            ['V5.8 da_internal', 'DA_INTERNAL', 'struct', '_daintnotexists',
+             [['pdbx_center_of_mass_x', 'ADD COLUMN `pdbx_center_of_mass_x` float NULL AFTER `pdbx_CASP_flag`'],
+              ['pdbx_center_of_mass_y', 'ADD COLUMN `pdbx_center_of_mass_y` float NULL AFTER `pdbx_center_of_mass_x`'],
+             ['pdbx_center_of_mass_z', 'ADD COLUMN `pdbx_center_of_mass_z` float NULL AFTER `pdbx_center_of_mass_y`']]],
         ]
+
+        self.__tableexists = [
+            ['V5.8 da_internal cell table', 'DA_INTERNAL', 'cell1', '_dainttablenotexists', 
+             ["""CREATE TABLE IF NOT EXISTS cell1
+                (
+             Structure_ID                                                 varchar(15)    not null,
+             angle_alpha                                                  float              null,
+             angle_beta                                                   float              null,
+             angle_gamma                                                  float              null,
+             entry_id                                                     varchar(15)    not null,
+             details                                                      varchar(200)       null,
+             length_a                                                     float              null,
+             length_b                                                     float              null,
+             length_c                                                     float              null,
+             volume                                                       float              null,
+             Z_PDB                                                        int                null,
+             pdbx_unique_axis                                             varchar(200)       null
+             );""",
+
+              """CREATE UNIQUE INDEX primary_index ON cell1
+              (
+              Structure_ID,
+              entry_id
+              );
+              """
+          ]],
+
+            ['V5.8 da_internal pdbx_struct_oper_list table', 'DA_INTERNAL', 'pdbx_struct_oper_list', '_dainttablenotexists', 
+             ["""CREATE TABLE IF NOT EXISTS pdbx_struct_oper_list
+             (
+             Structure_ID                                                 varchar(15)    not null,
+             id                                                           varchar(10)    not null,
+             type                                                         varchar(80)        null,
+             name                                                         varchar(80)        null,
+             symmetry_operation                                           varchar(80)        null
+             );""",
+
+              """CREATE UNIQUE INDEX primary_index ON pdbx_struct_oper_list
+              (
+              Structure_ID,
+              id
+              );"""
+          ]],
+
+            ['V5.8 da_internal pdbx_struct_assembly_gen table', 'DA_INTERNAL', 'pdbx_struct_assembly_gen', '_dainttablenotexists', 
+             ["""CREATE TABLE IF NOT EXISTS pdbx_struct_assembly_gen
+             (
+             Structure_ID                                                 varchar(15)    not null,
+             assembly_id                                                  varchar(80)    not null,
+             entity_inst_id                                               varchar(10)        null,
+             asym_id_list                                                 varchar(32000) not null,
+             auth_asym_id_list                                            varchar(80)        null,
+             oper_expression                                              varchar(511)   not null
+             );"""
+          ]],
+
+            ['V5.8 da_internal symmetry table', 'DA_INTERNAL', 'symmetry', '_dainttablenotexists', 
+             ["""CREATE TABLE IF NOT EXISTS symmetry
+             (
+             Structure_ID                                                 varchar(15)    not null,
+             entry_id                                                     varchar(15)    not null,
+             cell_setting                                                 varchar(13)        null,
+             Int_Tables_number                                            int                null,
+             space_group_name_Hall                                        varchar(80)        null,
+             space_group_name_H_M                                         varchar(80)        null,
+             pdbx_full_space_group_name_H_M                               varchar(80)        null
+             );""",
+              """CREATE UNIQUE INDEX primary_index ON symmetry
+              (
+              Structure_ID,
+              entry_id
+              );"""
+          ]],
+
+            ['V5.8.1 da_internal pdbx_struct_assembly', 'DA_INTERNAL', 'pdbx_struct_assembly', '_dainttablenotexists', 
+             ["""CREATE TABLE pdbx_struct_assembly
+             (
+             Structure_ID                       varchar(15)    not null,
+             method_details                     varchar(200)       null,
+             oligomeric_details                 varchar(255)       null,
+             oligomeric_count                   int                null,
+             details                            varchar(200)       null,
+             id                                 varchar(80)    not null
+             );""",
+              """CREATE UNIQUE INDEX primary_index ON pdbx_struct_assembly
+              (
+              Structure_ID,
+              id
+              );"""
+          ]]
+
+        ]
+
+
 
         self.__wftasks = [
             # idname     filename
@@ -66,7 +167,10 @@ class DbSchemaManager(object):
             #getattr(self, upd[3], None)
             mth = getattr(self, func, None)
             coldata = upd[4]
-            #print name, resource, table, func, mth
+            #print(name, resource, table, func, mth)
+            if mth is None:
+                print("INTERNAL ERROR: %s does not exist" % func)
+                return
 
             mydb = MyConnectionBase()
             mydb.setResource(resourceName=resource)
@@ -94,6 +198,46 @@ class DbSchemaManager(object):
                     
             mydb.closeConnection()
 
+        self.__updatemissingtables()
+
+    def __updatemissingtables(self):
+        """Update missing tables"""
+        for upd in self.__tableexists:
+            name = upd[0]
+            resource = upd[1]
+            table = upd[2]
+            func = upd[3]
+            mth = getattr(self, func, None)
+            commands = upd[4]
+            #print(name, resource, table, func, mth)
+            if mth is None:
+                print("INTERNAL ERROR: %s does not exist" % func)
+                return
+
+            mydb = MyConnectionBase()
+            mydb.setResource(resourceName=resource)
+            ok = mydb.openConnection()
+            if not ok:
+                print("ERROR: Could not open resource %s" % resource)
+                return
+
+            rc = mth(mydb._dbCon, table)
+            if rc:
+                print("About to load schema for %s" % table)
+                self.prettyprintcommands(commands)
+                if not self.__noop:
+                    myq = MyDbQuery(dbcon=mydb._dbCon)
+                    ret = myq.sqlCommand(commands)
+                    if not ret:
+                        print("ERROR CREATING TABLE %s" % table)
+
+                        
+            mydb.closeConnection()
+
+
+    def prettyprintcommands(self, cmds):
+        for c in cmds:
+            print(c)
 
     def updatewftasks(self):
         """ Handles the addition of new WF tasks """
@@ -108,7 +252,8 @@ class DbSchemaManager(object):
                 print("ERROR: Could not open resource %s" % 'STATUS')
                 return
 
-        defpath = self.__ci.get('SITE_WF_XML_PATH')
+        # defpath = self.__ci.get('SITE_WF_XML_PATH')
+        defpath = self.__ci_common.get_wf_defs_path()
 
         for taskid, fname in self.__wftasks:
 
@@ -163,6 +308,21 @@ class DbSchemaManager(object):
             return True
         return False
 
+    def _nottableexists(self, dbconn, table):
+        """Checks if table does not exist. Returns True if does not exist"""
+        myq = MyDbQuery(dbcon=dbconn)
+        query = "SELECT count(*) FROM information_schema.TABLES WHERE TABLE_NAME = '{}'  AND TABLE_SCHEMA in (SELECT DATABASE())".format(table)
+
+        rows = myq.selectRows(queryString=query)
+        if len(rows) != 1:
+            return True
+        val = rows[0][0]
+        if val == 0:
+            return True
+        return False
+
+
+
     def _colwidth(self, dbconn, table, colname, width):
         """Returns True if colname is not width characters"""
         myq = MyDbQuery(dbcon=dbconn)
@@ -182,16 +342,7 @@ class DbSchemaManager(object):
         _rcsb_attribute_def.attribute_name == colname is present in 
         SITE_DA_INTERNAL_SCHEMA_PATH and colname is not present in table my da_internal"""
 
-        schemapath = self.__ci.get('SITE_DA_INTERNAL_SCHEMA_PATH')
-        if not schemapath:
-            print("ERROR: SITE_DA_INTERNAL_SCHEMA_PATH not in site-config")
-            return False
-
-        if not len(self.__daintschema):
-            with open(schemapath, 'r') as fin:
-                prd = PdbxReader(fin)
-                self.__daintschema = []
-                prd.read(containerList = self.__daintschema, selectList=['rcsb_attribute_def'])
+        self.__loaddaintschema()
 
         block = self.__daintschema[0]
         tb = block.getObj('rcsb_attribute_def')
@@ -218,6 +369,64 @@ class DbSchemaManager(object):
 
         return ret
 
+    def __loaddaintschema(self):
+        """load da_internal schema from configuration"""
+        # schemapath = self.__ci.get('SITE_DA_INTERNAL_SCHEMA_PATH')
+        schemapath = self.__ci_common.get_site_da_internal_schema_path()
+        if not schemapath:
+            print("ERROR: SITE_DA_INTERNAL_SCHEMA_PATH not in site-config")
+            return False
+
+        if not len(self.__daintschema):
+            with open(schemapath, 'r') as fin:
+                prd = PdbxReader(fin)
+                self.__daintschema = []
+                prd.read(containerList = self.__daintschema, selectList=['rcsb_attribute_def', 'rcsb_table_abbrev'])
+
+
+    def _dainttablenotexists(self, dbconn, table):
+        """Return True if _rcsb_attribute_def.table_name == table and table does not exist
+        Handles alias
+        """
+
+        self.__loaddaintschema()
+
+        block = self.__daintschema[0]
+
+
+        # Handle aliases
+        orig_table = table
+        tb = block.getObj('rcsb_table_abbrev')
+        if tb:
+            for row in range(tb.getRowCount()):
+                table_name = tb.getValue('table_name', row)
+                table_abbrev = tb.getValue('table_abbrev', row)
+                if table_abbrev == table:
+                    # print("Switch table %s to %s" %(table, table_name))
+                    table = table_name
+                    break
+
+        tb = block.getObj('rcsb_attribute_def')
+        if not tb:
+            print("ERROR: Schema file does not contain rcsb_attribute_def")
+            return False
+        found = False
+        for row in range(tb.getRowCount()):
+            table_name = tb.getValue('table_name', row)
+            if table_name == table:
+                found = True
+                break
+
+        if not found:
+            # schema mapping file does not list - we should not need to add
+            # print("{} not found -- skipping".format(table))
+            return False
+
+
+        ret = self._nottableexists(dbconn, orig_table)
+
+        return ret
+
 
 def main():
     parser = argparse.ArgumentParser()
@@ -233,7 +442,12 @@ def main():
     sub_c.set_defaults(func="check")
 
     args = parser.parse_args()
+    if 'func' not in args:
+        parser.print_usage()
+        sys.exit(1)
+
     dbs = DbSchemaManager(args.noop)
+
 
     if args.func == 'update':
        dbs.updateschema()

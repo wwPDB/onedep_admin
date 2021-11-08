@@ -1,0 +1,60 @@
+FROM python:3.8-buster
+
+RUN apt-get update
+RUN apt-get install -y bash libmariadb-dev libjpeg-dev zlib1g gfortran
+RUN apt-get install -y cmake make git openssh-client gcc g++ musl-dev mariadb-client libffi-dev rustc cargo flex bison swig
+RUN apt-get install -y apache2 apache2-dev libapache2-mod-wsgi-py3
+RUN apt-get install -y subversion cvs bsd-mailx libglu1-mesa libosmesa6
+RUN apt-get install -y texlive
+RUN apt-get install -y libxml2-dev zlib1g-dev libeigen3-dev libcairo2-dev
+RUN apt-get install -y openbabel libopenbabel-dev
+RUN apt-get clean
+
+# force using bash shell
+SHELL ["/bin/bash", "-c"]
+
+# setup a venv
+ENV VENV=/venv
+ENV PATH=$VENV/bin:$PATH
+
+# setup venv
+RUN python3 -m venv $VENV
+RUN pip install --no-cache-dir --upgrade setuptools pip
+RUN pip config --site set global.no-cache-dir false
+RUN pip install wheel
+RUN pip install wwpdb.utils.config
+
+# setup access to private repositories using SSH_PRIVATE_KEY
+ARG SSH_PRIVATE_KEY
+RUN mkdir ~/.ssh/
+RUN echo "${SSH_PRIVATE_KEY}" | tr -d '\r' > ~/.ssh/id_rsa
+RUN chmod 600 ~/.ssh/id_rsa
+RUN ssh-keygen -y -f ~/.ssh/id_rsa > ~/.ssh/id_rsa.pub
+# enable access to github.com
+RUN touch ~/.ssh/known_hosts
+RUN ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+# access to content server
+ARG CS_USER
+ARG CS_PW
+ARG CS_URL
+
+# build arg - should be null or set to --build-dev
+ARG BUILD_DEV
+
+# set base OneDep path
+ENV ONEDEP_PATH=/wwpdb/onedep
+
+# locations for checkouts
+ENV TOP_WWPDB_WEBAPPS_DIR=$ONEDEP_PATH/source/onedep-webfe/webapps
+ENV RO_RESOURCE_PATH=$ONEDEP_PATH/resources_ro
+
+# copy this package
+WORKDIR $ONEDEP_PATH/onedep_admin
+COPY . .
+
+# install OneDep python, webapps and resources_ro
+RUN python scripts/RunUpdate.py --skip-taxdb --skip-schema --skip-toolvers $BUILD_DEV
+
+WORKDIR $ONEDEP_PATH
+RUN rm -rf $ONEDEP_PATH/onedep_admin

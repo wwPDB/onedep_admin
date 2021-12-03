@@ -49,10 +49,12 @@ def main():
     fth.write("import sys\n")
     fth.write("import ccdc.conformer\n")
     fth.write("import ccdc.io\n#\n")
+    fth.write("from ccdc.utilities import Licence\n")
     fth.write("fth = open(\"" + versionInfoPath + "\", \"w\")\n")
     fth.write("fth.write(\"ccdc_version=%s\\n\" % ccdc.conformer._mogul_version())\n")
     fth.write("fth.write(\"csd_version=%s\\n\" % ccdc.io.csd_version())\n")
     fth.write("fth.write(\"csd_directory=%s\\n\" % ccdc.io.csd_directory())\n")
+    fth.write("fth.write(\"csd_licence=%s\\n\" % Licence().days_remaining)\n")
     fth.write("fth.close()\n")
     fth.write("sys.exit(0)\n")
     fth.close()
@@ -72,7 +74,22 @@ def main():
         sys.exit(1)
     else:
         print("Licensing and python API works")
-        sys.exit(0)
+
+
+    # Determine days left in license
+    with open(versionInfoPath, "r") as fin:
+        data = [line.split(",") for line in fin.read().splitlines()]
+
+    for d in data:
+        if "csd_licence" in d[0]:
+            days = d[0].split("=")[1]
+            if(int(days) < 100):
+                print("DANGER DANGER DANGER")
+
+            print("Licence expires in %s days" % days)
+
+    sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

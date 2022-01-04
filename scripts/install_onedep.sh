@@ -726,7 +726,8 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
     # extra check here and not using -f because
     # if $VENV_PATH is not set, it will try to
     # remove the root directory
-    rm -rv $VENV_PATH
+    show_warning_message "$VENV_PATH already exists"
+    # rm -rv $VENV_PATH
   fi
 
   $PYTHON3 -m venv $VENV_PATH

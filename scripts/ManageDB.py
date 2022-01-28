@@ -140,7 +140,7 @@ class DbSchemaManager(object):
               );"""
           ]],
 
-            ['V5.10 status entry_flags', 'STATUS', 'entry_flags', '_notexists',
+            ['V5.10 status entry_flags', 'STATUS', 'entry_flags', '_nottableexists',
              ["""CREATE TABLE entry_flags
              (
              dep_set_id                         VARCHAR(45) NOT NULL COMMENT 'The deposition id D_XXX',

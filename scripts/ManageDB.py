@@ -138,6 +138,16 @@ class DbSchemaManager(object):
               Structure_ID,
               id
               );"""
+          ]],
+
+            ['V5.10 status entry_flags', 'STATUS', 'entry_flags', '_notexists',
+             ["""CREATE TABLE entry_flags
+             (
+             dep_set_id                         VARCHAR(45) NOT NULL COMMENT 'The deposition id D_XXX',
+             flag                               VARCHAR(45) NOT NULL COMMENT 'The flag name',
+             value                              VARCHAR(45) NULL COMMENT 'The flag value, may be Y/N or more complicated depending on flag requirements',
+             PRIMARY KEY (dep_set_id, flag)
+             );"""
           ]]
 
         ]

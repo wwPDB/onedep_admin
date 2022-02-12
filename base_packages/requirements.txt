@@ -10,7 +10,6 @@ openbabel==2.4.1 --global-option=build_ext --global-option="-L${TOOLS_DIR}/packa
 fakepdftk
 
 # We host biotempy - so easier to install here
-# Leave for later - constraints will ensure proper biopython
 biotempy; python_version >= '3'
 
 # Newer OpenEye - we will pull in directly - instead of content server -- RetHat 7 will not work with 2021 OpenEye due to libstdcc++ ABI

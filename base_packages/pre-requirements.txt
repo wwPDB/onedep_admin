@@ -1,20 +1,4 @@
 scipy
 
-# We need to pre-install cryptography for ansible
-# Ansible -> cryptography -> cffi issue otherwise
-cryptography
-
-# Newer version of numpy (1.16) having issues with random wsgi import failures switching added annotation/validation/status
-# Maybe reimport? This is still happening in 1.17.2 https://github.com/numpy/numpy/issues/14012 and https://github.com/numpy/numpy/issues/13430
-# https://modwsgi.readthedocs.io/en/develop/user-guides/application-issues.html#multiple-python-sub-interpreters indicates lxml and other third part C code may 
-# have issues with subinterpreters.
-# For python3 - this is believed solved in WSGI global context being set.
-numpy == 1.15.4; python_version == '2.7'
-
-# This is annoying.  ansible and newer pip do not like each other in installation - codec issue, but appears to install
-pip<20.2; python_version == '2.7'
-
-# Do not put pandas in this file.  On fresh install, numpy will not be installed when wheel is built.  This will cause havoc as newer numpy will be brought in and used.
-
 # Python3 will benefit alot from wheel
 wheel; python_version >= '3'

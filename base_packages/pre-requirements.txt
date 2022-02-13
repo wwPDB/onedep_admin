@@ -1,5 +1,5 @@
 # Only need scipy installed here if Numpy compilation is happening in requirements.txt - which comes from biotempy
-scipy
+# scipy
 
 # Python3 will benefit alot from wheel
 wheel; python_version >= '3'

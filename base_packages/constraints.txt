@@ -4,5 +4,7 @@
 # mysqlclient is pinned before the 2.0 series are we are using Django 1.11.X
 mysqlclient ~= 1.4.4
 
+# EMDA cannot do bdist_wheel and cannot be installed
+numpy < 1.22
 
 

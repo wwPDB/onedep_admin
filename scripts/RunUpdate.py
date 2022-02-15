@@ -354,7 +354,11 @@ def get_latest_version_no():
         # this should never happen
         return None
 
-    latest_version = sorted(versions)[-1]
+    # Versions need to be sorted as tuples i.e. (5, 1), (5, 10) as string sorting will not work
+    def ver_tuple(z):
+        return tuple([int(x) for x in z.split('.') if x.isdigit()])
+
+    latest_version = sorted(versions, key = lambda x:ver_tuple(x[1:]))[-1]
     
     return latest_version
     

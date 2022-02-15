@@ -76,8 +76,9 @@ class UpdateManager(object):
             cfiles = [self.__configfile, self.__extraconf]
         self.__cparser.read(cfiles)
 
-        self.web_apps_path = self.get_variable('TOP_WWPDB_WEBAPPS_DIR')
-        self.resources_ro_path = self.get_variable('RO_RESOURCE_PATH')
+        self.__web_apps_path = self.get_variable('TOP_WWPDB_WEBAPPS_DIR')
+        self.__resources_ro_path = self.get_variable('RO_RESOURCE_PATH')
+        self.__resources_rw_path = self.get_variable('RW_RESOURCE_PATH')
 
     def __exec(self, cmd, overridenoop=False, working_directory=None):
         print(cmd)
@@ -143,7 +144,7 @@ class UpdateManager(object):
             # Clone and do pip edit install
 
             # Checking if source directory exist
-            source_dir = os.path.abspath(os.path.join(self.web_apps_path, '../..'))
+            source_dir = os.path.abspath(os.path.join(self.__web_apps_path, '../..'))
             if not os.path.isdir(source_dir):
                 os.makedirs(source_dir)
 
@@ -167,17 +168,25 @@ class UpdateManager(object):
 
     def updateresources(self):
         restag = self.__cparser.get('DEFAULT', 'resourcestag')
-        if self.resources_ro_path:
-            if not os.path.exists(self.resources_ro_path):
-                command = 'git clone git@github.com:wwPDB/onedep-resources_ro.git {}'.format(self.resources_ro_path)
+        if self.__resources_ro_path:
+            if not os.path.exists(self.__resources_ro_path):
+                command = 'git clone git@github.com:wwPDB/onedep-resources_ro.git {}'.format(self.__resources_ro_path)
                 self.__exec(command)
 
             command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(
-                self.resources_ro_path, restag, restag)
+                self.__resources_ro_path, restag, restag)
+            self.__exec(command)
+
+        if self.__resources_rw_path:
+            if not os.path.exists(self.__resources_rw_path):
+                command = 'git clone git@github.com:wwPDB/onedep-resources_rw.git {}'.format(self.__resources_ro_path)
+                self.__exec(command)
+
+            command = 'cd {}; git pull'.format(self.__resources_rw_path)
             self.__exec(command)
 
     def checkwebfe(self, overridenoop=False):
-        webdir = os.path.abspath(os.path.join(self.web_apps_path, '..'))
+        webdir = os.path.abspath(os.path.join(self.__web_apps_path, '..'))
         curdir = os.path.dirname(__file__)
         checkscript = os.path.join(curdir, 'ManageWebFE.py')
         webfecheck = self.__cparser.get('DEFAULT', 'webfeconf')
@@ -190,12 +199,12 @@ class UpdateManager(object):
     def updatewebfe(self):
 
         # Checking if source directory exist
-        source_dir = os.path.abspath(os.path.join(self.web_apps_path, '../..'))
+        source_dir = os.path.abspath(os.path.join(self.__web_apps_path, '../..'))
         if not os.path.isdir(source_dir):
             os.makedirs(source_dir)
 
         # Check if repo is cloned
-        webfe_repo = os.path.abspath(os.path.join(self.web_apps_path, '..'))
+        webfe_repo = os.path.abspath(os.path.join(self.__web_apps_path, '..'))
         if not os.path.isdir(webfe_repo):
             command = 'git clone --recurse-submodules git@github.com:wwPDB/onedep-webfe.git'
             self.__exec(command, working_directory=source_dir)

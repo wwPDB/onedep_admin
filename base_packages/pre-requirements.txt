@@ -1,5 +1,8 @@
 # Only need scipy installed here if Numpy compilation is happening in requirements.txt - which comes from biotempy
 # scipy
 
+# emda requires that numpy already be install
+numpy
+
 # Python3 will benefit alot from wheels
 wheel; python_version >= '3'

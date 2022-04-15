@@ -100,7 +100,7 @@ wwpdb.apps.ccmodule==0.20.5
 wwpdb.apps.chem-ref-data==0.16
 wwpdb.apps.chemeditor==0.11.4
 wwpdb.apps.content-ws-server==0.7
-wwpdb.apps.deposit==0.34.dev9
+wwpdb.apps.deposit==0.34
 wwpdb.apps.editormodule==0.13.1
 wwpdb.apps.entity-transform==0.16
 wwpdb.apps.msgmodule==0.162

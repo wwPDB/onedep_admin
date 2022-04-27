@@ -91,11 +91,11 @@ svgwrite==1.4.2
 tabulate==0.8.9
 threadpoolctl==3.1.0
 urllib3==1.26.9
-va==0.0.1.dev7
+va==0.0.1.dev8
 WebOb==1.8.7
 wheel==0.37.1
 wrapt==1.14.0
-wwpdb.apps.ann-tasks-v2==0.26
+wwpdb.apps.ann-tasks-v2==0.26.3
 wwpdb.apps.ccmodule==0.20.5
 wwpdb.apps.chem-ref-data==0.16
 wwpdb.apps.chemeditor==0.11.4
@@ -110,7 +110,7 @@ wwpdb.apps.site-admin==0.14.1
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.13
 wwpdb.apps.val-ws-server==0.7.3
-wwpdb.apps.validation==2.28
+wwpdb.apps.validation==2.28.1
 wwpdb.apps.wf-engine==0.16.1
 wwpdb.apps.workmanager==0.19
 wwpdb.io==0.22

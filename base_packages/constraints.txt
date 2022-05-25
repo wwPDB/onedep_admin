@@ -2,7 +2,7 @@
 # If we update third party package in python package this will need to be updated
 
 # mysqlclient is pinned before the 2.0 series are we are using Django 1.11.X
-mysqlclient ~= 1.4.4
+# mysqlclient ~= 1.4.4
 
 # EMDA cannot do bdist_wheel and cannot be installed with newer numpy
 numpy < 1.22

@@ -267,6 +267,7 @@ class UpdateManager(object):
                  ['cctoolsver', 'SITE_CC_APPS_PATH', 'etc/bundleversion.json', 'get_site_cc_apps_path'],
                  ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json', 'get_site_packages_path'],
                  ['dictver', 'SITE_PACKAGES_PATH', 'dict/etc/bundleversion.json', 'get_site_packages_path'],
+                 ['dbloadver', 'SITE_PACKAGES_PATH', 'dbloader/etc/bundleversion.json', 'get_site_packages_path'],
                  ]
 
         for c in confs:

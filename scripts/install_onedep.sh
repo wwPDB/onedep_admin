@@ -912,14 +912,18 @@ fi
 
 if [[ $OPT_DO_APACHE == true ]]; then
     show_info_message "copying httpd.conf"
-
     cd $APACHE_PREFIX_DIR/conf
+
     mv httpd.conf httpd.conf.safe
     ln -s $SITE_CONFIG_DIR/apache_config/httpd.conf httpd.conf
+
     mkdir $APACHE_PREFIX_DIR/conf.d
     ln -s $SITE_CONFIG_DIR/apache_config/development.conf $APACHE_PREFIX_DIR/conf.d
+
+    mkdir -p $SITE_CONFIG_DIR/apache_config
+    ln -s $APACHE_PREFIX_DIR/bin/apachectl $SITE_CONFIG_DIR/apache_config/httpd-opt
 else
-  show_warning_message "skipping setting up the apache"
+    show_warning_message "skipping apache setup"
 fi
 
 #show_info_message "setting up csd"

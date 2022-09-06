@@ -131,6 +131,7 @@ def main():
     if args.dataSetIdFile:
         try:
             with open(args.dataSetIdFile, "r") as ifh:
+                dsL = []
                 for line in ifh:
                     dsL.append(str(line[:-1]).strip())
         except Exception as e:

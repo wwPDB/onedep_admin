@@ -351,6 +351,7 @@ OPT_DO_DATABASE=false
 OPT_DB_ADD_DUMMY_CODES=false
 OPT_DB_SKIP_BUILD=false
 OPT_DB_RESET=false
+OPT_DB_UPDATE_WF_CLASS_DICT=false
 DATABASE_DIR="default"
 
 read -r -d '' USAGE << EOM
@@ -382,6 +383,8 @@ Database parameters:
     --skip-db-build:            will skip downloading of mysql and building steps
     --reset-db:                 reset local database by removing files under 'data' dir
     --dummy-codes:              add PDB and EMDB dummy codes to database - useful for development installation
+    --load-wf-defs:             load and update workflow definitions in the wf_class_dict table. Definitions will be
+                                    loaded from the path in SITE_WF_XML_PATH variable
 
 Post install parameters:
     --restart-services:         start all onedep services (workflow engine, consumers, apache servers)
@@ -444,6 +447,7 @@ do
         --run-maintenance) OPT_DO_MAINTENANCE=true;;
         --setup-apache) OPT_DO_APACHE=true;;
         --dummy-codes) OPT_DB_ADD_DUMMY_CODES=true;;
+        --load-wf-defs) OPT_DB_UPDATE_WF_CLASS_DICT=true;;
 
         --restart-services) OPT_DO_RESTART_SERVICES=true;;
 
@@ -778,14 +782,22 @@ fi
 # database setup
 # ----------------------------------------------------------------
 
+# site-config variables
+get_config_var SITE_DB_USER; db_user=$retval
+get_config_var SITE_DB_PASSWORD; db_password=$retval
+get_config_var SITE_DB_PORT_NUMBER; db_port=$retval
+
 if [[ $OPT_DO_DATABASE == true ]]; then
+    OPT_DB_ADD_DUMMY_CODES=true
+    OPT_DB_UPDATE_WF_CLASS_DICT=true
+
     show_info_message "setting up database"
 
     if [[ $DATABASE_DIR == "default" ]]; then
         DATABASE_DIR=$DEPLOY_DIR/onedep_database
     fi
 
-    echo "[*] database will be installed in $(highlight_text $DATABASE_DIR)"
+    echo "[*] database path is $(highlight_text $DATABASE_DIR)"
 
     if [[ ! -d $DATABASE_DIR ]]; then
         mkdir -p $DATABASE_DIR
@@ -797,11 +809,6 @@ if [[ $OPT_DO_DATABASE == true ]]; then
         rm -rf $DATABASE_DIR/data
         echo > $DATABASE_DIR/log.err
     fi
-
-    # site-config variables
-    get_config_var SITE_DB_USER; db_user=$retval
-    get_config_var SITE_DB_PASSWORD; db_password=$retval
-    get_config_var SITE_DB_PORT_NUMBER; db_port=$retval
 
     cd $DATABASE_DIR
 
@@ -858,7 +865,6 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     fi
 
     get_config_var SITE_ADMIN_DB_PASSWORD_ROOT; new_db_root_password=$retval
-    # new_db_root_password=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9!@#$%&*+<>?=-' | fold -w 32 | head -n 1)
 
     echo "[*] mysql temporary root password is $(highlight_text $temp_db_root_password)"
     echo "[*] setting mysql root password to $(highlight_text $new_db_root_password)"
@@ -866,31 +872,47 @@ if [[ $OPT_DO_DATABASE == true ]]; then
     # not using the run_mysql_command here as this requires additional flags
     ./mysql/bin/mysql -P$db_port -uroot -p$temp_db_root_password --socket $DATABASE_DIR/mysql.sock --connect-expired-password -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$new_db_root_password'"
     ./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "CREATE USER '$db_user'@'%' IDENTIFIED WITH mysql_native_password BY '$db_password'"
-    # should we restrict permissions for this user?
     ./mysql/bin/mysql -P$db_port -uroot -p$new_db_root_password --socket $DATABASE_DIR/mysql.sock -e "GRANT ALL ON *.* TO '$db_user'@'%' WITH GRANT OPTION"
 
     show_info_message "creating schemas"
     python -m wwpdb.apps.site_admin.DbAdminExec --create-schemas
 
-    # dummy codes
-
-    if [[ $OPT_DB_ADD_DUMMY_CODES == true ]]; then
-        show_info_message "adding PDB and EMDB dummy codes to db"
-        
-        # codes
-        seq -w 4 0001 0050 > dummy_pdb_codes.ids
-        seq --format EMD-%04g 1 50 > dummy_emdb_codes.ids
-
-        python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --load_accessions_pdb --accession_file dummy_pdb_codes.ids
-        python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --load_accessions_emdb --accession_file dummy_emdb_codes.ids
-
-        rm dummy_pdb_codes.ids
-        rm dummy_emdb_codes.ids
-    fi
-
     # shutdown
     # ./bin/mysqladmin --socket=./socket shutdown -uroot -p$new_db_root_password
-    # ./onedep_admin/scripts/install_onedep.sh --setup-database --database-dir /nfs/public/release/msd/services/onedep/db
+fi
+
+# dummy codes
+
+if [[ $OPT_DB_ADD_DUMMY_CODES == true ]]; then
+    show_info_message "adding PDB and EMDB dummy codes to db"
+
+    # codes
+    seq -w 4 0001 0050 > dummy_pdb_codes.ids
+    seq --format EMD-%04g 1 50 > dummy_emdb_codes.ids
+
+    python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --load_accessions_pdb --accession_file dummy_pdb_codes.ids
+    python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --load_accessions_emdb --accession_file dummy_emdb_codes.ids
+
+    rm dummy_pdb_codes.ids
+    rm dummy_emdb_codes.ids
+fi
+
+if [[ $OPT_DB_UPDATE_WF_CLASS_DICT == true ]]; then
+    show_info_message "loading workflow definitions into wf_class_dict"
+    get_config_var SITE_WF_XML_PATH; wf_xml_path=$retval
+
+    if [[ -z "$wf_xml_path" ]]; then
+        show_error_message "SITE_WF_XML_PATH varible not set in site-config, fix that"
+        exit
+    fi
+
+    wf_def_count=$(ls $wf_xml_path/*.xml | wc -l)
+    show_info_message "found $wf_def_count definitions in $wf_xml_path"
+
+    for wf_def in $wf_xml_path/*.xml; do
+        filename=$(basename $wf_def)
+        python -m wwpdb.apps.wf_engine.wf_engine_utils.tasks.WFTaskRequestExec --load_wf_def_file $filename
+    done
 fi
 
 # ----------------------------------------------------------------
@@ -912,14 +934,18 @@ fi
 
 if [[ $OPT_DO_APACHE == true ]]; then
     show_info_message "copying httpd.conf"
-
     cd $APACHE_PREFIX_DIR/conf
+
     mv httpd.conf httpd.conf.safe
     ln -s $SITE_CONFIG_DIR/apache_config/httpd.conf httpd.conf
+
     mkdir $APACHE_PREFIX_DIR/conf.d
     ln -s $SITE_CONFIG_DIR/apache_config/development.conf $APACHE_PREFIX_DIR/conf.d
+
+    mkdir -p $SITE_CONFIG_DIR/apache_config
+    ln -s $APACHE_PREFIX_DIR/bin/apachectl $SITE_CONFIG_DIR/apache_config/httpd-opt
 else
-  show_warning_message "skipping setting up the apache"
+    show_warning_message "skipping apache setup"
 fi
 
 #show_info_message "setting up csd"

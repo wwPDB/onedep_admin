@@ -148,6 +148,38 @@ class DbSchemaManager(object):
              value                              VARCHAR(45) NULL COMMENT 'The flag value, may be Y/N or more complicated depending on flag requirements',
              PRIMARY KEY (dep_set_id, flag)
              );"""
+          ]],
+
+            ['V5.12 da_internal em_depui', 'DA_INTERNAL', 'em_depui', '_dainttablenotexists', 
+             ["""CREATE TABLE em_depui
+             (
+             Structure_ID                                                 varchar(15)    not null,
+             depositor_hold_instructions                                  varchar(80)        null,
+             macromolecule_description                                    varchar(10)        null,
+             obsolete_instructions                                        varchar(200)       null,
+             same_authors_as_pdb                                          varchar(5)         null,
+             same_title_as_pdb                                            varchar(5)         null
+             );""",
+              """CREATE UNIQUE INDEX primary_index ON em_depui
+              (
+              Structure_ID
+              );"""
+          ]],
+
+
+            ['V5.12 da_internal em_author_list', 'DA_INTERNAL', 'em_author_list', '_dainttablenotexists', 
+             ["""CREATE TABLE em_author_list
+             (
+             Structure_ID                                                 varchar(15)    not null,
+             author                                                       varchar(150)       null,
+             ordinal                                                      int            not null,
+             identifier_ORCID                                             varchar(20)        null
+             );""",
+              """CREATE UNIQUE INDEX primary_index ON em_author_list
+              (
+              Structure_ID,
+              ordinal
+              );"""
           ]]
 
         ]

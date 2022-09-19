@@ -107,13 +107,13 @@ wwpdb.apps.deposit==0.37.4
 wwpdb.apps.editormodule==0.15
 wwpdb.apps.entity-transform==0.17.1
 wwpdb.apps.msgmodule==0.171
-wwpdb.apps.releasemodule==0.27
+wwpdb.apps.releasemodule==0.27.1
 wwpdb.apps.seqmodule==0.24.1
 wwpdb.apps.site-admin==0.16
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.14
 wwpdb.apps.val-ws-server==0.7.3
-wwpdb.apps.validation==2.31.1
+wwpdb.apps.validation==2.31.2
 wwpdb.apps.wf-engine==0.17
 wwpdb.apps.workmanager==0.21
 wwpdb.io==0.22

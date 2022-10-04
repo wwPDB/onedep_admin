@@ -272,7 +272,7 @@ function add_bashrc_statements {
     echo >> ~/.bashrc
     echo "# - start onedep config ($hostname) - $WWPDB_SITE_ID #" >> ~/.bashrc
     echo >> ~/.bashrc
-    echo "if [[ \`hostname\` = "$hostname" ]]; then" >> ~/.bashrc
+    echo "if [[ \`hostname\` = \"$hostname\" ]]; then" >> ~/.bashrc
     echo "  export ONEDEP_PATH='$ONEDEP_PATH'" >> ~/.bashrc
     echo "  export WWPDB_SITE_ID='$WWPDB_SITE_ID'" >> ~/.bashrc
     echo "  export WWPDB_SITE_LOC='$WWPDB_SITE_LOC'" >> ~/.bashrc

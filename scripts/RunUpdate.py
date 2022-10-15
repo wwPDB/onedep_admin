@@ -179,7 +179,7 @@ class UpdateManager(object):
 
         if self.__resources_rw_path:
             if not os.path.exists(self.__resources_rw_path):
-                command = 'git clone git@github.com:wwPDB/onedep-resources_rw.git {}'.format(self.__resources_ro_path)
+                command = 'git clone git@github.com:wwPDB/onedep-resources_rw.git {}'.format(self.__resources_rw_path)
                 self.__exec(command)
 
             command = 'cd {}; git pull'.format(self.__resources_rw_path)

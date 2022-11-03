@@ -106,11 +106,13 @@ WebOb==1.8.7
 wheel==0.37.1
 wrapt==1.14.1
 wwpdb.apps.ann-tasks-v2==0.28
-wwpdb.apps.ccmodule==0.23.dev1
+#wwpdb.apps.ccmodule==0.23.dev1
+wwpdb.apps.ccmodule==0.22
 wwpdb.apps.chem-ref-data==0.16
 wwpdb.apps.chemeditor==0.11.4
 wwpdb.apps.content-ws-server==0.9
-wwpdb.apps.deposit==0.39.dev1
+#wwpdb.apps.deposit==0.39.dev1
+wwpdb.apps.deposit==0.38
 wwpdb.apps.editormodule==0.15
 wwpdb.apps.entity-transform==0.17.1
 wwpdb.apps.msgmodule==0.171

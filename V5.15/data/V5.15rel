@@ -117,7 +117,7 @@ wwpdb.apps.editormodule==0.15
 wwpdb.apps.entity-transform==0.17.1
 wwpdb.apps.msgmodule==0.171
 wwpdb.apps.releasemodule==0.27.1
-wwpdb.apps.seqmodule==0.24.4
+wwpdb.apps.seqmodule==0.24.5
 wwpdb.apps.site-admin==0.16.1
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.14

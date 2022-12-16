@@ -7,4 +7,6 @@ numpy < 1.22
 # Newer emda tries to install proshade which will not work on centos-7
 emda <= 1.1.4
 
+# Removal of Bio.SubsMat cause validation code issue
+biopython < 1.80
 

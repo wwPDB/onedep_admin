@@ -243,7 +243,7 @@ function bootstrap_site_config {
     git clone --branch add_site_config git@github.com:wwPDB/onedep-resources_ro.git
     cp -r onedep-resources_ro/site-config $ONEDEP_PATH
     mv $ONEDEP_PATH/site-config/example/example_site1 $ONEDEP_PATH/site-config/example/$site_name_lc
-    mv $ONEDEP_PATH/site-config/example $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC
+    mv $ONEDEP_PATH/site-config/example/$site_name_lc $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/
 
     sed -i "s/\[example\]/\[$site_name_lc\]/" $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/$site_name_lc/site.cfg
     mapfile -t variables < <(grep -E '^\w+\s*=\s*\{.*\}' $ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/$site_name_lc/site.cfg)

@@ -94,7 +94,7 @@ scandir==1.10.0
 scikit-learn==1.2.1
 scipy==1.10.1
 servalcat==0.3.0
-setuptools==65.6.0
+setuptools==65.5.1
 simplejson==3.18.3
 six==1.16.0
 soupsieve==2.4
@@ -126,7 +126,7 @@ wwpdb.apps.site-admin==0.16.2
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.16.1
 wwpdb.apps.val-ws-server==0.7.3
-wwpdb.apps.validation==2.32.1
+wwpdb.apps.validation==2.32.2.dev1
 wwpdb.apps.wf-engine==0.17
 wwpdb.apps.workmanager==0.22.1
 wwpdb.io==0.24.1

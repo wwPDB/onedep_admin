@@ -140,7 +140,7 @@ wwpdb.utils.emdb==1.0.2
 wwpdb.utils.letters==0.15
 wwpdb.utils.markdown-wrapper==0.3.1
 wwpdb.utils.message-queue==0.5.1
-wwpdb.utils.nmr==0.24.1
+wwpdb.utils.nmr==0.25
 wwpdb.utils.oe-util==0.7.1
 wwpdb.utils.seqdb-v2==0.12.3
 wwpdb.utils.session==0.14.1

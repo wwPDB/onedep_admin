@@ -123,7 +123,7 @@ wwpdb.apps.entity-transform==0.17.3
 wwpdb.apps.msgmodule==0.173
 wwpdb.apps.releasemodule==0.28
 wwpdb.apps.seqmodule==0.24.7
-wwpdb.apps.site-admin==0.17
+wwpdb.apps.site-admin==0.17.1
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.17
 wwpdb.apps.val-ws-server==0.7.3

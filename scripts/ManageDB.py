@@ -48,6 +48,8 @@ class DbSchemaManager(object):
              [['pdbx_center_of_mass_x', 'ADD COLUMN `pdbx_center_of_mass_x` float NULL AFTER `pdbx_CASP_flag`'],
               ['pdbx_center_of_mass_y', 'ADD COLUMN `pdbx_center_of_mass_y` float NULL AFTER `pdbx_center_of_mass_x`'],
              ['pdbx_center_of_mass_z', 'ADD COLUMN `pdbx_center_of_mass_z` float NULL AFTER `pdbx_center_of_mass_y`']]],
+            ['V5.18 da_internal', 'DA_INTERNAL', 'pdbx_depui_entry_details', '_daintnotexists',
+             [['validated_identifier_ORCID', 'ADD COLUMN `validated_identifier_ORCID` varchar(20) NULL AFTER `wwpdb_site_id`']]],
         ]
 
         self.__tableexists = [

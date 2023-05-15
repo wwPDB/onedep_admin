@@ -268,6 +268,7 @@ class UpdateManager(object):
                  ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json', 'get_site_packages_path'],
                  ['dictver', 'SITE_PACKAGES_PATH', 'dict/etc/bundleversion.json', 'get_site_packages_path'],
                  ['dbloadver', 'SITE_PACKAGES_PATH', 'dbloader/etc/bundleversion.json', 'get_site_packages_path'],
+                 ['wurcs2pic', 'SITE_PACKAGES_PATH', 'wurcs2pic/BUNDLEVERSION', 'get_site_packages_path'],
                  ]
 
         for c in confs:
@@ -288,8 +289,11 @@ class UpdateManager(object):
                     print("WARNING: Tool out of date. %s not found" % fname)
                     continue
                 with open(fname, 'r') as fin:
-                    jdata = json.load(fin)
-                    vstring = jdata['Version']
+                    if ".json" in fname:
+                        jdata = json.load(fin)
+                        vstring = jdata['Version']
+                    else:
+                        vstring = fin.read().strip()
                     if vstring != tvers:
                         print("***ERROR: Version mismatch %s != %s in %s" % (tvers, vstring, fname))
             except NoOptionError as e:

@@ -128,12 +128,16 @@ class UpdateManager(object):
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/pre-requirements.txt'))
 
         # PKG_CONFIG_PATH is needed for future pip in which global-options will not be supported
-        babel_pkg_path = os.path.join(self.__ci_common.get_site_packages_path(), "openbabel", "lib", "pkgconfig")
-        base_pkg_path = os.path.join(self.__ci.get("TOOLS_PATH"), "lib", "pkgconfig")
-        if base_pkg_path:
-            cpaths = "%s:%s" % (base_pkg_path, babel_pkg_path)
-        else:
-            cpaths = babel_pkg_path
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+
+            babel_pkg_path = os.path.join(self.__ci_common.get_site_packages_path(), "openbabel", "lib", "pkgconfig")
+            base_pkg_path = os.path.join(self.__ci.get("TOOLS_PATH"), "lib", "pkgconfig")
+
+            if base_pkg_path:
+                cpaths = "%s:%s" % (base_pkg_path, babel_pkg_path)
+            else:
+                cpaths = babel_pkg_path
 
         command = 'PKG_CONFIG_PATH={} pip install {} -r {}'.format(cpaths, pip_extra_urls, reqfile)
         self.__exec(command)

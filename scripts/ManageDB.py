@@ -193,8 +193,9 @@ class DbSchemaManager(object):
             [ 'SeqModUI', 'SequenceModuleUI.xml'],
             [ 'AnnModUI', 'AnnotateModuleUI.xml'],
             [ 'TransModUI', 'TransformerModuleUI.xml'],
-            [ 'MRG2CIF_TDEP', 'wf_op_nmr_mrg2cif_fs_tempdep.xml'],
-            [ 'MRG2CIF_DEP', 'wf_op_nmr_mrg2cif_fs_deposit.xml'],
+            # Not needed now that WF name is not too long - it loads automatically from DepUI
+            # [ 'MRG2CIF_TDEP', 'wf_op_nmr_mrg2cif_fs_tempdep.xml'],
+            # [ 'MRG2CIF_DEP', 'wf_op_nmr_mrg2cif_fs_deposit.xml'],
             # [ 'LigModUI', 'LigandModuleUI.xml']
         ]
 

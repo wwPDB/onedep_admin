@@ -21,7 +21,7 @@ distro==1.8.0
 Django==3.2.18
 django-cors-headers==3.14.0
 djangorestframework==3.14.0
-emda==1.1.4
+emda==1.1.5
 fakepdftk==0.2
 fasteners==0.18
 fonttools==4.39.4
@@ -120,7 +120,7 @@ wwpdb.apps.ccmodule==0.28.1
 wwpdb.apps.chem-ref-data==0.20.1
 wwpdb.apps.chemeditor==0.12.1
 wwpdb.apps.content-ws-server==0.9.1
-wwpdb.apps.deposit==0.43
+wwpdb.apps.deposit==0.43.1
 wwpdb.apps.editormodule==0.17.1
 wwpdb.apps.entity-transform==0.17.4
 wwpdb.apps.msgmodule==0.173
@@ -140,7 +140,7 @@ wwpdb.utils.config==0.37
 wwpdb.utils.db==0.29.1
 wwpdb.utils.detach==0.4.2
 wwpdb.utils.dp==0.47
-wwpdb.utils.emdb==1.4.1
+wwpdb.utils.emdb==1.4.2
 wwpdb.utils.letters==0.15
 wwpdb.utils.markdown-wrapper==0.3.1
 wwpdb.utils.message-queue==0.6

@@ -21,7 +21,7 @@ distro==1.8.0
 Django==3.2.18
 django-cors-headers==3.14.0
 djangorestframework==3.14.0
-emda==1.1.5
+emda==1.1.4
 fakepdftk==0.2
 fasteners==0.18
 fonttools==4.39.4

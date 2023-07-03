@@ -1,6 +1,6 @@
 .==V5.19
 webapps/htdocs/ann_tasks_v2==1.12
-webapps/htdocs/ccmodule==1.11
+webapps/htdocs/ccmodule==1.11.1
 webapps/htdocs/ccmodule_lite==1.7
 webapps/htdocs/chem_ref_data_ui==1.3.2
 webapps/htdocs/chemeditor==1.14

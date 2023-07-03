@@ -576,7 +576,8 @@ if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
     fi
 
     show_warning_message "running command: $command"
-    
+
+    cd $ONEDEP_PATH
     chmod +x $command
     sudo -E $command
     # sudo -E yum install -y mysql

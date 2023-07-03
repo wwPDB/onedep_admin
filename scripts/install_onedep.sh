@@ -572,12 +572,11 @@ if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
 
     if [[ $OPT_PREPARE_BUILD == true ]]; then
         show_info_message "installing system packages for compiling tools"
-        command=onedep-build/$build_ver/install-base/install_packages.sh
+        command=onedep-build/$build_ver/install-base/install-packages.sh
     fi
 
     show_warning_message "running command: $command"
 
-    cd $ONEDEP_PATH
     chmod +x $command
     sudo -E $command
     # sudo -E yum install -y mysql

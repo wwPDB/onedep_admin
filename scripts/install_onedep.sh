@@ -661,7 +661,7 @@ if [[ $OPT_DO_BUILD == true ]]; then
     export PACKAGE_DIR=$TOP_INSTALL_DIR/packages
     export INSTALL_KERNEL=Linux
     show_info_message "now building, this may take a while"
-    cd $ONEDEP_PATH/onedep-build/$build_version/build-$build_id/
+    cd $ONEDEP_PATH/onedep-build/$build_version/build-$build_id-$DISTRO_VERSION/
     ./BUILD.sh |& tee build.log
 else
     show_warning_message "skipping build"

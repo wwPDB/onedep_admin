@@ -52,7 +52,7 @@ function highlight_text {
 function get_build_ver {
     local version=""
 
-    if [[ $DISTRO == "almalinux" ]]; then
+    if [[ $DISTRO == "almalinux" || $DISTRO == "rocky" ]]; then
         version="v-6000"
     elif [[ $DISTRO == "centos" ]]; then
         version="v-5200"
@@ -567,12 +567,12 @@ fi
 if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
     show_info_message "installing required system packages"
     command=''
-    build_ver=''
-    get_build_ver; build_ver=$retval
+    build_version=''
+    get_build_ver; build_version=$retval
 
     if [[ $OPT_PREPARE_BUILD == true ]]; then
         show_info_message "installing system packages for compiling tools"
-        command=onedep-build/$build_ver/install-base/install-packages.sh
+        command=onedep-build/$build_version/install-base/install-packages.sh
     fi
 
     show_warning_message "running command: $command"

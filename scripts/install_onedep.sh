@@ -64,7 +64,7 @@ function get_build_ver {
 function get_build_id {
     local id=""
 
-    if [[ $DISTRO == "almalinux" ]]; then
+    if [[ $DISTRO == "almalinux" || $DISTRO == "rocky" ]]; then
         id="alma"
     elif [[ $DISTRO == "centos" ]]; then
         if [[ $DISTRO_VERSION == "7" ]]; then

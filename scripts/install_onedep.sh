@@ -567,7 +567,7 @@ fi
 if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
     show_info_message "installing required system packages"
     command=''
-    local build_ver=""
+    build_ver=''
     get_build_ver; build_ver=$retval
 
     if [[ $OPT_PREPARE_BUILD == true ]]; then

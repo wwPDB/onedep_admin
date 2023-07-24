@@ -52,7 +52,7 @@ function highlight_text {
 function get_build_ver {
     local version=""
 
-    if [[ $DISTRO == "almalinux" ]]; then
+    if [[ $DISTRO == "almalinux" || $DISTRO == "rocky" ]]; then
         version="v-6000"
     elif [[ $DISTRO == "centos" ]]; then
         version="v-5200"
@@ -64,7 +64,7 @@ function get_build_ver {
 function get_build_id {
     local id=""
 
-    if [[ $DISTRO == "almalinux" ]]; then
+    if [[ $DISTRO == "almalinux" || $DISTRO == "rocky" ]]; then
         id="alma"
     elif [[ $DISTRO == "centos" ]]; then
         if [[ $DISTRO_VERSION == "7" ]]; then
@@ -567,12 +567,12 @@ fi
 if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
     show_info_message "installing required system packages"
     command=''
-    local build_ver=""
-    get_build_ver; build_ver=$retval
+    build_version=''
+    get_build_ver; build_version=$retval
 
     if [[ $OPT_PREPARE_BUILD == true ]]; then
         show_info_message "installing system packages for compiling tools"
-        command=onedep-build/$build_ver/install-base/install-packages.sh
+        command=onedep-build/$build_version/install-base/install-packages.sh
     fi
 
     show_warning_message "running command: $command"
@@ -658,7 +658,7 @@ if [[ $OPT_DO_BUILD == true ]]; then
     export PACKAGE_DIR=$TOP_INSTALL_DIR/packages
     export INSTALL_KERNEL=Linux
     show_info_message "now building, this may take a while"
-    cd $ONEDEP_PATH/onedep-build/$build_version/build-$build_id/
+    cd $ONEDEP_PATH/onedep-build/$build_version/build-$build_id-$DISTRO_VERSION/
     ./BUILD.sh |& tee build.log
 else
     show_warning_message "skipping build"

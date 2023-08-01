@@ -140,7 +140,7 @@ wwpdb.utils.config==0.37
 wwpdb.utils.db==0.29.1
 wwpdb.utils.detach==0.4.2
 wwpdb.utils.dp==0.47
-wwpdb.utils.emdb==1.5
+wwpdb.utils.emdb==1.5.1
 wwpdb.utils.letters==0.15
 wwpdb.utils.markdown-wrapper==0.3.1
 wwpdb.utils.message-queue==0.6

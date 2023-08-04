@@ -143,7 +143,7 @@ class UpdateManager(object):
         self.__exec(command)
 
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements.txt'))
-        command = 'pip install {} -r {}'.format(pip_extra_urls, reqfile)
+        command = 'PKG_CONFIG_PATH={} pip install {} -r {}'.format(pip_extra_urls, reqfile)
         self.__exec(command)
 
         if self.__cparser.has_option('DEFAULT', 'pip_extra_reqs'):

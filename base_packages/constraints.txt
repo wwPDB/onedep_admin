@@ -14,3 +14,6 @@ emda <= 1.1.4
 # opencv-python < 4.7
 # Fixed in 4.7.0.72
 
+# PDBe used mariadb packages on centos-7 -- even though this was not the agreed plan.  
+# mariadb does not have pkg-config - so newer mysqlclient cannot be installed.
+mysqlclient==2.1.1

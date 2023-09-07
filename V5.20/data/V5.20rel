@@ -50,7 +50,7 @@ msgpack==1.0.5
 multidict==6.0.4
 multiprocess==0.70.14
 munkres==1.1.4
-mysqlclient==2.2.0
+mysqlclient==2.1.1
 netaddr==0.8.0
 netifaces==0.11.0
 numpy==1.21.6

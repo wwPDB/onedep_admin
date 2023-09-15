@@ -13,7 +13,8 @@ PYTHON3="python3"
 ONEDEP_BUILD_VER="v-5200"
 THIS_SCRIPT="${BASH_SOURCE[0]}"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-CENTOS_MAJOR_VER=`cat /etc/redhat-release | cut -d' ' -f4  | cut -d'.' -f1`
+DISTRO=`cat /etc/os-release | grep -E '^ID=' | cut -d'=' -f2 | sed -e 's/"//g' | cut -d'.' -f1`
+DISTRO_VERSION=`cat /etc/os-release | grep VERSION_ID | cut -d'=' -f2 | sed -e 's/"//g' | cut -d'.' -f1`
 
 # repositories
 ONEDEP_BUILD_REPO_URL=git@github.com:wwPDB/onedep-build.git # scripts to build tools for OneDep
@@ -46,6 +47,34 @@ function show_info_message {
 
 function highlight_text {
     echo -ne "\e[93m$1\e[0m"
+}
+
+function get_build_ver {
+    local version=""
+
+    if [[ $DISTRO == "almalinux" || $DISTRO == "rocky" ]]; then
+        version="v-6000"
+    elif [[ $DISTRO == "centos" ]]; then
+        version="v-5200"
+    fi
+
+    retval=$version
+}
+
+function get_build_id {
+    local id=""
+
+    if [[ $DISTRO == "almalinux" || $DISTRO == "rocky" ]]; then
+        id="alma"
+    elif [[ $DISTRO == "centos" ]]; then
+        if [[ $DISTRO_VERSION == "7" ]]; then
+            id="centos-7"
+        elif [[ $DISTRO_VERSION == "8" ]]; then
+            id="centos-8"
+        fi
+    fi
+
+    retval=$id
 }
 
 #
@@ -538,27 +567,19 @@ fi
 if [[ $OPT_PREPARE_RUNTIME == true || $OPT_PREPARE_BUILD == true ]]; then
     show_info_message "installing required system packages"
     command=''
+    build_version=''
+    get_build_ver; build_version=$retval
 
     if [[ $OPT_PREPARE_BUILD == true ]]; then
         show_info_message "installing system packages for compiling tools"
-        command=onedep-build/install-base/centos-7-build-packages.sh
-    else
-        show_info_message "installing system packages for running OneDep"
-
-        if [[ $CENTOS_MAJOR_VER == 8 ]]; then
-          command=onedep-build/install-base/centos-8-host-packages.sh
-        elif [[ $CENTOS_MAJOR_VER == 7 ]]; then
-          command=onedep-build/install-base/centos-7-host-packages.sh
-        else
-          show_warning_message "unsupported OS version"
-        fi
+        command=onedep-build/$build_version/install-base/install-packages.sh
     fi
 
     show_warning_message "running command: $command"
-    
+
     chmod +x $command
     sudo -E $command
-    sudo -E yum install -y mysql
+    # sudo -E yum install -y mysql
 else
     show_warning_message "skipping installation of required packages"
 fi
@@ -577,9 +598,6 @@ fi
 unset PYTHONHOME
 $PYTHON3 -m venv /tmp/venv
 source /tmp/venv/bin/activate
-
-show_info_message "updating setuptools"
-pip install --no-cache-dir --upgrade setuptools==40.8.0 pip
 
 show_info_message "installing wheel"
 pip install --no-cache-dir wheel
@@ -624,6 +642,10 @@ rm -rf /tmp/venv
 if [[ $OPT_DO_BUILD == true ]]; then
     echo "[*] $(highlight_text TOOLS_DIR) is set to $(highlight_text $TOOLS_DIR)"
     check_env_variable TOOLS_DIR true
+    local build_version=""
+    local build_id=""
+    get_build_ver; build_version=$retval
+    get_build_id; build_id=$retval
 
     # export some useful variables for building tools
     export TOP_INSTALL_DIR=$TOOLS_DIR
@@ -636,7 +658,7 @@ if [[ $OPT_DO_BUILD == true ]]; then
     export PACKAGE_DIR=$TOP_INSTALL_DIR/packages
     export INSTALL_KERNEL=Linux
     show_info_message "now building, this may take a while"
-    cd $ONEDEP_PATH/onedep-build/$ONEDEP_BUILD_VER/build-centos-$CENTOS_MAJOR_VER
+    cd $ONEDEP_PATH/onedep-build/$build_version/build-$build_id-$DISTRO_VERSION/
     ./BUILD.sh |& tee build.log
 else
     show_warning_message "skipping build"

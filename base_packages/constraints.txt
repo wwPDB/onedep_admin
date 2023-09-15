@@ -1,10 +1,19 @@
 # Constraints for OneDep installation moving forward for python 3 to ensure core packages installed properly
 # If we update third party package in python package this will need to be updated
 
-# mysqlclient is pinned before the 2.0 series are we are using Django 1.11.X
-# mysqlclient ~= 1.4.4
-
 # EMDA cannot do bdist_wheel and cannot be installed with newer numpy
 numpy < 1.22
 
+# Newer emda tries to install proshade which will not work on centos-7
+emda <= 1.1.4
 
+# Removal of Bio.SubsMat cause validation code issue
+#biopython < 1.80
+
+# Centos 7 cannot use wheels from newer version due to ZLIB requirement (ZLIB_1.2.9 needed)
+# opencv-python < 4.7
+# Fixed in 4.7.0.72
+
+# PDBe used mariadb packages on centos-7 -- even though this was not the agreed plan.  
+# mariadb does not have pkg-config - so newer mysqlclient cannot be installed.
+mysqlclient==2.1.1

@@ -127,7 +127,19 @@ class UpdateManager(object):
 
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/pre-requirements.txt'))
 
-        command = 'pip install {} -r {}'.format(pip_extra_urls, reqfile)
+        # PKG_CONFIG_PATH is needed for future pip in which global-options will not be supported
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+
+            babel_pkg_path = os.path.join(self.__ci_common.get_site_packages_path(), "openbabel", "lib", "pkgconfig")
+            base_pkg_path = os.path.join(self.__ci.get("TOOLS_PATH"), "lib", "pkgconfig")
+
+            if base_pkg_path:
+                cpaths = "%s:%s" % (base_pkg_path, babel_pkg_path)
+            else:
+                cpaths = babel_pkg_path
+
+        command = 'PKG_CONFIG_PATH={} pip install {} -r {}'.format(cpaths, pip_extra_urls, reqfile)
         self.__exec(command)
 
         reqfile = os.path.abspath(os.path.join(script_dir, '../base_packages/requirements.txt'))
@@ -179,7 +191,7 @@ class UpdateManager(object):
 
         if self.__resources_rw_path:
             if not os.path.exists(self.__resources_rw_path):
-                command = 'git clone git@github.com:wwPDB/onedep-resources_rw.git {}'.format(self.__resources_ro_path)
+                command = 'git clone git@github.com:wwPDB/onedep-resources_rw.git {}'.format(self.__resources_rw_path)
                 self.__exec(command)
 
             command = 'cd {}; git pull'.format(self.__resources_rw_path)
@@ -268,6 +280,7 @@ class UpdateManager(object):
                  ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json', 'get_site_packages_path'],
                  ['dictver', 'SITE_PACKAGES_PATH', 'dict/etc/bundleversion.json', 'get_site_packages_path'],
                  ['dbloadver', 'SITE_PACKAGES_PATH', 'dbloader/etc/bundleversion.json', 'get_site_packages_path'],
+                 ['wurcs2pic', 'SITE_PACKAGES_PATH', 'wurcs2pic/BUNDLEVERSION', 'get_site_packages_path'],
                  ]
 
         for c in confs:
@@ -288,8 +301,11 @@ class UpdateManager(object):
                     print("WARNING: Tool out of date. %s not found" % fname)
                     continue
                 with open(fname, 'r') as fin:
-                    jdata = json.load(fin)
-                    vstring = jdata['Version']
+                    if ".json" in fname:
+                        jdata = json.load(fin)
+                        vstring = jdata['Version']
+                    else:
+                        vstring = fin.read().strip()
                     if vstring != tvers:
                         print("***ERROR: Version mismatch %s != %s in %s" % (tvers, vstring, fname))
             except NoOptionError as e:

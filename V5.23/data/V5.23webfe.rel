@@ -1,0 +1,17 @@
+.==V5.23
+webapps/htdocs/ann_tasks_v2==1.13
+webapps/htdocs/ccmodule==1.12
+webapps/htdocs/ccmodule_lite==1.7
+webapps/htdocs/chem_ref_data_ui==1.4.4
+webapps/htdocs/chemeditor==1.16
+webapps/htdocs/docs-static==1.1.1
+webapps/htdocs/editormodule==1.1
+webapps/htdocs/entity_transform_ui==1.8
+webapps/htdocs/msgmodule==1.11
+webapps/htdocs/releasemodule==2.2
+webapps/htdocs/review_v2==1.15
+webapps/htdocs/seqmodule==1.9
+webapps/htdocs/status_update_tasks_v2==1.8.1
+webapps/htdocs/testfixture==1.0
+webapps/htdocs/validation_tasks_v2==1.17
+webapps/htdocs/wfm==1.15

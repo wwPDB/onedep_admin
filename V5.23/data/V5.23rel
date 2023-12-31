@@ -58,7 +58,7 @@ numpy==1.21.6
 oauthlib==3.2.2
 onedep-biocuration-api==0.3
 openbabel==2.4.1
-opencv-python==4.8.1.78
+opencv-python==4.8.0.74
 OpenEye-toolkits==2020.2.4
 OpenEye-toolkits-python3-linux-x64==2020.2.4
 oslo.concurrency==5.2.0
@@ -127,7 +127,7 @@ wwpdb.apps.editormodule==0.17.3
 wwpdb.apps.entity-transform==0.17.6
 wwpdb.apps.msgmodule==0.175
 wwpdb.apps.releasemodule==0.30
-wwpdb.apps.seqmodule==0.26.5
+wwpdb.apps.seqmodule==0.26.7
 wwpdb.apps.site-admin==0.17.3
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val-rel==0.19

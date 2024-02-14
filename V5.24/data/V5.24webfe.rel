@@ -7,7 +7,6 @@ webapps/htdocs/chemeditor==1.16
 webapps/htdocs/docs-static==1.1.1
 webapps/htdocs/editormodule==1.1
 webapps/htdocs/entity_transform_ui==1.10
-webapps/htdocs/groupdeposit==1.2
 webapps/htdocs/msgmodule==1.11
 webapps/htdocs/releasemodule==2.2
 webapps/htdocs/review_v2==1.15.1

@@ -16,5 +16,5 @@ fakepdftk
 --extra-index-url https://pypi.anaconda.org/OpenEye/simple
 OpenEye-toolkits<=2020.2.4 ; python_version >= '3'
 
-# EMDA uses numpy style - Log missing in newer setuptools
-setuptools < 65.6
+# EMDA uses numpy style - Log missing in newer setuptools 2/14/2024 seems to not be resticted.
+# setuptools < 65.6

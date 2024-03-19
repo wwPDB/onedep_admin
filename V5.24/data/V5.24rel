@@ -105,7 +105,7 @@ threadpoolctl==3.2.0
 typing_extensions==4.9.0
 tzdata==2023.4
 urllib3==2.1.0
-va==0.0.1.dev70
+va==0.0.1.dev92
 WebOb==1.8.7
 wheel==0.42.0
 wrapt==1.16.0
@@ -124,7 +124,7 @@ wwpdb.apps.site_admin==0.17.4
 wwpdb.apps.testfixture==0.1
 wwpdb.apps.val_rel==0.19.1
 wwpdb.apps.val-ws-server==0.7.3
-wwpdb.apps.validation==2.36
+wwpdb.apps.validation==2.36.1
 wwpdb.apps.wf-engine==0.17
 wwpdb.apps.workmanager==0.24
 wwpdb.io==0.33.3

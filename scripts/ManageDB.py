@@ -7,6 +7,7 @@ import os
 import argparse
 import subprocess
 import sys
+import warnings
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon
@@ -50,6 +51,8 @@ class DbSchemaManager(object):
              ['pdbx_center_of_mass_z', 'ADD COLUMN `pdbx_center_of_mass_z` float NULL AFTER `pdbx_center_of_mass_y`']]],
             ['V5.18 da_internal', 'DA_INTERNAL', 'pdbx_depui_entry_details', '_daintnotexists',
              [['validated_identifier_ORCID', 'ADD COLUMN `validated_identifier_ORCID` varchar(20) NULL AFTER `wwpdb_site_id`']]],
+            ['V5.25 da_internal', 'DA_INTERNAL', 'em_admin', '_daintnotexists',
+             [['composite_map', 'ADD COLUMN `composite_map` VARCHAR(3) DEFAULT NULL AFTER `entry_id`']]],
         ]
 
         self.__tableexists = [
@@ -299,8 +302,9 @@ class DbSchemaManager(object):
                 print("ERROR: Could not open resource %s" % 'STATUS')
                 return
 
-        # defpath = self.__ci.get('SITE_WF_XML_PATH')
-        defpath = self.__ci_common.get_wf_defs_path()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            defpath = self.__ci_common.get_wf_defs_path()
 
         for taskid, fname in self.__wftasks:
 
@@ -419,7 +423,12 @@ class DbSchemaManager(object):
     def __loaddaintschema(self):
         """load da_internal schema from configuration"""
         # schemapath = self.__ci.get('SITE_DA_INTERNAL_SCHEMA_PATH')
-        schemapath = self.__ci_common.get_site_da_internal_schema_path()
+
+        # Handle deprecated warning
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            schemapath = self.__ci_common.get_site_da_internal_schema_path()
+
         if not schemapath:
             print("ERROR: SITE_DA_INTERNAL_SCHEMA_PATH not in site-config")
             return False

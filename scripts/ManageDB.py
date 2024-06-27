@@ -13,7 +13,34 @@ from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon
 from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
 from wwpdb.utils.db.MyDbUtil import MyDbQuery
+from wwpdb.utils.db.MyDbAdapter import MyDbAdapter
+from wwpdb.utils.db.WorkflowSchemaDef import WorkflowSchemaDef
 from mmcif.io.PdbxReader import PdbxReader
+
+
+class WFTaskRequest(MyDbAdapter):
+
+    """Manage workflow task requests and status queries --"""
+
+    def __init__(self, verbose=False, log=sys.stderr):
+        super(WFTaskRequest, self).__init__(schemaDefObj=WorkflowSchemaDef(verbose=verbose, log=log), verbose=verbose, log=log)
+
+    def getWfClassDict(self, **opts):
+        self._setDebug(True)
+
+        tableId = "WF_CLASS_DICT"
+        mapL = self._getDefaultAttributeParameterMap(tableId)
+        self._setAttributeParameterMap(tableId=tableId, mapL=mapL)
+
+        s = self._select(tableId=tableId, **opts)
+        return s
+
+    def addWfClassDict(self, **wfOpts):
+        #
+        tableId = "WF_CLASS_DICT"
+        mapL = self._getDefaultAttributeParameterMap(tableId)
+        self._setAttributeParameterMap(tableId=tableId, mapL=mapL)
+        return self._insertRequest(tableId=tableId, contextId=None, **wfOpts)
 
 
 class DbSchemaManager(object):
@@ -202,6 +229,14 @@ class DbSchemaManager(object):
             # [ 'LigModUI', 'LigandModuleUI.xml']
         ]
 
+        # In release V5.26, the X-ray processing was revisited, but the incorrect class ids were used.  We need to register improper names with wf_class_dict
+        self.__compat_dict = [
+            # wf_class_id      | wf_class_name                   | title                                | author | version | class_file                   
+            ["merge-xyz-pdbx", "wf_op_mrgpdbxdep_fs_tempdep.xml", "Merge with PDBx coordinates (tempdep)", "jdw", "1.51", "wf_op_mrgpdbxdep_fs_tempdep.xml"],
+            ["pdbx-fmt-check", "wf_op_pdbxfmck_fs_tempdep.xml", "PDBx Format check (tempdep)", "jdw", "1.51", "wf_op_pdbxfmck_fs_tempdep.xml"]
+        ]
+
+
 
     def updateschema(self):
         """Updates the schema configurations"""
@@ -324,6 +359,31 @@ class DbSchemaManager(object):
                 self.__exec(cmd)
                 
         mydb.closeConnection()
+
+    def update_compat_wf_tasks(self):
+        """Handle management of the V5.26 error class dictionary"""
+        print("")
+        print("Checking V5.26 compat WF scheme status DB")
+
+        wftr = WFTaskRequest(verbose = True)
+        for setD in self.__compat_dict:
+            wfClassId = setD[0]
+            # returns list of len 0
+            c = wftr.getWfClassDict(wfClassId=wfClassId)
+            if len(c) == 0:
+                print("About to install compat WF schema %s" % wfClassId)
+                if not self.__noop:
+                    wfOpts = {}
+                    wfOpts["wfClassId"] = wfClassId
+                    wfOpts["wfClassName"] = setD[1]
+                    wfOpts["title"] = setD[2]
+                    wfOpts["author"] = setD[3]
+                    wfOpts["version"] = setD[4]
+                    wfOpts["classFile"] = setD[5]
+
+                    status = wftr.addWfClassDict(**wfOpts)
+                    if not status:
+                        print("FAILED")
 
     def __exec(self, cmd, overridenoop = False):
         print(cmd)
@@ -508,6 +568,7 @@ def main():
     if args.func == 'update':
        dbs.updateschema()
        dbs.updatewftasks()
+       dbs.update_compat_wf_tasks()
     elif args.func=='finalcheck':
         dbs.checkviews()
 

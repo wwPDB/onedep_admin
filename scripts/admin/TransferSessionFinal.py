@@ -83,6 +83,14 @@ def UpdateModel(ds, siteName):
     if siteName == "PDBE":
         cobj.setValue("EBI", "pdbx_annotator", 0)
 
+    cat = "em_admin"
+    cobj = b0.getObj(cat)
+
+    # If category exists  and process_site attribute present, then set
+    if cobj is not None:
+        if "process_site" in cobj.getAttributeList():
+            cobj.setValue(siteName, "process_site", 0)
+
 
     # modelPath="/tmp/a.cif"
     ret = io.writeFile(modelPath, cL)

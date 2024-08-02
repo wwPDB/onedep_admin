@@ -281,6 +281,7 @@ class UpdateManager(object):
                  ['dictver', 'SITE_PACKAGES_PATH', 'dict/etc/bundleversion.json', 'get_site_packages_path'],
                  ['dbloadver', 'SITE_PACKAGES_PATH', 'dbloader/etc/bundleversion.json', 'get_site_packages_path'],
                  ['wurcs2pic', 'SITE_PACKAGES_PATH', 'wurcs2pic/BUNDLEVERSION', 'get_site_packages_path'],
+                 ['mapfixver', 'SITE_PACKAGES_PATH', 'mapFix/etc/BUNDLEVERSION', ''],
                  ]
 
         for c in confs:

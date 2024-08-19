@@ -5,7 +5,7 @@ webapps/htdocs/ccmodule_lite==1.7.1
 webapps/htdocs/chem_ref_data_ui==1.5
 webapps/htdocs/chemeditor==1.17
 webapps/htdocs/docs-static==1.1.1
-webapps/htdocs/editormodule==1.2
+webapps/htdocs/editormodule==1.3
 webapps/htdocs/entity_transform_ui==1.11
 webapps/htdocs/msgmodule==1.12
 webapps/htdocs/releasemodule==2.2

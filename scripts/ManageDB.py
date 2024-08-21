@@ -80,6 +80,9 @@ class DbSchemaManager(object):
              [['validated_identifier_ORCID', 'ADD COLUMN `validated_identifier_ORCID` varchar(20) NULL AFTER `wwpdb_site_id`']]],
             ['V5.25 da_internal', 'DA_INTERNAL', 'em_admin', '_daintnotexists',
              [['composite_map', 'ADD COLUMN `composite_map` VARCHAR(3) DEFAULT NULL AFTER `entry_id`']]],
+            ['V5.28 da_internal', 'DA_INTERNAL', 'database_2', '_daintnotexists',
+             [['pdbx_database_accession', 'ADD COLUMN `pdbx_database_accession` varchar(20) NULL AFTER `database_code`'],
+              ['pdbx_DOI', 'ADD COLUMN `pdbx_DOI` varchar(30) NULL AFTER `pdbx_database_accession`']]],
         ]
 
         self.__tableexists = [

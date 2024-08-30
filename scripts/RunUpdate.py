@@ -18,6 +18,7 @@ import os.path
 import subprocess
 import sys
 import warnings
+import importlib.metadata
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon
@@ -177,6 +178,27 @@ class UpdateManager(object):
             command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U {} -r {}'.format(
                 cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, pip_extra_urls, opt_req)
             self.__exec(command)
+
+    def removepyenv(self):
+        if not self.__cparser.has_option('DEFAULT', 'removepy'):
+            return
+        pkgs = self.__cparser.get('DEFAULT', 'removepy').split(" ")
+        for p in pkgs:
+            if len(p) == 0:
+                # extra spaces in config
+                continue
+            # Package has a version number
+            pname, vers = p.split("=")
+            try:
+                vinst = importlib.metadata.version(pname)
+            except importlib.metadata.PackageNotFoundError:
+                continue
+
+            if vers != vinst:
+                continue
+
+            cmd = "pip uninstall -y {}".format(pname)
+            self.__exec(cmd)
 
     def updateresources(self):
         restag = self.__cparser.get('DEFAULT', 'resourcestag')
@@ -403,6 +425,7 @@ def main():
     parser.add_argument("--config", default='latest', help='Configuration file for release')
     parser.add_argument("--noop", "-n", default=False, action='store_true', help='Do not carry out actions')
     parser.add_argument("--skip-pip", default=False, action='store_true', help='Skip pip upgrade')
+    parser.add_argument("--skip-remove", default=False, action='store_true', help='Skip removal of python packages')
     parser.add_argument("--skip-resources", default=False, action='store_true', help='Skip resources update')
     parser.add_argument("--skip-webfe", default=False, action='store_true', help='Skip webfe update')
     parser.add_argument("--skip-taxdb", default=False, action='store_true', help='Skip update of taxdb if needed')
@@ -434,6 +457,10 @@ def main():
     # update resources_ro
     if not args.skip_resources:
         um.updateresources()
+
+    # Remove obsolete python packages
+    if not args.skip_remove:
+        um.removepyenv()
 
     # update python
     if not args.skip_pip:

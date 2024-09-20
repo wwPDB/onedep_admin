@@ -2,7 +2,7 @@
 # If we update third party package in python package this will need to be updated
 
 # EMDA cannot do bdist_wheel and cannot be installed with newer numpy
-numpy < 1.22
+# numpy < 1.22
 
 # Newer emda tries to install proshade which will not work on centos-7
 emda <= 1.1.4

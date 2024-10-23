@@ -144,6 +144,6 @@ wwpdb.utils.oe_util==0.8.1
 wwpdb.utils.seqdb-v2==0.13
 wwpdb.utils.session==0.17
 wwpdb.utils.testing==0.18
-wwpdb.utils.wf==0.38.2
+wwpdb.utils.wf==0.38.5
 wwpdb.utils.ws_utils==0.6
 zipp==3.20.1

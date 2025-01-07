@@ -83,6 +83,10 @@ class DbSchemaManager(object):
             ['V5.28 da_internal', 'DA_INTERNAL', 'database_2', '_daintnotexists',
              [['pdbx_database_accession', 'ADD COLUMN `pdbx_database_accession` varchar(20) NULL AFTER `database_code`'],
               ['pdbx_DOI', 'ADD COLUMN `pdbx_DOI` varchar(30) NULL AFTER `pdbx_database_accession`']]],
+            ['V5.30 da_internal', 'DA_INTERNAL', 'pdbx_audit_revision_history', '_daintnotexists',
+             [['internal_part_number', 'ADD COLUMN `internal_part_number` INT NULL AFTER `internal_deposition_id`'],
+              ['part_number', 'ADD COLUMN `part_number` INT NULL AFTER `internal_part_number`']]],
+
         ]
 
         self.__tableexists = [

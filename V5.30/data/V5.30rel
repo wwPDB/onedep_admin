@@ -125,7 +125,7 @@ wwpdb.apps.releasemodule==0.32
 wwpdb.apps.seqmodule==0.29.7
 wwpdb.apps.site_admin==0.20.1
 wwpdb.apps.testfixture==0.1
-wwpdb.apps.val_rel==0.21
+wwpdb.apps.val_rel==0.22
 wwpdb.apps.val_ws_server==0.8
 wwpdb.apps.validation==2.41
 wwpdb.apps.wf-engine==0.19

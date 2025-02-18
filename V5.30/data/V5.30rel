@@ -121,7 +121,7 @@ wwpdb.apps.deposit==0.54
 wwpdb.apps.editormodule==0.22
 wwpdb.apps.entity_transform==0.21.3
 wwpdb.apps.msgmodule==0.178
-wwpdb.apps.releasemodule==0.32
+wwpdb.apps.releasemodule==0.32.1
 wwpdb.apps.seqmodule==0.29.7
 wwpdb.apps.site_admin==0.20.1
 wwpdb.apps.testfixture==0.1

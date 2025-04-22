@@ -108,7 +108,7 @@ threadpoolctl==3.5.0
 typing_extensions==4.13.0
 tzdata==2025.2
 urllib3==2.2.3
-va==0.0.1.dev117
+va==0.0.1.dev118
 WebOb==1.8.9
 wheel==0.45.1
 wrapt==1.17.2

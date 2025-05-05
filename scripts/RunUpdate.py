@@ -19,9 +19,11 @@ import subprocess
 import sys
 import warnings
 import importlib.metadata
+from enum import Enum, Flag, auto
+import xml.etree.ElementTree as ET
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
-from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon
+from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon, ConfigInfoAppValidation
 
 
 class DbSchemaManager(object):
@@ -57,6 +59,7 @@ class UpdateManager(object):
         self.__noop = noop
         self.__ci = ConfigInfo()
         self.__ci_common = ConfigInfoAppCommon()
+        self.__ci_val = ConfigInfoAppValidation()
 
         self.__extraconf = self.get_variable("ADMIN_EXTRA_CONF", environment='INSTALL_ENVIRONMENT')
         self.__confvars = {}
@@ -294,16 +297,26 @@ class UpdateManager(object):
 
 
     def checktoolvers(self):
-        #  vers_config_var,  configinfovar,             relative path    ConfiginfoAppMethod
-        confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json', 'get_site_annot_tools_path'],
-                 ['webfever', 'TOP_WWPDB_WEBAPPS_DIR', 'version.json', ''],
-                 ['resourcever', 'RO_RESOURCE_PATH', 'version.json', ''],
-                 ['cctoolsver', 'SITE_CC_APPS_PATH', 'etc/bundleversion.json', 'get_site_cc_apps_path'],
-                 ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json', 'get_site_packages_path'],
-                 ['dictver', 'SITE_PACKAGES_PATH', 'dict/etc/bundleversion.json', 'get_site_packages_path'],
-                 ['dbloadver', 'SITE_PACKAGES_PATH', 'dbloader/etc/bundleversion.json', 'get_site_packages_path'],
-                 ['wurcs2pic', 'SITE_PACKAGES_PATH', 'wurcs2pic/BUNDLEVERSION', 'get_site_packages_path'],
-                 ['mapfixver', 'SITE_PACKAGES_PATH', 'mapFix/etc/BUNDLEVERSION', ''],
+
+        class OptFlags(Flag):
+            APP_VALIDATION = auto()
+
+        class VersionEnum(Enum):
+            PARSE_PHENIX_ENV = auto()
+            PARSE_CCP4_VER = auto()
+
+        #  vers_config_var,  configinfovar,             relative path            ConfiginfoAppMethod            VersionMethod   Flags
+        confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json', 'get_site_annot_tools_path', None, None],
+                 ['webfever', 'TOP_WWPDB_WEBAPPS_DIR', 'version.json', '', None, None],
+                 ['resourcever', 'RO_RESOURCE_PATH', 'version.json', '', None, None],
+                 ['cctoolsver', 'SITE_CC_APPS_PATH', 'etc/bundleversion.json', 'get_site_cc_apps_path', None, None],
+                 ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json', 'get_site_packages_path', None, None],
+                 ['dictver', 'SITE_PACKAGES_PATH', 'dict/etc/bundleversion.json', 'get_site_packages_path', None, None],
+                 ['dbloadver', 'SITE_PACKAGES_PATH', 'dbloader/etc/bundleversion.json', 'get_site_packages_path', None, None],
+                 ['wurcs2pic', 'SITE_PACKAGES_PATH', 'wurcs2pic/BUNDLEVERSION', 'get_site_packages_path', None, None],
+                 ['mapfixver', 'SITE_PACKAGES_PATH', 'mapFix/etc/BUNDLEVERSION', '', None, None],
+                 ['phenixver', 'PHENIXROOT', 'phenix_env.sh', 'get_phenixroot', VersionEnum.PARSE_PHENIX_ENV, OptFlags.APP_VALIDATION],
+                 ['ccp4ver', 'CCP4ROOT', 'restore/restores.xml', 'get_ccp4root', VersionEnum.PARSE_CCP4_VER, OptFlags.APP_VALIDATION],
                  ]
 
         for c in confs:
@@ -311,11 +324,16 @@ class UpdateManager(object):
             confvar = c[1]
             fpart = c[2]
             config_info_app_method = c[3]
+            vers_method = c[4]
+            vers_flags = c[5]
 
             try:
                 tvers = self.__cparser.get('DEFAULT', varname)
                 if config_info_app_method:
-                    class_method = getattr(self.__ci_common, config_info_app_method)
+                    if vers_flags and (vers_flags & OptFlags.APP_VALIDATION):
+                        class_method = getattr(self.__ci_val, config_info_app_method)
+                    else:
+                        class_method = getattr(self.__ci_common, config_info_app_method)
                     toolspath = class_method()
                 else:
                     toolspath = self.get_variable(confvar)
@@ -323,17 +341,44 @@ class UpdateManager(object):
                 if not os.path.exists(fname):
                     print("WARNING: Tool out of date. %s not found" % fname)
                     continue
-                with open(fname, 'r') as fin:
-                    if ".json" in fname:
-                        jdata = json.load(fin)
-                        vstring = jdata['Version']
-                    else:
-                        vstring = fin.read().strip()
-                    if vstring != tvers:
-                        print("***ERROR: Version mismatch %s != %s in %s" % (tvers, vstring, fname))
+                if vers_method is None:
+                    with open(fname, 'r') as fin:
+                        if ".json" in fname:
+                            jdata = json.load(fin)
+                            vstring = jdata['Version']
+                        else:
+                            vstring = fin.read().strip()
+                elif vers_method == VersionEnum.PARSE_PHENIX_ENV:
+                    vstring = self.__parse_phenix_vers(fname)
+                elif vers_method == VersionEnum.PARSE_CCP4_VER:
+                    vstring = self.__parse_ccp4_vers(fname)
+                else:
+                    vstring = "UNKNOWN METHOD"
+                if vstring != tvers:
+                    print("***ERROR: Version mismatch %s != %s in %s" % (tvers, vstring, fname))
             except NoOptionError as e:
                 # Option not in config file - continue
                 pass
+
+    def __parse_phenix_vers(self, fname):
+        """Parses phenix environment setup script"""
+        with open(fname, 'r') as fin:
+            lines = [line.strip() for line in fin.readlines()]
+        vlist = list(filter((lambda x: "export PHENIX_VERSION" in x), lines))
+        if len(vlist) < 1:
+            return "UNKNOWN"
+        vstr = vlist[0].split("=")[1].strip()
+        return vstr
+
+    def __parse_ccp4_vers(self, fname):
+        """Parses ccp4 restores xml file for update version"""
+        tree = ET.parse(fname)
+        root = tree.getroot()
+        vstr = "XXXX"
+        for element in root.findall("./update/id"):
+            vstr = element.text  # Get the last one
+        return vstr
+
 
     def buildtools(self, build_version='v-5200'):
         curdir = os.path.dirname(__file__)

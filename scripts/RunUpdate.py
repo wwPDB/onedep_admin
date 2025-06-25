@@ -507,7 +507,7 @@ def main():
 
     # update resources_ro
     if not args.skip_resources:
-        um.updateresources()
+        um.updateresources(use_https_git=args.use_https_git)
 
     # Remove obsolete python packages
     if not args.skip_remove:
@@ -515,11 +515,11 @@ def main():
 
     # update python
     if not args.skip_pip:
-        um.updatepyenv(args.build_dev)
+        um.updatepyenv(args.build_dev, args.use_https_git)
 
     # update webfe
     if not args.skip_webfe:
-        um.updatewebfe()
+        um.updatewebfe(use_https_git=args.use_https_git)
 
     # update taxonomy
     if not args.skip_taxdb:

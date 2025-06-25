@@ -108,11 +108,12 @@ class UpdateManager(object):
             ret = os.getenv(variable)
         return ret
 
-    def updatepyenv(self, dev_build):
+    def updatepyenv(self, dev_build, use_https_git=False):
         cs_user = self.get_variable('CS_USER', environment='INSTALL_ENVIRONMENT')
         cs_pass = self.get_variable('CS_PW', environment='INSTALL_ENVIRONMENT')
         cs_url = self.get_variable('CS_URL', environment='INSTALL_ENVIRONMENT')
 
+        git_prefix = "https://" if use_https_git else "git@"
         script_dir = os.path.dirname(os.path.realpath(__file__))
         constraintfile = os.path.abspath(os.path.join(script_dir, '../base_packages/constraints.txt'))
 
@@ -168,7 +169,8 @@ class UpdateManager(object):
                 os.path.join(script_dir, '../base_packages/requirements_wwpdb_dependencies.txt'))
             with open(path_to_list_of_repo) as list_of_repo:
                 for repo in list_of_repo:
-                    command = 'git clone --recursive git@github.com:wwPDB/{0}.git; cd {0}; git checkout develop; cd ..'.format(
+                    command = 'git clone --recursive {0}github.com:wwPDB/{1}.git; cd {1}; git checkout develop; cd ..'.format(
+                        git_prefix,
                         repo.rstrip())
                     self.__exec(command, working_directory=source_dir)
                     command = 'pip install {} --edit {}'.format(pip_extra_urls, repo)
@@ -203,11 +205,13 @@ class UpdateManager(object):
             cmd = "pip uninstall -y {}".format(pname)
             self.__exec(cmd)
 
-    def updateresources(self):
+    def updateresources(self, use_https_git=False):
+        git_prefix = "https://" if use_https_git else "git@"
+
         restag = self.__cparser.get('DEFAULT', 'resourcestag')
         if self.__resources_ro_path:
             if not os.path.exists(self.__resources_ro_path):
-                command = 'git clone git@github.com:wwPDB/onedep-resources_ro.git {}'.format(self.__resources_ro_path)
+                command = 'git clone {}github.com:wwPDB/onedep-resources_ro.git {}'.format(git_prefix, self.__resources_ro_path)
                 self.__exec(command)
 
             command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(
@@ -216,7 +220,7 @@ class UpdateManager(object):
 
         if self.__resources_rw_path:
             if not os.path.exists(self.__resources_rw_path):
-                command = 'git clone git@github.com:wwPDB/onedep-resources_rw.git {}'.format(self.__resources_rw_path)
+                command = 'git clone {}github.com:wwPDB/onedep-resources_rw.git {}'.format(git_prefix, self.__resources_rw_path)
                 self.__exec(command)
 
             command = 'cd {}; git pull'.format(self.__resources_rw_path)
@@ -233,7 +237,8 @@ class UpdateManager(object):
         if ret:
             print("ERROR: check of webfe directory failed")
 
-    def updatewebfe(self):
+    def updatewebfe(self, use_https_git=False):
+        git_prefix = "https://" if use_https_git else "git@"
 
         # Checking if source directory exist
         source_dir = os.path.abspath(os.path.join(self.__web_apps_path, '../..'))
@@ -243,7 +248,7 @@ class UpdateManager(object):
         # Check if repo is cloned
         webfe_repo = os.path.abspath(os.path.join(self.__web_apps_path, '..'))
         if not os.path.isdir(webfe_repo):
-            command = 'git clone --recurse-submodules git@github.com:wwPDB/onedep-webfe.git'
+            command = f'git clone --recurse-submodules {git_prefix}github.com:wwPDB/onedep-webfe.git'
             self.__exec(command, working_directory=source_dir)
             self.checkwebfe()
 
@@ -478,6 +483,7 @@ def main():
     parser.add_argument("--skip-toolvers", default=False, action='store_true', help='Skip checking versions of tools')
     parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
     parser.add_argument("--build-version", default='v-5200', help='Version of tools to build from')
+    parser.add_argument("--use-https-git", default=False, action='store_true', help='If set, use https git instead of ssh for cloning repos')
     parser.add_argument("--build-dev", default=False, action='store_true', help='pip installs repos with edit param')
     parser.add_argument("--get-latest-version", default=False, action='store_true', help='get latest version number')
 

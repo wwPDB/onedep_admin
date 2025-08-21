@@ -139,7 +139,7 @@ wwpdb.utils.cc-dict-util==0.5.0
 wwpdb.utils.config==0.50.0
 wwpdb.utils.db==0.32.0
 wwpdb.utils.detach==0.5.0
-wwpdb.utils.dp==0.59.0
+wwpdb.utils.dp==0.59.1
 wwpdb.utils.emdb==1.14
 wwpdb.utils.letters==0.20.1
 wwpdb.utils.markdown-wrapper==1.0.1

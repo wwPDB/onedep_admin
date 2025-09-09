@@ -304,6 +304,8 @@ class UpdateManager(object):
         class VersionEnum(Enum):
             PARSE_PHENIX_ENV = auto()
             PARSE_CCP4_VER = auto()
+            PARSE_JAVA_VER = auto()
+            PARSE_MAVEN_VER = auto()
 
         #  vers_config_var,  configinfovar,             relative path            ConfiginfoAppMethod            VersionMethod   Flags
         confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json', 'get_site_annot_tools_path', None, None],
@@ -317,6 +319,8 @@ class UpdateManager(object):
                  ['mapfixver', 'SITE_PACKAGES_PATH', 'mapFix/etc/BUNDLEVERSION', '', None, None],
                  ['phenixver', 'PHENIXROOT', 'phenix_env.sh', 'get_phenixroot', VersionEnum.PARSE_PHENIX_ENV, OptFlags.APP_VALIDATION],
                  ['ccp4ver', 'CCP4ROOT', 'restore/restores.xml', 'get_ccp4root', VersionEnum.PARSE_CCP4_VER, OptFlags.APP_VALIDATION],
+                 ['javaver', 'JAVA_HOME', 'release', 'get_java_home', VersionEnum.PARSE_JAVA_VER, OptFlags.APP_VALIDATION],
+                 ['mvnver', 'SITE_PACKAGES_PATH', 'apache-maven/apache-maven', 'get_site_packages_path', VersionEnum.PARSE_MAVEN_VER, None],
                  ]
 
         for c in confs:
@@ -352,6 +356,10 @@ class UpdateManager(object):
                     vstring = self.__parse_phenix_vers(fname)
                 elif vers_method == VersionEnum.PARSE_CCP4_VER:
                     vstring = self.__parse_ccp4_vers(fname)
+                elif vers_method == VersionEnum.PARSE_JAVA_VER:
+                    vstring = self.__parse_java_vers(fname)
+                elif vers_method == VersionEnum.PARSE_MAVEN_VER:
+                    vstring = self.__parse_mvn_vers(fname)
                 else:
                     vstring = "UNKNOWN METHOD"
                 if vstring != tvers:
@@ -368,6 +376,25 @@ class UpdateManager(object):
         if len(vlist) < 1:
             return "UNKNOWN"
         vstr = vlist[0].split("=")[1].strip()
+        return vstr
+
+    def __parse_java_vers(self, fname):
+        """Checks java"""
+        with open(fname, 'r') as fin:
+            lines = [line.strip() for line in fin.readlines()]
+        vlist = list(filter((lambda x: "JAVA_VERSION=" in x), lines))
+        if len(vlist) < 1:
+            return "UNKNOWN"
+        vstr = vlist[0].split('"')[1].strip()
+        return vstr
+
+    def __parse_mvn_vers(self, fname):
+        """Checks maven symlink"""
+        print("CHECK", fname)
+        vstr = "UNKNOWN"
+        if os.path.islink(fname):
+            tpath = os.readlink(fname)
+            vstr = tpath.split("-")[2]
         return vstr
 
     def __parse_ccp4_vers(self, fname):

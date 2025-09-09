@@ -306,6 +306,7 @@ class UpdateManager(object):
             PARSE_CCP4_VER = auto()
             PARSE_JAVA_VER = auto()
             PARSE_MAVEN_VER = auto()
+            PARSE_GRADLE_VER = auto()
 
         #  vers_config_var,  configinfovar,             relative path            ConfiginfoAppMethod            VersionMethod   Flags
         confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json', 'get_site_annot_tools_path', None, None],
@@ -321,6 +322,7 @@ class UpdateManager(object):
                  ['ccp4ver', 'CCP4ROOT', 'restore/restores.xml', 'get_ccp4root', VersionEnum.PARSE_CCP4_VER, OptFlags.APP_VALIDATION],
                  ['javaver', 'JAVA_HOME', 'release', 'get_java_home', VersionEnum.PARSE_JAVA_VER, OptFlags.APP_VALIDATION],
                  ['mvnver', 'SITE_PACKAGES_PATH', 'apache-maven/apache-maven', 'get_site_packages_path', VersionEnum.PARSE_MAVEN_VER, None],
+                 ['gradlever', 'SITE_PACKAGES_PATH', 'gradle/gradle', 'get_site_packages_path', VersionEnum.PARSE_GRADLE_VER, None],
                  ]
 
         for c in confs:
@@ -360,6 +362,8 @@ class UpdateManager(object):
                     vstring = self.__parse_java_vers(fname)
                 elif vers_method == VersionEnum.PARSE_MAVEN_VER:
                     vstring = self.__parse_mvn_vers(fname)
+                elif vers_method == VersionEnum.PARSE_GRADLE_VER:
+                    vstring = self.__parse_gradle_vers(fname)
                 else:
                     vstring = "UNKNOWN METHOD"
                 if vstring != tvers:
@@ -390,11 +394,18 @@ class UpdateManager(object):
 
     def __parse_mvn_vers(self, fname):
         """Checks maven symlink"""
-        print("CHECK", fname)
         vstr = "UNKNOWN"
         if os.path.islink(fname):
             tpath = os.readlink(fname)
             vstr = tpath.split("-")[2]
+        return vstr
+
+    def __parse_gradle_vers(self, fname):
+        """Checks gradle symlink"""
+        vstr = "UNKNOWN"
+        if os.path.islink(fname):
+            tpath = os.readlink(fname)
+            vstr = tpath.split("-")[1]
         return vstr
 
     def __parse_ccp4_vers(self, fname):

@@ -127,7 +127,7 @@ wwpdb.apps.content_ws_server==0.9.2
 wwpdb.apps.deposit==0.60.1
 wwpdb.apps.editormodule==0.23
 wwpdb.apps.entity_transform==0.21.3
-wwpdb.apps.msgmodule==0.180
+wwpdb.apps.msgmodule==0.180.1
 wwpdb.apps.releasemodule==0.32.3
 wwpdb.apps.seqmodule==0.30.0
 wwpdb.apps.site_admin==0.22

@@ -86,6 +86,13 @@ class DbSchemaManager(object):
             ['V5.30 da_internal', 'DA_INTERNAL', 'pdbx_audit_revision_history', '_daintnotexists',
              [['internal_part_number', 'ADD COLUMN `internal_part_number` INT NULL AFTER `internal_deposition_id`'],
               ['part_number', 'ADD COLUMN `part_number` INT NULL AFTER `internal_part_number`']]],
+            # da_internal rcsb_status pdb_id column width
+            ['V5.40.1 da_internal', 'DA_INTERNAL', 'rcsb_status', '_colwidth',
+             # colname, command to alter, expected width
+             [['pdb_id', "MODIFY COLUMN `pdb_id` VARCHAR(12) NULL", 12]]],
+            ['V5.40.1 da_internal', 'DA_INTERNAL', 'struct', '_colwidth',
+             # colname, command to alter, expected width
+             [['pdb_id', "MODIFY COLUMN `pdb_id` VARCHAR(12) NULL", 12]]],
 
         ]
 

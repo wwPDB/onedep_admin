@@ -683,15 +683,15 @@ show_info_message "activating the new configuration"
 # now checking if DEPLOY_DIR has been set
 show_info_message "checking if everything went ok..."
 
-get_config_var "SITE_DEPLOY_PATH"; site_deploy_path=$retval
+# After sourcing env.sh, check the environment variable directly
+site_deploy_path="${SITE_DEPLOY_PATH:-}"
 
 if [[ -z $site_deploy_path ]]; then
-    # this can happen in a new system that does not
-    # have wwpdb.utils.config installed yet
-    check_env_variable DEPLOY_DIR true
+    # If not set by env.sh, try using get_config_var (requires temp venv to still be active)
+    get_config_var "SITE_DEPLOY_PATH"; site_deploy_path=$retval
 fi
 
-if [[ $site_deploy_path == "None" ]]; then
+if [[ -z $site_deploy_path || $site_deploy_path == "None" ]]; then
     site_name_lc=$(echo $WWPDB_SITE_ID | tr '[:upper:]' '[:lower:]')
     show_error_message "SITE_DEPLOY_PATH not set, you may have to fix your site-config configuration file ($SITE_CONFIG_DIR/$WWPDB_SITE_LOC/$site_name_lc/site.cfg)"
     exit -1

@@ -634,11 +634,6 @@ fi
 
 echo "[*] $(highlight_text SITE_DEPLOY_PATH) is set to $(highlight_text $site_deploy_path)"
 
-show_info_message "deactivate and remove the temp venv"
-deactivate
-rm -rf /tmp/venv
-
-
 if [[ $OPT_DO_BUILD == true ]]; then
     echo "[*] $(highlight_text TOOLS_DIR) is set to $(highlight_text $TOOLS_DIR)"
     check_env_variable TOOLS_DIR true
@@ -663,6 +658,10 @@ if [[ $OPT_DO_BUILD == true ]]; then
 else
     show_warning_message "skipping build"
 fi
+
+show_info_message "deactivate and remove the temp venv"
+deactivate
+rm -rf /tmp/venv
 
 # ----------------------------------------------------------------
 # cloning OneDep admin pack

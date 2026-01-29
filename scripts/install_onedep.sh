@@ -714,12 +714,18 @@ if [[ -z $site_deploy_path ]]; then
         export TOOLS_PATH="${ONEDEP_PATH}/${tools_name}"
         export DEPLOY_DIR="${SITE_DEPLOY_PATH}"
         
+        # Export webapp and resource paths for RunUpdate.py
+        export TOP_WWPDB_WEBAPPS_DIR="${SITE_DEPLOY_PATH}/webapps"
+        export RO_RESOURCE_PATH="${ONEDEP_PATH}/onedep-resources_ro"
+        export RW_RESOURCE_PATH="${SITE_DEPLOY_PATH}/resources_rw"
+        
         # Also export PYTHONPATH so VENV_PATH can be derived from it later
         export PYTHONPATH="${SITE_LOCAL_APPS_PATH}/lib/python"
         
         site_deploy_path="$SITE_DEPLOY_PATH"
         
         show_info_message "Manually exported SITE_DEPLOY_PATH=$SITE_DEPLOY_PATH"
+        show_info_message "Manually exported TOP_WWPDB_WEBAPPS_DIR=$TOP_WWPDB_WEBAPPS_DIR"
         show_info_message "Manually exported PYTHONPATH=$PYTHONPATH"
     else
         echo "[*] get_config_var returned: $(highlight_text $site_deploy_path)"

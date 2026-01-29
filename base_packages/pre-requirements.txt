@@ -6,3 +6,8 @@ numpy
 
 # Python3 will benefit alot from wheels
 wheel; python_version >= '3'
+# cmake is needed for building packages like wwpdb.utils.align
+cmake
+# PyMySQL is a pure-Python MySQL client that can work as a drop-in replacement
+# for mysqlclient when python3-devel is not available for compilation
+PyMySQL

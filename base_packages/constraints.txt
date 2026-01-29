@@ -16,4 +16,5 @@ emda <= 1.1.4
 
 # PDBe used mariadb packages on centos-7 -- even though this was not the agreed plan.  
 # mariadb does not have pkg-config - so newer mysqlclient cannot be installed.
-mysqlclient==2.1.1
+# On RHEL9 without python3-devel, mysqlclient cannot be compiled - PyMySQL is used instead
+# mysqlclient==2.1.1

@@ -709,9 +709,13 @@ if [[ -z $site_deploy_path ]]; then
         export TOOLS_DIR="${ONEDEP_PATH}/${tools_name}"
         export DEPLOY_DIR="${SITE_DEPLOY_PATH}"
         
+        # Also export PYTHONPATH so VENV_PATH can be derived from it later
+        export PYTHONPATH="${SITE_LOCAL_APPS_PATH}/lib/python"
+        
         site_deploy_path="$SITE_DEPLOY_PATH"
         
         show_info_message "Manually exported SITE_DEPLOY_PATH=$SITE_DEPLOY_PATH"
+        show_info_message "Manually exported PYTHONPATH=$PYTHONPATH"
     else
         echo "[*] get_config_var returned: $(highlight_text $site_deploy_path)"
     fi

@@ -338,6 +338,9 @@ class UpdateManager(object):
                     toolspath = class_method()
                 else:
                     toolspath = self.get_variable(confvar)
+                if not toolspath:
+                    print("WARNING: %s not configured, skipping %s check" % (confvar, varname))
+                    continue
                 fname = os.path.join(toolspath, fpart)
                 if not os.path.exists(fname):
                     print("WARNING: Tool out of date. %s not found" % fname)

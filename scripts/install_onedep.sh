@@ -306,8 +306,9 @@ function add_derived_config_vars {
     local top_data_dir=$(grep "^top_data_dir = " $config_file | cut -d'=' -f2 | xargs)
     local tools_name=$(grep "^tools_name = " $config_file | cut -d'=' -f2 | xargs)
     
-    # Add derived variables before the [install_environment] section
-    cat >> $config_file << EOF
+    # Create temp file with derived variables inserted before [install_environment]
+    local temp_file=$(mktemp)
+    local derived_vars=$(cat << EOF
 
 # Computed paths for installation (auto-generated)
 site_deploy_path = ${top_data_dir}/deploy/${WWPDB_SITE_LOC}/${WWPDB_SITE_ID}
@@ -330,6 +331,11 @@ cs_url = http://%(cs_host_base)s/pypi/simple
 cs_distrib_url = http://%(cs_host_base)s/pypi/simple
 
 EOF
+)
+    
+    # Insert derived vars before [install_environment] section
+    awk -v derived="$derived_vars" '/^\[install_environment\]/ {print derived} {print}' $config_file > $temp_file
+    mv $temp_file $config_file
     
     show_info_message "derived configuration variables added successfully"
 }

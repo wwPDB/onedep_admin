@@ -297,8 +297,9 @@ function add_derived_config_vars {
     
     # Check if derived variables already exist
     if grep -q "^site_deploy_path = " $config_file; then
-        show_info_message "derived variables already exist in site.cfg, skipping"
-        return
+        show_info_message "derived variables already exist in site.cfg, removing and re-adding"
+        # Remove the auto-generated section if it exists
+        sed -i '/^# Computed paths for installation (auto-generated)/,/^cs_distrib_url = /d' $config_file
     fi
     
     # Read existing values from config to derive new ones
@@ -308,12 +309,12 @@ function add_derived_config_vars {
     
     # Create temp file with derived variables inserted before [install_environment]
     local temp_file=$(mktemp)
-    local derived_vars=$(cat << EOF
+    local derived_vars=$(cat << 'EOF'
 
 # Computed paths for installation (auto-generated)
-site_deploy_path = ${top_data_dir}/deploy/${WWPDB_SITE_LOC}/${WWPDB_SITE_ID}
-top_wwpdb_site_config_dir = ${top_software_dir}/site-config
-site_local_apps_path = ${top_software_dir}/${tools_name}
+site_deploy_path = TOP_DATA_DIR/deploy/WWPDB_SITE_LOC/WWPDB_SITE_ID
+top_wwpdb_site_config_dir = TOP_SOFTWARE_DIR/site-config
+site_local_apps_path = TOP_SOFTWARE_DIR/TOOLS_NAME
 
 # Apache configuration (auto-generated)
 server_local_top_dir = %(site_deploy_path)s/servers
@@ -332,6 +333,13 @@ cs_distrib_url = http://%(cs_host_base)s/pypi/simple
 
 EOF
 )
+    
+    # Substitute the actual values
+    derived_vars=$(echo "$derived_vars" | sed "s|TOP_DATA_DIR|${top_data_dir}|g")
+    derived_vars=$(echo "$derived_vars" | sed "s|TOP_SOFTWARE_DIR|${top_software_dir}|g")
+    derived_vars=$(echo "$derived_vars" | sed "s|TOOLS_NAME|${tools_name}|g")
+    derived_vars=$(echo "$derived_vars" | sed "s|WWPDB_SITE_LOC|${WWPDB_SITE_LOC}|g")
+    derived_vars=$(echo "$derived_vars" | sed "s|WWPDB_SITE_ID|${WWPDB_SITE_ID}|g")
     
     # Insert derived vars before [install_environment] section
     awk -v derived="$derived_vars" '/^\[install_environment\]/ {print derived} {print}' $config_file > $temp_file

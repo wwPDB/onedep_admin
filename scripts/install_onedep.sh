@@ -287,6 +287,54 @@ function bootstrap_site_config {
 }
 
 #
+# add derived/computed configuration variables to site.cfg
+# these are calculated from other variables in the config file
+function add_derived_config_vars {
+    local site_name_lc=$(echo $WWPDB_SITE_ID | tr '[:upper:]' '[:lower:]')
+    local config_file=$ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/$site_name_lc/site.cfg
+    
+    show_info_message "adding derived configuration variables to site.cfg"
+    
+    # Check if derived variables already exist
+    if grep -q "^site_deploy_path = " $config_file; then
+        show_info_message "derived variables already exist in site.cfg, skipping"
+        return
+    fi
+    
+    # Read existing values from config to derive new ones
+    local top_software_dir=$(grep "^top_software_dir = " $config_file | cut -d'=' -f2 | xargs)
+    local top_data_dir=$(grep "^top_data_dir = " $config_file | cut -d'=' -f2 | xargs)
+    local tools_name=$(grep "^tools_name = " $config_file | cut -d'=' -f2 | xargs)
+    
+    # Add derived variables before the [install_environment] section
+    cat >> $config_file << EOF
+
+# Computed paths for installation (auto-generated)
+site_deploy_path = ${top_data_dir}/deploy/${WWPDB_SITE_LOC}/${WWPDB_SITE_ID}
+top_wwpdb_site_config_dir = ${top_software_dir}/site-config
+site_local_apps_path = ${top_software_dir}/${tools_name}
+
+# Apache configuration (auto-generated)
+server_local_top_dir = %(site_deploy_path)s/servers
+server_local_dir = %(server_local_top_dir)s/localhost
+apache_version = 2.4.62
+apache_prefix_dir = %(server_local_dir)s/httpd-%(apache_version)s
+
+# Storage directories (auto-generated)
+scratch_local_dir = %(site_deploy_path)s/scratch
+fast_store_local_dir = %(site_deploy_path)s/fast_store
+
+# CVS and distribution URLs (auto-generated)
+cvsroot = :ext:%(site_refdata_cvs_user)s@%(site_refdata_cvs_host)s:/cvs_repository
+cs_url = http://%(cs_host_base)s/pypi/simple
+cs_distrib_url = http://%(cs_host_base)s/pypi/simple
+
+EOF
+    
+    show_info_message "derived configuration variables added successfully"
+}
+
+#
 # add configuration for the current host and site id
 #   to .bashrc and a few useful aliases
 function add_bashrc_statements {
@@ -604,6 +652,9 @@ pip install --no-cache-dir wheel
 
 show_info_message "installing wwpdb.utils.config"
 pip install --no-cache-dir PyYaml==3.10 wwpdb.utils.config
+
+show_info_message "adding derived configuration variables to site.cfg"
+add_derived_config_vars
 
 show_info_message "compiling site-config for the new site"
 ConfigInfoFileExec --siteid $WWPDB_SITE_ID --locid $WWPDB_SITE_LOC --writecache

@@ -136,7 +136,8 @@ class UpdateManager(object):
             warnings.simplefilter("ignore")
 
             babel_pkg_path = os.path.join(self.__ci_common.get_site_packages_path(), "openbabel", "lib", "pkgconfig")
-            base_pkg_path = os.path.join(self.__ci.get("TOOLS_PATH"), "lib", "pkgconfig")
+            tools_path = self.get_variable("TOOLS_PATH")
+            base_pkg_path = os.path.join(tools_path, "lib", "pkgconfig") if tools_path else ""
 
             if base_pkg_path:
                 cpaths = "%s:%s" % (base_pkg_path, babel_pkg_path)

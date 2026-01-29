@@ -688,12 +688,16 @@ site_deploy_path="${SITE_DEPLOY_PATH:-}"
 
 if [[ -z $site_deploy_path ]]; then
     # If not set by env.sh, try using get_config_var (requires temp venv to still be active)
+    show_info_message "SITE_DEPLOY_PATH not set by env.sh, trying get_config_var..."
     get_config_var "SITE_DEPLOY_PATH"; site_deploy_path=$retval
+    echo "[*] get_config_var returned: $(highlight_text $site_deploy_path)"
 fi
 
 if [[ -z $site_deploy_path || $site_deploy_path == "None" ]]; then
     site_name_lc=$(echo $WWPDB_SITE_ID | tr '[:upper:]' '[:lower:]')
     show_error_message "SITE_DEPLOY_PATH not set, you may have to fix your site-config configuration file ($SITE_CONFIG_DIR/$WWPDB_SITE_LOC/$site_name_lc/site.cfg)"
+    show_info_message "Trying to read config directly..."
+    python -c "from wwpdb.utils.config.ConfigInfo import ConfigInfo; cI=ConfigInfo('$WWPDB_SITE_ID'); print('SITE_DEPLOY_PATH:', cI.get('SITE_DEPLOY_PATH'))"
     exit -1
 fi
 

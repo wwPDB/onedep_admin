@@ -707,6 +707,7 @@ if [[ -z $site_deploy_path ]]; then
         export TOP_WWPDB_SITE_CONFIG_DIR="${ONEDEP_PATH}/site-config"
         export SITE_LOCAL_APPS_PATH="${ONEDEP_PATH}/${tools_name}"
         export TOOLS_DIR="${ONEDEP_PATH}/${tools_name}"
+        export TOOLS_PATH="${ONEDEP_PATH}/${tools_name}"
         export DEPLOY_DIR="${SITE_DEPLOY_PATH}"
         
         # Also export PYTHONPATH so VENV_PATH can be derived from it later

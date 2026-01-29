@@ -690,14 +690,36 @@ if [[ -z $site_deploy_path ]]; then
     # If not set by env.sh, try using get_config_var (requires temp venv to still be active)
     show_info_message "SITE_DEPLOY_PATH not set by env.sh, trying get_config_var..."
     get_config_var "SITE_DEPLOY_PATH"; site_deploy_path=$retval
-    echo "[*] get_config_var returned: $(highlight_text $site_deploy_path)"
+    
+    # If still not set, read directly from site.cfg and export manually
+    if [[ -z $site_deploy_path || $site_deploy_path == "None" ]]; then
+        site_name_lc=$(echo $WWPDB_SITE_ID | tr '[:upper:]' '[:lower:]')
+        config_file=$ONEDEP_PATH/site-config/$WWPDB_SITE_LOC/$site_name_lc/site.cfg
+        
+        show_info_message "Reading values directly from site.cfg and exporting manually..."
+        
+        # Read the base values
+        top_data_dir=$(grep "^top_data_dir = " $config_file | cut -d'=' -f2 | xargs)
+        tools_name=$(grep "^tools_name = " $config_file | cut -d'=' -f2 | xargs)
+        
+        # Calculate and export the derived values
+        export SITE_DEPLOY_PATH="${top_data_dir}/deploy/${WWPDB_SITE_LOC}/${WWPDB_SITE_ID}"
+        export TOP_WWPDB_SITE_CONFIG_DIR="${ONEDEP_PATH}/site-config"
+        export SITE_LOCAL_APPS_PATH="${ONEDEP_PATH}/${tools_name}"
+        export TOOLS_DIR="${ONEDEP_PATH}/${tools_name}"
+        export DEPLOY_DIR="${SITE_DEPLOY_PATH}"
+        
+        site_deploy_path="$SITE_DEPLOY_PATH"
+        
+        show_info_message "Manually exported SITE_DEPLOY_PATH=$SITE_DEPLOY_PATH"
+    else
+        echo "[*] get_config_var returned: $(highlight_text $site_deploy_path)"
+    fi
 fi
 
-if [[ -z $site_deploy_path || $site_deploy_path == "None" ]]; then
+if [[ -z $site_deploy_path ]]; then
     site_name_lc=$(echo $WWPDB_SITE_ID | tr '[:upper:]' '[:lower:]')
-    show_error_message "SITE_DEPLOY_PATH not set, you may have to fix your site-config configuration file ($SITE_CONFIG_DIR/$WWPDB_SITE_LOC/$site_name_lc/site.cfg)"
-    show_info_message "Trying to read config directly..."
-    python -c "from wwpdb.utils.config.ConfigInfo import ConfigInfo; cI=ConfigInfo('$WWPDB_SITE_ID'); print('SITE_DEPLOY_PATH:', cI.get('SITE_DEPLOY_PATH'))"
+    show_error_message "SITE_DEPLOY_PATH could not be determined, exiting"
     exit -1
 fi
 

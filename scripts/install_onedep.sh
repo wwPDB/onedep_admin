@@ -773,7 +773,7 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true || $OPT_DO_PULL_SIN
   show_info_message "checking for updates in onedep_admin"
 
   cd $ONEDEP_PATH/onedep_admin
-  git checkout master
+  # Pull updates on current branch instead of switching to master
   git pull
   cd $ONEDEP_PATH
 fi

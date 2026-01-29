@@ -234,10 +234,17 @@ except ImportError:
                 os.path.join(script_dir, '../base_packages/requirements_wwpdb_dependencies.txt'))
             with open(path_to_list_of_repo) as list_of_repo:
                 for repo in list_of_repo:
-                    command = 'git clone --recursive git@github.com:wwPDB/{0}.git; cd {0}; git checkout develop; cd ..'.format(
-                        repo.rstrip())
+                    repo_name = repo.rstrip()
+                    repo_path = os.path.join(source_dir, repo_name)
+                    if os.path.isdir(repo_path):
+                        # Repo already exists - just pull latest changes on current branch
+                        print("Repository {} already exists, pulling latest changes".format(repo_name))
+                        command = 'cd {0}; git pull'.format(repo_name)
+                    else:
+                        # Clone new repo and checkout develop
+                        command = 'git clone --recursive git@github.com:wwPDB/{0}.git; cd {0}; git checkout develop'.format(repo_name)
                     self.__exec(command, working_directory=source_dir)
-                    command = 'pip install {} --edit {}'.format(pip_extra_urls, repo)
+                    command = 'pip install {} --edit {}'.format(pip_extra_urls, repo_name)
                     self.__exec(command, working_directory=source_dir)
         else:
             command = 'pip install -U {} -r {}'.format(pip_extra_urls, reqfile)

@@ -316,6 +316,9 @@ site_deploy_path = TOP_DATA_DIR/deploy/WWPDB_SITE_LOC/WWPDB_SITE_ID
 top_wwpdb_site_config_dir = TOP_SOFTWARE_DIR/site-config
 site_local_apps_path = TOP_SOFTWARE_DIR/TOOLS_NAME
 tools_path = TOP_SOFTWARE_DIR/TOOLS_NAME
+top_wwpdb_webapps_dir = %(site_deploy_path)s/webapps
+ro_resource_path = TOP_SOFTWARE_DIR/onedep-resources_ro
+rw_resource_path = %(site_deploy_path)s/resources_rw
 
 # Apache configuration (auto-generated)
 server_local_top_dir = %(site_deploy_path)s/servers

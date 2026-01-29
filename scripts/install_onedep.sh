@@ -760,7 +760,7 @@ if [[ $OPT_DO_RUNUPDATE == true || $OPT_DO_BUILD_DEV == true ]]; then
   source $VENV_PATH/bin/activate
 
   show_info_message "updating setuptools and pip"
-  pip install --no-cache-dir --upgrade setuptools pip
+  pip install --no-cache-dir --upgrade setuptools "pip<23"
 
   show_info_message "install some base packages"
   pip install wheel

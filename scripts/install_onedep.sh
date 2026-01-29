@@ -296,10 +296,10 @@ function add_derived_config_vars {
     show_info_message "adding derived configuration variables to site.cfg"
     
     # Check if derived variables already exist
-    if grep -q "^SITE_DEPLOY_PATH = " $config_file; then
+    if grep -q "^site_deploy_path = \|^SITE_DEPLOY_PATH = " $config_file; then
         show_info_message "derived variables already exist in site.cfg, removing and re-adding"
-        # Remove the auto-generated section if it exists
-        sed -i '/^# Computed paths for installation (auto-generated)/,/^CS_DISTRIB_URL = /d' $config_file
+        # Remove the auto-generated section if it exists (check for both upper and lowercase versions)
+        sed -i '/^# Computed paths for installation (auto-generated)/,/^cs_distrib_url = \|^CS_DISTRIB_URL = /d' $config_file
     fi
     
     # Read existing values from config to derive new ones
@@ -312,25 +312,25 @@ function add_derived_config_vars {
     local derived_vars=$(cat << 'EOF'
 
 # Computed paths for installation (auto-generated)
-SITE_DEPLOY_PATH = TOP_DATA_DIR/deploy/WWPDB_SITE_LOC/WWPDB_SITE_ID
-TOP_WWPDB_SITE_CONFIG_DIR = TOP_SOFTWARE_DIR/site-config
-SITE_LOCAL_APPS_PATH = TOP_SOFTWARE_DIR/TOOLS_NAME
-TOOLS_PATH = TOP_SOFTWARE_DIR/TOOLS_NAME
+site_deploy_path = TOP_DATA_DIR/deploy/WWPDB_SITE_LOC/WWPDB_SITE_ID
+top_wwpdb_site_config_dir = TOP_SOFTWARE_DIR/site-config
+site_local_apps_path = TOP_SOFTWARE_DIR/TOOLS_NAME
+tools_path = TOP_SOFTWARE_DIR/TOOLS_NAME
 
 # Apache configuration (auto-generated)
-SERVER_LOCAL_TOP_DIR = %(SITE_DEPLOY_PATH)s/servers
-SERVER_LOCAL_DIR = %(SERVER_LOCAL_TOP_DIR)s/localhost
-APACHE_VERSION = 2.4.62
-APACHE_PREFIX_DIR = %(SERVER_LOCAL_DIR)s/httpd-%(APACHE_VERSION)s
+server_local_top_dir = %(site_deploy_path)s/servers
+server_local_dir = %(server_local_top_dir)s/localhost
+apache_version = 2.4.62
+apache_prefix_dir = %(server_local_dir)s/httpd-%(apache_version)s
 
 # Storage directories (auto-generated)
-SCRATCH_LOCAL_DIR = %(SITE_DEPLOY_PATH)s/scratch
-FAST_STORE_LOCAL_DIR = %(SITE_DEPLOY_PATH)s/fast_store
+scratch_local_dir = %(site_deploy_path)s/scratch
+fast_store_local_dir = %(site_deploy_path)s/fast_store
 
 # CVS and distribution URLs (auto-generated)
-CVSROOT = :ext:%(site_refdata_cvs_user)s@%(site_refdata_cvs_host)s:/cvs_repository
-CS_URL = http://%(cs_host_base)s/pypi/simple
-CS_DISTRIB_URL = http://%(cs_host_base)s/pypi/simple
+cvsroot = :ext:%(site_refdata_cvs_user)s@%(site_refdata_cvs_host)s:/cvs_repository
+cs_url = http://%(cs_host_base)s/pypi/simple
+cs_distrib_url = http://%(cs_host_base)s/pypi/simple
 
 EOF
 )

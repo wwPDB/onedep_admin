@@ -93,7 +93,9 @@ class DbSchemaManager(object):
             ['V5.40.1 da_internal', 'DA_INTERNAL', 'struct', '_colwidth',
              # colname, command to alter, expected width
              [['pdb_id', "MODIFY COLUMN `pdb_id` VARCHAR(12) NULL", 12]]],
-
+            ['V5.41 da_internal', 'DA_INTERNAL', 'pdbx_database_status_history', '_colwidth',
+             # colname, command to alter, expected width
+             [['pdb_id', "MODIFY COLUMN `pdb_id` CHAR(12) NOT NULL", 12]]],
         ]
 
         self.__tableexists = [

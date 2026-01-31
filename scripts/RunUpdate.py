@@ -316,6 +316,7 @@ class UpdateManager(object):
                  ['sfvalidver', 'SITE_PACKAGES_PATH', 'sf-valid/etc/bundleversion.json', 'get_site_packages_path', None, None],
                  ['dictver', 'SITE_PACKAGES_PATH', 'dict/etc/bundleversion.json', 'get_site_packages_path', None, None],
                  ['dbloadver', 'SITE_PACKAGES_PATH', 'dbloader/etc/bundleversion.json', 'get_site_packages_path', None, None],
+                 ['findgeover', 'SITE_PACKAGES_PATH', 'FindGeo/BUNDLEVERSION', 'get_site_packages_path', None, None],
                  ['wurcs2pic', 'SITE_PACKAGES_PATH', 'wurcs2pic/BUNDLEVERSION', 'get_site_packages_path', None, None],
                  ['mapfixver', 'SITE_PACKAGES_PATH', 'mapFix/etc/BUNDLEVERSION', '', None, None],
                  ['phenixver', 'PHENIXROOT', 'phenix_env.sh', 'get_phenixroot', VersionEnum.PARSE_PHENIX_ENV, OptFlags.APP_VALIDATION],

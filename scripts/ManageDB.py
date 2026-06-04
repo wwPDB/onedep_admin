@@ -98,10 +98,10 @@ class DbSchemaManager(object):
              [['pdb_id', "MODIFY COLUMN `pdb_id` CHAR(12) NOT NULL", 12]]],
             ['V5.43 status deposition pdb_id', 'STATUS', 'deposition', '_colwidth',
              # colname, command to alter, expected width
-             [['pdb_id', "MODIFY COLUMN `pdb_id` CHAR(12) NULL", 12]]],
+             [['pdb_id', "MODIFY COLUMN `pdb_id` VARCHAR(12) NOT NULL", 12]]],
             ['V5.43 status pdbID', 'STATUS', 'pdbID', '_colwidth',
              # colname, command to alter, expected width
-             [['pdb_id', "MODIFY COLUMN `pdb_id` CHAR(12) NULL", 12]]],
+             [['pdb_id', "MODIFY COLUMN `pdb_id` VARCHAR(12) NULL", 12]]],
         ]
 
         self.__tableexists = [

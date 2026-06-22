@@ -307,6 +307,7 @@ class UpdateManager(object):
             PARSE_JAVA_VER = auto()
             PARSE_MAVEN_VER = auto()
             PARSE_GRADLE_VER = auto()
+            PARSE_METALCOORD_VER = auto()
 
         #  vers_config_var,  configinfovar,             relative path            ConfiginfoAppMethod            VersionMethod   Flags
         confs = [['annotver', 'SITE_ANNOT_TOOLS_PATH', 'etc/bundleversion.json', 'get_site_annot_tools_path', None, None],
@@ -324,6 +325,7 @@ class UpdateManager(object):
                  ['javaver', 'JAVA_HOME', 'release', 'get_java_home', VersionEnum.PARSE_JAVA_VER, OptFlags.APP_VALIDATION],
                  ['mvnver', 'SITE_PACKAGES_PATH', 'apache-maven/apache-maven', 'get_site_packages_path', VersionEnum.PARSE_MAVEN_VER, None],
                  ['gradlever', 'SITE_PACKAGES_PATH', 'gradle/gradle', 'get_site_packages_path', VersionEnum.PARSE_GRADLE_VER, None],
+                 ['metalcoordvers', 'SITE_PACKAGES_PATH', 'metalcoord', 'get_site_packages_path', VersionEnum.PARSE_METALCOORD_VER, None],
                  ]
 
         for c in confs:
@@ -365,6 +367,8 @@ class UpdateManager(object):
                     vstring = self.__parse_mvn_vers(fname)
                 elif vers_method == VersionEnum.PARSE_GRADLE_VER:
                     vstring = self.__parse_gradle_vers(fname)
+                elif vers_method == VersionEnum.PARSE_METALCOORD_VER:
+                    vstring = self.__parse_metalcoord_vers(fname)
                 else:
                     vstring = "UNKNOWN METHOD"
                 if vstring != tvers:
@@ -416,6 +420,16 @@ class UpdateManager(object):
         vstr = "XXXX"
         for element in root.findall("./update/id"):
             vstr = element.text  # Get the last one
+        return vstr
+
+    def __parse_metalcoord_vers(self, fname):
+        """Checks metalcoord version"""
+        initfile = os.path.join(fname, "lib/python3.10/site-packages/metalCoord/__init__.py")
+        vstr = "UNKNOWN"
+        if os.path.exists(initfile):
+            with open(initfile) as fin:
+                d = fin.readline()
+                vstr = d.split('"')[1]
         return vstr
 
 

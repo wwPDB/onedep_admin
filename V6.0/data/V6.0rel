@@ -135,7 +135,7 @@ wwpdb.apps.releasemodule==0.32.6
 wwpdb.apps.seqmodule==0.30.1
 wwpdb.apps.site_admin==0.24
 wwpdb.apps.testfixture==0.1
-wwpdb.apps.val_rel==0.26
+wwpdb.apps.val_rel==0.26.1
 wwpdb.apps.val_ws_server==0.8
 wwpdb.apps.validation==2.50
 wwpdb.apps.wf_engine==0.20
@@ -144,7 +144,7 @@ wwpdb.io==1.1.2
 wwpdb.utils.align==0.12.2
 wwpdb.utils.cc-dict-util==0.5.2
 wwpdb.utils.config==1.0.1
-wwpdb.utils.db==0.35.0
+wwpdb.utils.db==0.35.1
 wwpdb.utils.detach==0.5.0
 wwpdb.utils.dp==0.63
 wwpdb.utils.emdb==1.17

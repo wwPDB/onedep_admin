@@ -258,6 +258,12 @@ class DbSchemaManager(object):
             ["pdbx-fmt-check", "wf_op_pdbxfmck_fs_tempdep.xml", "PDBx Format check (tempdep)", "jdw", "1.51", "wf_op_pdbxfmck_fs_tempdep.xml"]
         ]
 
+        self.__custindexes = [
+            # name, Database, table, indexname, method, command
+            ['V6.1 status temestamp index', 'STATUS', 'timestamp', 'dep_idtime',
+             "_notindex", ['CREATE INDEX dep_idtime ON timestamp (dep_set_id)']],
+        ]
+
 
 
     def updateschema(self):
@@ -306,6 +312,7 @@ class DbSchemaManager(object):
             mydb.closeConnection()
 
         self.__updatemissingtables()
+        self.__updateindexes()
 
     def __updatemissingtables(self):
         """Update missing tables"""
@@ -331,6 +338,42 @@ class DbSchemaManager(object):
             rc = mth(mydb._dbCon, table)
             if rc:
                 print("About to load schema for %s" % table)
+                self.prettyprintcommands(commands)
+                if not self.__noop:
+                    myq = MyDbQuery(dbcon=mydb._dbCon)
+                    ret = myq.sqlCommand(commands)
+                    if not ret:
+                        print("ERROR CREATING TABLE %s" % table)
+
+                        
+            mydb.closeConnection()
+
+
+    def __updateindexes(self):
+        """Update missing tables"""
+        for upd in self.__custindexes:
+            name = upd[0]
+            resource = upd[1]
+            table = upd[2]
+            idxname = upd[3]
+            func = upd[4]
+            mth = getattr(self, func, None)
+            if mth is None:
+                print("INTERNAL ERROR: %s does not exist" % func)
+                return
+
+            commands = upd[5]
+
+            mydb = MyConnectionBase()
+            mydb.setResource(resourceName=resource)
+            ok = mydb.openConnection()
+            if not ok:
+                print("ERROR: Could not open resource %s" % resource)
+                return
+
+            rc = mth(mydb._dbCon, table, idxname)
+            if rc:
+                print("About to update index for %s" % table)
                 self.prettyprintcommands(commands)
                 if not self.__noop:
                     myq = MyDbQuery(dbcon=mydb._dbCon)
@@ -438,6 +481,19 @@ class DbSchemaManager(object):
         query = "show columns from `{}` LIKE '{}'".format(table, colname)
         rows = myq.selectRows(queryString=query)
         if len(rows) == 0:
+            return True
+        return False
+
+    def _notindex(self, dbconn, table, idxname):
+        """Checks if index idxname exists in table. Returns True if does not exist"""
+        myq = MyDbQuery(dbcon=dbconn)
+        query = "SELECT count(*) from information_schema.STATISTICS where table_schema in (SELECT DATABASE()) and table_name = '{}' and index_name = '{}'".format(table, idxname)
+
+        rows = myq.selectRows(queryString=query)
+        if len(rows) != 1:
+            return True
+        val = rows[0][0]
+        if val == 0:
             return True
         return False
 

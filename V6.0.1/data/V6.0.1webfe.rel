@@ -3,7 +3,7 @@ webapps/htdocs/ann_tasks_v2==1.20
 webapps/htdocs/ccmodule==1.21
 webapps/htdocs/ccmodule_lite==1.9
 webapps/htdocs/chem_ref_data_ui==1.9
-webapps/htdocs/chemeditor==1.18.7
+webapps/htdocs/chemeditor==1.18.8
 webapps/htdocs/docs-static==1.1.1
 webapps/htdocs/editormodule==1.5
 webapps/htdocs/entity_transform_ui==1.14

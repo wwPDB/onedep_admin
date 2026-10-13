@@ -1,7 +1,9 @@
 """Opt-in, fail-fast release update for EBI RHEL 9 deployments (RunUpdate.py --ebi-compat)"""
 
+import contextlib
 import importlib.metadata
 import importlib.util
+import io
 import os
 import re
 import shlex
@@ -389,7 +391,7 @@ class EbiUpdate(UpdateManager):
             self._run('remove', [sys.executable, '-m', 'pip', 'uninstall', '-y', name])
 
     def _pip(self, *args, **kwargs):
-        return self._run('pip', [sys.executable, '-m', 'pip'] + list(args), **kwargs)
+        return self._run(kwargs.pop('phase', 'pip'), [sys.executable, '-m', 'pip'] + list(args), **kwargs)
 
     def _pkg_config_path(self):
         with warnings.catch_warnings():
@@ -499,10 +501,42 @@ class EbiUpdate(UpdateManager):
             raise UpdateError('schema', 'migrations are still planned after migrate:\n' + remaining.strip())
 
     def phase_build(self):
-        raise NotImplementedError
+        raise UpdateError('build', '--build-tools is not implemented yet for --ebi-compat; build the tool bundles '
+                          'in the Rocky 8 container yourself and re-run without --build-tools')
+
+    def _capture_legacy_check(self, phase, check):
+        """Run a stock check, which only prints, and turn its failure messages into an UpdateError"""
+        out = io.StringIO()
+        try:
+            with warnings.catch_warnings(), contextlib.redirect_stdout(out):
+                warnings.simplefilter('ignore')
+                check()
+        except Exception as e:
+            raise UpdateError(phase, '{}: {}'.format(check.__name__, e))
+        sys.stdout.write(out.getvalue())
+        failures = failure_lines(out.getvalue(), TOOL_FAILURE_MARKERS)
+        if failures:
+            raise UpdateError(phase, '\n'.join(failures))
 
     def phase_verify(self):
-        raise NotImplementedError
+        """Final checks; unlike the stock script, any failure here fails the run"""
+        a = self.args
+        if a.noop:
+            print('[verify] noop: nothing was changed, so the final checks are not run')
+            return
+        if not a.skip_toolvers:
+            self._capture_legacy_check('verify', self.checktoolvers)
+            self._capture_legacy_check('verify', self.checkoelicense)
+            result = self._run('verify', [sys.executable, os.path.join(SCRIPT_DIR, 'ManageDB.py'), 'finalcheck'],
+                               mutating=False)
+            failures = failure_lines(result.output, SCHEMA_FAILURE_MARKERS)
+            if failures:
+                raise UpdateError('verify', 'ManageDB.py finalcheck reported:\n' + '\n'.join(failures))
+        if not a.skip_webfe:
+            self._run('verify', [sys.executable, os.path.join(SCRIPT_DIR, 'ManageWebFE.py'), '--webroot',
+                                 self._webfe_root(), 'check', '-r', self._opt('webfeconf')], mutating=False)
+        self._pip('check', mutating=False, phase='verify')
+        self.check_mysqlclient_linkage()
 
 
 def run_ebi_update(config_file, args):

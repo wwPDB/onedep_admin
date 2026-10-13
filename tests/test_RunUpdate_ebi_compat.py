@@ -1239,7 +1239,6 @@ class VerifyPhaseTest(PreflightBase):
         self.assertEqual(ctx.exception.phase, 'verify')
         self.assertIn(text, ctx.exception.detail)
 
-    @unittest.expectedFailure
     def test_everything_passing_runs_every_check_in_order(self):
         self.run_phase()
         lines = self.procs.lines()
@@ -1249,34 +1248,28 @@ class VerifyPhaseTest(PreflightBase):
         self.assertTrue(lines[3].startswith(sys.executable + ' -c '))
         self.assertTrue(lines[4].startswith('ldd '))
 
-    @unittest.expectedFailure
     def test_version_mismatch_is_fatal(self):
         self.versions_mock.side_effect = lambda s: print('***ERROR: Version mismatch 1 != 2 in /tools/x')
         self.fails_with('Version mismatch 1 != 2')
 
-    @unittest.expectedFailure
     def test_missing_bundle_is_fatal_not_a_warning(self):
         self.versions_mock.side_effect = lambda s: print('WARNING: Tool out of date. /tools/x/BUNDLEVERSION not found')
         self.fails_with('/tools/x/BUNDLEVERSION not found')
 
-    @unittest.expectedFailure
     def test_licence_expiry_mismatch_and_unreadable_licence_are_fatal(self):
         self.licence_mock.side_effect = lambda s: print('ERROR: Openeye Licence expiration wrong  2026 01 01 vs 2027 07 22')
         self.fails_with('Openeye Licence expiration wrong')
         self.licence_mock.side_effect = lambda s: print('***ERROR: Cannot determine open eye license from config')
         self.fails_with('Cannot determine open eye license')
 
-    @unittest.expectedFailure
     def test_exception_in_a_legacy_check_is_fatal(self):
         self.versions_mock.side_effect = TypeError('expected str, bytes or os.PathLike object, not NoneType')
         self.fails_with('NoneType')
 
-    @unittest.expectedFailure
     def test_manage_db_finalcheck_error_output_is_fatal(self):
         self.procs.on('finalcheck', 0, 'ERROR: You need to load latest views\n')
         self.fails_with('You need to load latest views')
 
-    @unittest.expectedFailure
     def test_webfe_pip_and_mysqlclient_failures_are_fatal(self):
         self.procs.on('ManageWebFE.py', 1)
         self.fails_with('ManageWebFE.py')
@@ -1284,7 +1277,6 @@ class VerifyPhaseTest(PreflightBase):
         self.procs.on('pip check', 1, 'foo requires bar\n')
         self.fails_with('pip check')
 
-    @unittest.expectedFailure
     def test_skip_toolvers_keeps_the_environment_and_webfe_checks(self):
         self.run_phase(skip_toolvers=True)
         self.versions_mock.assert_not_called()
@@ -1292,13 +1284,11 @@ class VerifyPhaseTest(PreflightBase):
         self.assertEqual(self.procs.lines()[:2], [self.webfe_check, self.pip_check])
         self.assertNotIn(self.finalcheck, self.procs.lines())
 
-    @unittest.expectedFailure
     def test_skip_webfe_omits_only_the_webfe_check(self):
         self.run_phase(skip_webfe=True)
         self.assertNotIn(self.webfe_check, self.procs.lines())
         self.assertIn(self.pip_check, self.procs.lines())
 
-    @unittest.expectedFailure
     def test_noop_runs_no_check(self):
         _, out = self.run_phase(noop=True)
         self.assertEqual(self.procs.calls, [])
@@ -1317,7 +1307,6 @@ class VerifyPhaseTest(PreflightBase):
 class BuildPhaseTest(PreflightBase):
     """The containerised tool build is not available yet: asking for it must fail cleanly"""
 
-    @unittest.expectedFailure
     def test_build_tools_fails_with_a_clear_error_instead_of_a_traceback(self):
         upd = self.make_update(build_tools=True, build_container='/x/y.sif')
         with self.assertRaises(UpdateError) as ctx:

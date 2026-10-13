@@ -39,6 +39,7 @@ MYSQLDB_PROBE = (
 # The helper scripts print these and still exit 0, so their output is scanned
 TAXDB_FAILURE_MARKERS = ('ERROR', 'Could not')
 SCHEMA_FAILURE_MARKERS = ('ERROR', 'FAILED')
+TOOL_FAILURE_MARKERS = ('ERROR', 'WARNING: Tool out of date')
 NO_PLANNED_MIGRATIONS = 'No planned migration operations'
 DEFAULT_TAXDB_MAXSIZE = 999999999
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))

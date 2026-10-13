@@ -139,5 +139,259 @@ class LegacyDispatchTest(MainTestBase):
         legacy.assert_not_called()
 
 
+from scripts import RunUpdateEbi  # noqa: E402
+from scripts.RunUpdateEbi import EbiUpdate, UpdateError, redact, run_ebi_update  # noqa: E402
+
+PHASES = ['phase_preflight', 'phase_resources', 'phase_remove', 'phase_pip', 'phase_webfe',
+          'phase_taxdb', 'phase_schema', 'phase_build', 'phase_verify']
+
+
+def make_args(**overrides):
+    """Namespace as RunUpdate.main() would build it for --ebi-compat"""
+    values = dict(config='latest', noop=False, skip_pip=False, skip_remove=False, skip_resources=False,
+                  skip_webfe=False, skip_taxdb=False, skip_schema=False, skip_toolvers=False,
+                  build_tools=False, build_version='v-5200', build_dev=False, get_latest_version=False,
+                  ebi_compat=True, build_container=None)
+    values.update(overrides)
+    return types.SimpleNamespace(**values)
+
+
+class _FakeProcess(object):
+    def __init__(self, returncode, output):
+        self.returncode = returncode
+        self.stdout = iter(output.splitlines(True))
+
+    def wait(self):
+        return self.returncode
+
+
+class Procs(object):
+    """Scripted stand-in for subprocess.Popen: the first matching rule wins, default is exit 0"""
+
+    def __init__(self):
+        self.rules = []
+        self.calls = []
+
+    def on(self, match, returncode=0, output=''):
+        """match is a substring of the space-joined argv, or a callable taking the argv list"""
+        self.rules.append((match, returncode, output))
+
+    def __call__(self, argv, **kwargs):
+        argv = list(argv)
+        self.calls.append(types.SimpleNamespace(argv=argv, kwargs=kwargs, line=' '.join(argv)))
+        for match, returncode, output in self.rules:
+            hit = match(argv) if callable(match) else match in ' '.join(argv)
+            if hit:
+                return _FakeProcess(returncode, output)
+        return _FakeProcess(0, '')
+
+    def lines(self):
+        return [c.line for c in self.calls]
+
+
+class EbiTestBase(unittest.TestCase):
+    """An EbiUpdate over a throwaway release configuration, with every subprocess scripted"""
+
+    CONF = '[DEFAULT]\n'
+
+    def setUp(self):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.tmp = tmp.name
+        self.conf = os.path.join(self.tmp, 'rel.conf')
+        with open(self.conf, 'w') as fout:
+            fout.write(self.CONF)
+        self.site = {}
+        self.procs = Procs()
+        for patcher in (
+                mock.patch.object(RunUpdate.UpdateManager, 'get_variable',
+                                  side_effect=lambda name, environment=None: self.site.get(name)),
+                mock.patch.object(RunUpdateEbi.subprocess, 'Popen', self.procs)):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def make_update(self, **flags):
+        self.args = make_args(**flags)
+        return EbiUpdate(self.conf, self.args)
+
+    def quiet(self, fn, *a, **kw):
+        """Call fn with stdout captured; returns (result, stdout)"""
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            result = fn(*a, **kw)
+        return result, out.getvalue()
+
+
+class RedactTest(unittest.TestCase):
+    """Slice 2: credentials never reach logs or error messages"""
+
+    @unittest.expectedFailure
+    def test_url_userinfo_is_masked(self):
+        text = redact('pip install --index-url https://alice:s3cret@host.example/simple/ pkg')
+        self.assertNotIn('s3cret', text)
+        self.assertNotIn('alice', text)
+        self.assertIn('https://***@host.example/simple/', text)
+
+    @unittest.expectedFailure
+    def test_literal_secret_is_masked(self):
+        self.assertEqual(redact('token=abc123 done', ['abc123']), 'token=*** done')
+
+    @unittest.expectedFailure
+    def test_empty_and_missing_secrets_are_ignored(self):
+        self.assertEqual(redact('plain text', ['', None]), 'plain text')
+
+
+class RunCoreTest(EbiTestBase):
+    """Slice 2: argument-vector execution, failure propagation and noop"""
+
+    @unittest.expectedFailure
+    def test_runs_argument_vector_without_a_shell(self):
+        upd = self.make_update()
+        self.quiet(upd._run, 'resources', ['git', 'fetch', '--tags'], cwd='/some/repo')
+        call = self.procs.calls[0]
+        self.assertEqual(call.argv, ['git', 'fetch', '--tags'])
+        self.assertFalse(call.kwargs.get('shell'))
+        self.assertEqual(call.kwargs['cwd'], '/some/repo')
+
+    @unittest.expectedFailure
+    def test_extra_environment_is_merged_over_the_inherited_one(self):
+        upd = self.make_update()
+        with mock.patch.dict(os.environ, {'KEEP_ME': '1'}):
+            self.quiet(upd._run, 'pip', ['pip'], env={'ADDED': '2'})
+        env = self.procs.calls[0].kwargs['env']
+        self.assertEqual((env['KEEP_ME'], env['ADDED']), ('1', '2'))
+
+    @unittest.expectedFailure
+    def test_returns_exit_status_and_output(self):
+        self.procs.on('git describe', 0, 'v6.1\n')
+        upd = self.make_update()
+        result, _ = self.quiet(upd._run, 'resources', ['git', 'describe'], mutating=False)
+        self.assertEqual((result.returncode, result.output), (0, 'v6.1\n'))
+
+    @unittest.expectedFailure
+    def test_failure_names_phase_and_exit_status(self):
+        self.procs.on('git checkout', 3, 'error: pathspec\n')
+        upd = self.make_update()
+        with self.assertRaises(UpdateError) as ctx:
+            self.quiet(upd._run, 'resources', ['git', 'checkout', 'v9'])
+        self.assertEqual(ctx.exception.phase, 'resources')
+        self.assertIn('exit 3', ctx.exception.detail)
+        self.assertIn('git checkout v9', ctx.exception.detail)
+
+    @unittest.expectedFailure
+    def test_failure_can_be_tolerated_by_the_caller(self):
+        self.procs.on('pip show', 1)
+        upd = self.make_update()
+        result, _ = self.quiet(upd._run, 'remove', ['pip', 'show', 'x'], mutating=False, check=False)
+        self.assertEqual(result.returncode, 1)
+
+    @unittest.expectedFailure
+    def test_missing_executable_is_reported_as_an_error(self):
+        upd = self.make_update()
+        with mock.patch.object(RunUpdateEbi.subprocess, 'Popen', side_effect=FileNotFoundError('no such file')):
+            with self.assertRaises(UpdateError) as ctx:
+                self.quiet(upd._run, 'build', ['singularity', 'exec'])
+        self.assertEqual(ctx.exception.phase, 'build')
+        self.assertIn('singularity exec', ctx.exception.detail)
+
+    @unittest.expectedFailure
+    def test_credentials_are_redacted_in_log_error_and_echoed_output(self):
+        self.site.update({'CS_USER': 'alice', 'CS_PW': 's3cret'})
+        self.procs.on('pip', 1, 'Looking in https://alice:s3cret@host/simple\n')
+        upd = self.make_update()
+        out = io.StringIO()
+        with self.assertRaises(UpdateError) as ctx, contextlib.redirect_stdout(out):
+            upd._run('pip', ['pip', 'install', '--index-url', 'https://alice:s3cret@host/simple', 'x'])
+        self.assertNotIn('s3cret', ctx.exception.detail)
+        self.assertNotIn('s3cret', out.getvalue())
+        self.assertIn('pip install', out.getvalue())
+
+    @unittest.expectedFailure
+    def test_noop_logs_but_does_not_run_mutating_commands(self):
+        upd = self.make_update(noop=True)
+        result, out = self.quiet(upd._run, 'resources', ['git', 'checkout', 'v6.1'])
+        self.assertEqual(self.procs.calls, [])
+        self.assertEqual(result.returncode, 0)
+        self.assertIn('git checkout v6.1', out)
+
+    @unittest.expectedFailure
+    def test_noop_still_runs_read_only_commands(self):
+        upd = self.make_update(noop=True)
+        self.quiet(upd._run, 'preflight', ['git', 'status', '--porcelain'], mutating=False)
+        self.assertEqual(self.procs.lines(), ['git status --porcelain'])
+
+
+class OrchestrationTest(EbiTestBase):
+    """Slice 2: phase order, skip flags and exit status of run_ebi_update"""
+
+    def setUp(self):
+        super().setUp()
+        self.order = []
+        for name in PHASES:
+            patcher = mock.patch.object(EbiUpdate, name, side_effect=lambda n=name: self.order.append(n))
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def run_update(self, **flags):
+        return self.quiet(run_ebi_update, self.conf, make_args(**flags))
+
+    @unittest.expectedFailure
+    def test_default_phase_order_has_no_tool_build(self):
+        status, _ = self.run_update()
+        self.assertEqual(status, 0)
+        self.assertEqual(self.order, ['phase_preflight', 'phase_resources', 'phase_remove', 'phase_pip',
+                                      'phase_webfe', 'phase_taxdb', 'phase_schema', 'phase_verify'])
+
+    @unittest.expectedFailure
+    def test_build_tools_adds_the_build_phase_before_verification(self):
+        self.run_update(build_tools=True, build_container='/x/y.sif')
+        self.assertEqual(self.order[-2:], ['phase_build', 'phase_verify'])
+
+    @unittest.expectedFailure
+    def test_each_skip_flag_removes_exactly_its_phase(self):
+        cases = {'skip_resources': 'phase_resources', 'skip_remove': 'phase_remove', 'skip_pip': 'phase_pip',
+                 'skip_webfe': 'phase_webfe', 'skip_taxdb': 'phase_taxdb', 'skip_schema': 'phase_schema'}
+        for flag, phase in cases.items():
+            del self.order[:]
+            self.run_update(**{flag: True})
+            expected = ['phase_preflight', 'phase_resources', 'phase_remove', 'phase_pip', 'phase_webfe',
+                        'phase_taxdb', 'phase_schema', 'phase_verify']
+            expected.remove(phase)
+            self.assertEqual(self.order, expected, flag)
+
+    @unittest.expectedFailure
+    def test_verification_and_preflight_run_even_when_everything_else_is_skipped(self):
+        self.run_update(skip_resources=True, skip_remove=True, skip_pip=True, skip_webfe=True,
+                        skip_taxdb=True, skip_schema=True, skip_toolvers=True)
+        self.assertEqual(self.order, ['phase_preflight', 'phase_verify'])
+
+    @unittest.expectedFailure
+    def test_noop_still_runs_every_phase_so_each_can_print_its_plan(self):
+        self.run_update(noop=True)
+        self.assertEqual(len(self.order), 8)
+
+    @unittest.expectedFailure
+    def test_first_failure_stops_the_run_with_status_1(self):
+        EbiUpdate.phase_pip.side_effect = UpdateError('pip', 'pin foo==1 failed (exit 1)')
+        status, out = self.run_update()
+        self.assertEqual(status, 1)
+        self.assertEqual(self.order, ['phase_preflight', 'phase_resources', 'phase_remove'])
+        self.assertIn('FAILED [pip]: pin foo==1 failed (exit 1)', out)
+
+    @unittest.expectedFailure
+    def test_failed_preflight_prevents_any_change(self):
+        EbiUpdate.phase_preflight.side_effect = UpdateError('preflight', 'no such file')
+        status, _ = self.run_update(noop=True)
+        self.assertEqual(status, 1)
+        self.assertEqual(self.order, [])
+
+    @unittest.expectedFailure
+    def test_failure_message_never_shows_credentials(self):
+        self.site.update({'CS_PW': 's3cret'})
+        EbiUpdate.phase_pip.side_effect = UpdateError('pip', 'failed on https://u:s3cret@h/simple')
+        _, out = self.run_update()
+        self.assertNotIn('s3cret', out)
+
+
 if __name__ == '__main__':
     unittest.main()

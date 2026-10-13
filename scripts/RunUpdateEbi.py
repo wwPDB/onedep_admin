@@ -144,7 +144,7 @@ class EbiUpdate(UpdateManager):
     def phase_preflight(self):
         """Read-only validation of the selected phases' inputs; raises one UpdateError listing every problem"""
         problems = []
-        for check in (self._check_config, self._check_pins):
+        for check in (self._check_config, self._check_pins, self._check_removepy, self._check_resources):
             problems.extend(check())
         if problems:
             raise UpdateError('preflight', '{} problem(s) found, nothing was changed:\n  - {}'.format(
@@ -173,6 +173,55 @@ class EbiUpdate(UpdateManager):
         if sys.prefix == sys.base_prefix:
             problems.append('{} is not running in a virtual environment; run it with the deployment '
                             'virtual environment\'s python'.format(os.path.basename(__file__)))
+        return problems
+
+    def _removepy_entries(self):
+        return (self._opt('removepy') or '').split()
+
+    def _check_removepy(self):
+        if self.args.skip_remove:
+            return []
+        problems = []
+        for entry in self._removepy_entries():
+            name, _, wanted = entry.partition('=')
+            if not name or not wanted.lstrip('='):
+                problems.append("removepy entry '{}' is not name=version".format(entry))
+        return problems
+
+    def _check_resources(self):
+        if self.args.skip_resources:
+            return []
+        problems = []
+        ro = self.get_variable('RO_RESOURCE_PATH')
+        if ro:
+            problems.extend(self._check_checkout('resources_ro', ro))
+        else:
+            problems.append('RO_RESOURCE_PATH is not set in the site configuration')
+        rw = self.get_variable('RW_RESOURCE_PATH')
+        if rw:
+            problems.extend(self._check_checkout('resources_rw', rw, on_branch=True))
+        return problems
+
+    def _check_checkout(self, label, path, on_branch=False):
+        """Read-only: the directory must be a git checkout without tracked changes (nothing is cloned or reset)"""
+        if not os.path.isdir(path):
+            return ['{} {} does not exist; this mode never clones'.format(label, path)]
+        git = ['git', '-C', path]
+        if self._run('preflight', git + ['rev-parse', '--is-inside-work-tree'], mutating=False,
+                     check=False).returncode:
+            return ['{} {} is not a git checkout'.format(label, path)]
+        problems = []
+        status = self._run('preflight', git + ['status', '--porcelain', '--untracked-files=no'], mutating=False,
+                           check=False)
+        if status.returncode:
+            problems.append('cannot read the git status of {}'.format(path))
+        elif status.output.strip():
+            problems.append('{} {} has uncommitted changes to tracked files; commit, stash or move them aside '
+                            '(this mode never discards local changes):\n{}'.format(
+                                label, path, status.output.rstrip()))
+        if on_branch and self._run('preflight', git + ['symbolic-ref', '-q', 'HEAD'], mutating=False,
+                                   check=False).returncode:
+            problems.append('{} {} is not on a branch, so it cannot be fast-forwarded'.format(label, path))
         return problems
 
     def _release_pins(self):
@@ -210,10 +259,41 @@ class EbiUpdate(UpdateManager):
         return []
 
     def phase_resources(self):
-        raise NotImplementedError
+        """Check out the release tag (a detached HEAD is expected, so there is no pull) and verify it"""
+        tag = self._opt('resourcestag')
+        ro = self.get_variable('RO_RESOURCE_PATH')
+        git = ['git', '-C', ro]
+        self._run('resources', git + ['fetch', '--tags'])
+        if not self.args.noop and self._run('resources', git + ['rev-parse', '-q', '--verify', 'refs/tags/' + tag],
+                                            mutating=False, check=False).returncode:
+            raise UpdateError('resources', '{} is not a tag in {}; --ebi-compat requires a release tag'.format(
+                tag, ro))
+        self._run('resources', git + ['checkout', tag])
+        if self.args.noop:
+            print('[resources] noop: the checkout is not verified')
+        else:
+            described = self._run('resources', git + ['describe', '--tags', '--exact-match'],
+                                  mutating=False).output.strip()
+            if described != tag:
+                raise UpdateError('resources', '{} is at {}, expected {}'.format(ro, described, tag))
+        rw = self.get_variable('RW_RESOURCE_PATH')
+        if rw:
+            self._run('resources', ['git', '-C', rw, 'pull', '--ff-only'])
 
     def phase_remove(self):
-        raise NotImplementedError
+        """Uninstall obsolete packages only where the installed version is exactly the listed one"""
+        for entry in self._removepy_entries():
+            name, _, wanted = entry.partition('=')
+            wanted = wanted.lstrip('=')
+            try:
+                installed = importlib.metadata.version(name)
+            except importlib.metadata.PackageNotFoundError:
+                print('[remove] {}: not installed, skipped'.format(name))
+                continue
+            if installed != wanted:
+                print('[remove] {}: installed {}, not {}, skipped'.format(name, installed, wanted))
+                continue
+            self._run('remove', [sys.executable, '-m', 'pip', 'uninstall', '-y', name])
 
     def phase_pip(self):
         raise NotImplementedError

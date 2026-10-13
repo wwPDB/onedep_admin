@@ -550,23 +550,19 @@ class ResourcesPreflightTest(PreflightBase):
     def git_rule(self, repo, word, returncode=0, output=''):
         self.procs.on(lambda a: a[:3] == ['git', '-C', repo] and word in a, returncode, output)
 
-    @unittest.expectedFailure
     def test_unset_resources_path_is_reported(self):
         del self.site['RO_RESOURCE_PATH']
         self.assertIn('RO_RESOURCE_PATH', self.problems())
 
-    @unittest.expectedFailure
     def test_missing_directory_is_reported_not_cloned(self):
         os.rmdir(self.ro)
         self.assertIn(self.ro, self.problems())
         self.assertFalse([c for c in self.procs.calls if 'clone' in c.argv])
 
-    @unittest.expectedFailure
     def test_directory_that_is_not_a_git_checkout_is_reported(self):
         self.git_rule(self.ro, 'rev-parse', 128)
         self.assertIn('not a git checkout', self.problems())
 
-    @unittest.expectedFailure
     def test_tracked_changes_are_reported_and_not_touched(self):
         self.git_rule(self.ro, 'status', 0, ' M version.json\n')
         detail = self.problems()
@@ -574,13 +570,11 @@ class ResourcesPreflightTest(PreflightBase):
         self.assertIn('uncommitted changes', detail)
         self.assertIn('version.json', detail)
 
-    @unittest.expectedFailure
     def test_clean_status_ignores_untracked_files(self):
         self.problems()
         status = [c for c in self.procs.calls if 'status' in c.argv][0]
         self.assertIn('--untracked-files=no', status.argv)
 
-    @unittest.expectedFailure
     def test_writable_copy_is_checked_too_and_must_be_on_a_branch(self):
         rw = os.path.join(self.tmp, 'resources_rw')
         os.mkdir(rw)
@@ -602,7 +596,6 @@ class ResourcesPhaseTest(PreflightBase):
     def lines(self):
         return self.procs.lines()
 
-    @unittest.expectedFailure
     def test_fetch_tags_then_checkout_then_verify_and_never_pull(self):
         self.procs.on('describe --tags --exact-match', 0, 'v6.1\n')
         upd = self.make_update()
@@ -612,7 +605,6 @@ class ResourcesPhaseTest(PreflightBase):
                 'describe --tags --exact-match')]
         self.assertEqual(self.lines(), git)
 
-    @unittest.expectedFailure
     def test_an_unknown_tag_stops_before_checkout(self):
         self.procs.on('rev-parse -q --verify', 1)
         upd = self.make_update()
@@ -622,7 +614,6 @@ class ResourcesPhaseTest(PreflightBase):
         self.assertIn('v6.1 is not a tag', ctx.exception.detail)
         self.assertFalse([line for line in self.lines() if 'checkout' in line])
 
-    @unittest.expectedFailure
     def test_checkout_must_land_exactly_on_the_tag(self):
         self.procs.on('describe --tags --exact-match', 0, 'v6.0\n')
         upd = self.make_update()
@@ -631,7 +622,6 @@ class ResourcesPhaseTest(PreflightBase):
         self.assertIn('v6.0', ctx.exception.detail)
         self.assertIn('v6.1', ctx.exception.detail)
 
-    @unittest.expectedFailure
     def test_failed_fetch_is_fatal_and_nothing_follows(self):
         self.procs.on('fetch --tags', 1)
         upd = self.make_update()
@@ -639,7 +629,6 @@ class ResourcesPhaseTest(PreflightBase):
             self.quiet(upd.phase_resources)
         self.assertEqual(len(self.lines()), 1)
 
-    @unittest.expectedFailure
     def test_writable_copy_is_fast_forwarded_when_configured(self):
         rw = os.path.join(self.tmp, 'resources_rw')
         self.site['RW_RESOURCE_PATH'] = rw
@@ -648,7 +637,6 @@ class ResourcesPhaseTest(PreflightBase):
         self.quiet(upd.phase_resources)
         self.assertEqual(self.lines()[-1], 'git -C {} pull --ff-only'.format(rw))
 
-    @unittest.expectedFailure
     def test_noop_runs_nothing(self):
         upd = self.make_update(noop=True)
         _, out = self.quiet(upd.phase_resources)
@@ -664,7 +652,6 @@ class RemovePackagesTest(PreflightBase):
         super().setUp()
         self.write_conf(removepy='emda=1.1.4  servalcat=0.4.72 ')
 
-    @unittest.expectedFailure
     def test_exact_match_is_uninstalled_and_other_cases_are_recorded_skips(self):
         self.installed.update({'emda': '1.1.4', 'servalcat': '0.5.0'})
         upd = self.make_update()
@@ -672,21 +659,18 @@ class RemovePackagesTest(PreflightBase):
         self.assertEqual(self.procs.lines(), ['{} -m pip uninstall -y emda'.format(sys.executable)])
         self.assertIn('servalcat: installed 0.5.0, not 0.4.72, skipped', out)
 
-    @unittest.expectedFailure
     def test_absent_package_is_a_recorded_skip_not_an_error(self):
         upd = self.make_update()
         _, out = self.quiet(upd.phase_remove)
         self.assertEqual(self.procs.calls, [])
         self.assertIn('emda: not installed, skipped', out)
 
-    @unittest.expectedFailure
     def test_no_removepy_option_means_nothing_to_do(self):
         self.write_conf()
         upd = self.make_update()
         self.quiet(upd.phase_remove)
         self.assertEqual(self.procs.calls, [])
 
-    @unittest.expectedFailure
     def test_failed_uninstall_is_fatal(self):
         self.installed['emda'] = '1.1.4'
         self.procs.on('uninstall', 1)
@@ -695,7 +679,6 @@ class RemovePackagesTest(PreflightBase):
             self.quiet(upd.phase_remove)
         self.assertEqual(ctx.exception.phase, 'remove')
 
-    @unittest.expectedFailure
     def test_noop_does_not_uninstall(self):
         self.installed['emda'] = '1.1.4'
         upd = self.make_update(noop=True)
@@ -703,7 +686,6 @@ class RemovePackagesTest(PreflightBase):
         self.assertEqual(self.procs.calls, [])
         self.assertIn('pip uninstall -y emda', out)
 
-    @unittest.expectedFailure
     def test_malformed_entry_is_a_preflight_problem(self):
         self.write_conf(removepy='emda')
         self.assertIn("removepy entry 'emda' is not name=version", self.problems())

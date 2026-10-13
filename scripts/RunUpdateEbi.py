@@ -1,6 +1,7 @@
 """Opt-in, fail-fast release update for EBI RHEL 9 deployments (RunUpdate.py --ebi-compat)"""
 
 import importlib.metadata
+import importlib.util
 import os
 import re
 import shlex
@@ -398,6 +399,10 @@ class EbiUpdate(UpdateManager):
         self._run('webfe', ['git', '-C', root, 'submodule', 'update', '--init', '--recursive'])
         checker = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ManageWebFE.py')
         self._run('webfe', [sys.executable, checker, '--webroot', root, 'check', '-r', self._opt('webfeconf')])
+
+    def _taxonomy_row_count(self):
+        """Rows in the status taxonomy table, counted as ManageTaxDB.py counts them"""
+        raise NotImplementedError
 
     def phase_taxdb(self):
         raise NotImplementedError

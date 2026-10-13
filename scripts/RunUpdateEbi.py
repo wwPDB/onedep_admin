@@ -6,6 +6,8 @@ import re
 import shlex
 import subprocess
 import sys
+import warnings
+from urllib.parse import urlparse
 
 try:
     from .RunUpdate import UpdateManager
@@ -24,6 +26,13 @@ except ImportError:
 
 
 BASE_PACKAGES_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'base_packages'))
+
+
+MYSQLDB_PROBE = (
+    'import MySQLdb\n'
+    'from MySQLdb import _mysql\n'
+    'assert _mysql.escape_string(b"ok") == b"ok"\n'
+    'print("MYSQL_SO=" + _mysql.__file__)\n')
 
 
 class UpdateError(Exception):
@@ -92,7 +101,7 @@ class EbiUpdate(UpdateManager):
         self.args = args
         self.secrets = [self.get_variable(v, environment='INSTALL_ENVIRONMENT') for v in ('CS_USER', 'CS_PW')]
 
-    def _run(self, phase, argv, env=None, cwd=None, mutating=True, check=True):
+    def _run(self, phase, argv, env=None, cwd=None, mutating=True, check=True, echo=True):
         """Run an argument vector, echoing its redacted output; mutating commands only print under --noop"""
         shown = redact(' '.join(shlex.quote(a) for a in argv), self.secrets)
         print('[{}] $ {}'.format(phase, shown))
@@ -111,7 +120,8 @@ class EbiUpdate(UpdateManager):
         lines = []
         for line in proc.stdout:
             lines.append(line)
-            sys.stdout.write(redact(line, self.secrets))
+            if echo:
+                sys.stdout.write(redact(line, self.secrets))
         returncode = proc.wait()
         if check and returncode:
             raise UpdateError(phase, 'command failed (exit {}): {}'.format(returncode, shown))
@@ -144,7 +154,8 @@ class EbiUpdate(UpdateManager):
     def phase_preflight(self):
         """Read-only validation of the selected phases' inputs; raises one UpdateError listing every problem"""
         problems = []
-        for check in (self._check_config, self._check_pins, self._check_removepy, self._check_resources):
+        for check in (self._check_config, self._check_pins, self._check_removepy, self._check_resources,
+                      self._check_pip_inputs):
             problems.extend(check())
         if problems:
             raise UpdateError('preflight', '{} problem(s) found, nothing was changed:\n  - {}'.format(
@@ -224,6 +235,34 @@ class EbiUpdate(UpdateManager):
             problems.append('{} {} is not on a branch, so it cannot be fast-forwarded'.format(label, path))
         return problems
 
+    def _index_settings(self):
+        """CS_* values of the private package index, from the install environment of the site configuration"""
+        names = ('CS_USER', 'CS_PW', 'CS_URL')
+        values = dict((n, self.get_variable(n, environment='INSTALL_ENVIRONMENT')) for n in names)
+        if values['CS_URL']:
+            url = urlparse(values['CS_URL'])
+            values.update(URL_NETLOC=url.netloc, URL_PATH=url.path)
+        return dict((k, v) for k, v in values.items() if v)
+
+    def _check_pip_inputs(self):
+        if self.args.skip_pip:
+            return []
+        problems = []
+        tools = self.get_variable('TOOLS_PATH')
+        if not tools:
+            problems.append('TOOLS_PATH is not set in the site configuration')
+        elif not os.path.isdir(tools):
+            problems.append('TOOLS_PATH is not a directory: {}'.format(tools))
+        index = self._index_settings()
+        if 'CS_URL' in index:
+            # The configuration can carry credentials, so its content is checked but never echoed
+            listing = self._run('preflight', [sys.executable, '-m', 'pip', 'config', 'list'], mutating=False,
+                                check=False, echo=False)
+            if listing.returncode or index['URL_NETLOC'] not in listing.output:
+                problems.append('pip is not configured for the package index {}; configure it first '
+                                '(this mode never rewrites pip configuration)'.format(index['URL_NETLOC']))
+        return problems
+
     def _release_pins(self):
         return parse_pins(self._opt('piprequirements'))
 
@@ -295,13 +334,48 @@ class EbiUpdate(UpdateManager):
                 continue
             self._run('remove', [sys.executable, '-m', 'pip', 'uninstall', '-y', name])
 
+    def _pip(self, *args, **kwargs):
+        return self._run('pip', [sys.executable, '-m', 'pip'] + list(args), **kwargs)
+
+    def _pkg_config_path(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            babel = os.path.join(self._UpdateManager__ci_common.get_site_packages_path(), 'openbabel', 'lib',
+                                 'pkgconfig')
+        tools = self.get_variable('TOOLS_PATH')
+        return '{}:{}'.format(os.path.join(tools, 'lib', 'pkgconfig'), babel) if tools else babel
+
     def phase_pip(self):
         """Install base requirements, then each release pin on its own with --no-deps"""
-        raise NotImplementedError
+        constraints = os.path.join(BASE_PACKAGES_DIR, 'constraints.txt')
+        env = {'PKG_CONFIG_PATH': self._pkg_config_path()}
+        for name in ('pre-requirements.txt', 'requirements.txt'):
+            self._pip('install', '-c', constraints, '-r', os.path.join(BASE_PACKAGES_DIR, name), env=env)
+        for pin in self._release_pins():
+            if pin.name == 'mysqlclient':
+                continue
+            self._pip('install', '--no-deps', '-c', constraints, pin.line)
+        extra = self._opt('pip_extra_reqs')
+        if extra:
+            # The requirements file expands the index credentials itself, so they travel in the environment
+            self._pip('install', '--no-deps', '-c', constraints, '-r', extra, env=self._index_settings())
+        if self.args.noop:
+            print('[pip] noop: pip check and the mysqlclient check are left to the final verification')
+            return
+        self._pip('check')
+        self.check_mysqlclient_linkage()
 
     def check_mysqlclient_linkage(self):
         """MySQLdb must import and its extension module must have no unresolved shared libraries"""
-        raise NotImplementedError
+        probe = self._run('mysqlclient', [sys.executable, '-c', MYSQLDB_PROBE], mutating=False, check=False)
+        found = re.search(r'^MYSQL_SO=(.+)$', probe.output, re.MULTILINE)
+        if probe.returncode or not found:
+            raise UpdateError('mysqlclient', 'MySQLdb does not import cleanly:\n{}'.format(probe.output.strip()))
+        linkage = self._run('mysqlclient', ['ldd', found.group(1)], mutating=False, check=False)
+        missing = [line.strip() for line in linkage.output.splitlines() if 'not found' in line]
+        if missing:
+            raise UpdateError('mysqlclient', '{} has unresolved shared libraries:\n{}'.format(
+                found.group(1), '\n'.join(missing)))
 
     def phase_webfe(self):
         raise NotImplementedError

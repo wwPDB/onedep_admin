@@ -702,7 +702,6 @@ class RemovePackagesTest(PreflightBase):
 class PipPreflightTest(PreflightBase):
     """The tools tree and the package index configuration are checked without echoing credentials"""
 
-    @unittest.expectedFailure
     def test_tools_path_must_be_set_and_exist(self):
         del self.site['TOOLS_PATH']
         self.assertIn('TOOLS_PATH', self.problems())
@@ -713,13 +712,11 @@ class PipPreflightTest(PreflightBase):
         del self.site['TOOLS_PATH']
         self.assertEqual(self.problems(skip_pip=True), '')
 
-    @unittest.expectedFailure
     def test_index_host_must_already_be_in_the_pip_configuration(self):
         self.site['CS_URL'] = 'https://repo.example.org/pypi'
         self.procs.on('pip config list', 0, "global.extra-index-url='https://pypi.example.net/simple'\n")
         self.assertIn('repo.example.org', self.problems())
 
-    @unittest.expectedFailure
     def test_configured_index_passes_and_its_credentials_are_never_echoed(self):
         self.site['CS_URL'] = 'https://repo.example.org/pypi'
         self.site['CS_PW'] = 's3cret'
@@ -752,7 +749,6 @@ class PipPhaseTest(PreflightBase):
     def installs(self):
         return [line for line in self.procs.lines() if ' install ' in line]
 
-    @unittest.expectedFailure
     def test_base_requirements_then_pins_in_file_order_with_no_deps(self):
         upd = self.make_update()
         self.quiet(upd.phase_pip)
@@ -763,7 +759,6 @@ class PipPhaseTest(PreflightBase):
             '{} install --no-deps -c {} baz==3 ; python_version >= "3.0"'.format(self.pip, self.constraints),
             '{} install --no-deps -c {} qux @ file:///opt/qux'.format(self.pip, self.constraints)])
 
-    @unittest.expectedFailure
     def test_pkg_config_path_is_set_for_the_base_requirements(self):
         upd = self.make_update()
         self.quiet(upd.phase_pip)
@@ -773,13 +768,11 @@ class PipPhaseTest(PreflightBase):
         for call in base:
             self.assertEqual(call.kwargs['env']['PKG_CONFIG_PATH'], expected)
 
-    @unittest.expectedFailure
     def test_mysqlclient_is_never_reinstalled(self):
         upd = self.make_update()
         self.quiet(upd.phase_pip)
         self.assertFalse([line for line in self.installs() if 'mysqlclient' in line])
 
-    @unittest.expectedFailure
     def test_first_failing_pin_is_named_and_stops_the_phase(self):
         self.procs.on('--no-deps -c {} baz==3'.format(self.constraints), 1)
         upd = self.make_update()
@@ -789,7 +782,6 @@ class PipPhaseTest(PreflightBase):
         self.assertIn('baz==3', ctx.exception.detail)
         self.assertFalse([line for line in self.procs.lines() if 'qux' in line or 'pip check' in line])
 
-    @unittest.expectedFailure
     def test_failing_base_requirements_stop_before_any_pin(self):
         self.procs.on('requirements.txt', 1)
         upd = self.make_update()
@@ -797,7 +789,6 @@ class PipPhaseTest(PreflightBase):
             self.quiet(upd.phase_pip)
         self.assertFalse([line for line in self.installs() if '--no-deps' in line])
 
-    @unittest.expectedFailure
     def test_pip_check_follows_the_installs_and_must_be_clean(self):
         upd = self.make_update()
         self.quiet(upd.phase_pip)
@@ -810,7 +801,6 @@ class PipPhaseTest(PreflightBase):
         self.assertEqual(ctx.exception.phase, 'pip')
         self.assertIn('pip check', ctx.exception.detail)
 
-    @unittest.expectedFailure
     def test_extra_requirements_use_the_environment_for_credentials(self):
         extra = self.touch(os.path.join(self.tmp, 'extra.txt'), 'extra==1\n')
         self.write_conf(pip_extra_reqs=extra)
@@ -824,14 +814,12 @@ class PipPhaseTest(PreflightBase):
         self.assertEqual((env['URL_NETLOC'], env['URL_PATH']), ('repo.example.org', '/pypi'))
         self.assertFalse([c for c in self.procs.calls if 's3cret' in c.line])
 
-    @unittest.expectedFailure
     def test_pip_configuration_is_never_rewritten_and_pip_is_always_the_active_interpreters(self):
         upd = self.make_update()
         self.quiet(upd.phase_pip)
         self.assertFalse([line for line in self.procs.lines() if ' config ' in line])
         self.assertFalse([c for c in self.procs.calls if c.argv[0] == 'pip'])
 
-    @unittest.expectedFailure
     def test_noop_installs_nothing(self):
         upd = self.make_update(noop=True)
         _, out = self.quiet(upd.phase_pip)
@@ -851,7 +839,6 @@ class MysqlclientLinkageTest(PreflightBase):
         self.procs.on(self.is_probe, 0, 'MYSQL_SO=/venv/MySQLdb/_mysql.so\n')
         self.procs.on('ldd', 0, self.LDD_OK)
 
-    @unittest.expectedFailure
     def test_import_and_escape_string_then_ldd_of_the_extension(self):
         upd = self.make_update()
         self.quiet(upd.check_mysqlclient_linkage)
@@ -861,7 +848,6 @@ class MysqlclientLinkageTest(PreflightBase):
         self.assertIn('escape_string', probe.argv[2])
         self.assertEqual(ldd.argv, ['ldd', '/venv/MySQLdb/_mysql.so'])
 
-    @unittest.expectedFailure
     def test_unresolved_library_is_fatal_and_named(self):
         self.procs.rules.insert(0, ('ldd', 0, '\tlibmysqlclient.so.21 => not found\n'))
         upd = self.make_update()
@@ -871,7 +857,6 @@ class MysqlclientLinkageTest(PreflightBase):
         self.assertIn('libmysqlclient.so.21', ctx.exception.detail)
         self.assertIn('not found', ctx.exception.detail)
 
-    @unittest.expectedFailure
     def test_import_failure_is_fatal_and_ldd_is_not_attempted(self):
         self.procs.rules.insert(0, (self.is_probe, 1, 'ImportError: GLIBCXX_3.4.29 not found\n'))
         upd = self.make_update()
@@ -881,13 +866,11 @@ class MysqlclientLinkageTest(PreflightBase):
         self.assertIn('GLIBCXX_3.4.29', ctx.exception.detail)
         self.assertFalse([line for line in self.procs.lines() if line.startswith('ldd')])
 
-    @unittest.expectedFailure
     def test_runs_even_under_noop_because_it_only_reads(self):
         upd = self.make_update(noop=True)
         self.quiet(upd.check_mysqlclient_linkage)
         self.assertEqual(len(self.procs.calls), 2)
 
-    @unittest.expectedFailure
     def test_no_preload_workaround_is_applied(self):
         upd = self.make_update()
         self.quiet(upd.check_mysqlclient_linkage)

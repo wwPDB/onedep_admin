@@ -533,8 +533,20 @@ def main():
     parser.add_argument("--build-version", default='v-5200', help='Version of tools to build from')
     parser.add_argument("--build-dev", default=False, action='store_true', help='pip installs repos with edit param')
     parser.add_argument("--get-latest-version", default=False, action='store_true', help='get latest version number')
+    parser.add_argument("--ebi-compat", default=False, action='store_true',
+                        help='Use the strict, fail-fast update procedure for EBI RHEL 9 deployments '
+                             '(see docs/RunUpdate-ebi-compat.md); other sites should not use this')
+    parser.add_argument("--build-container", default=None, metavar='PATH',
+                        help='Rocky 8 Singularity/Apptainer image in which --ebi-compat runs --build-tools')
 
     args = parser.parse_args()
+
+    if args.ebi_compat and args.build_dev:
+        parser.error('--build-dev cannot be combined with --ebi-compat')
+    if args.build_container and not args.ebi_compat:
+        parser.error('--build-container requires --ebi-compat')
+    if args.ebi_compat and args.build_tools and not args.build_container:
+        parser.error('--build-tools with --ebi-compat requires --build-container')
 
     config_version = args.config
     
@@ -549,6 +561,13 @@ def main():
     if not os.path.exists(config_version):
         print('Failed to find config file: {}'.format(config_version))
         sys.exit(1)
+
+    if args.ebi_compat:
+        if __package__:
+            from .RunUpdateEbi import run_ebi_update
+        else:
+            from RunUpdateEbi import run_ebi_update
+        sys.exit(run_ebi_update(config_version, args))
 
     um = UpdateManager(config_version, args.noop)
 

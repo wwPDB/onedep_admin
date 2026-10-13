@@ -4,6 +4,7 @@ Everything external (git, pip, databases, containers) is mocked at the subproces
 and configuration boundaries; nothing here touches a deployment.
 """
 import contextlib
+import importlib
 import io
 import os
 import sys
@@ -16,8 +17,8 @@ from unittest import mock
 def _install_wwpdb_stubs():
     """Make scripts.RunUpdate importable where the wwpdb packages are not installed"""
     try:
-        import wwpdb.utils.config.ConfigInfo  # noqa: F401
-        import wwpdb.utils.config.ConfigInfoApp  # noqa: F401
+        importlib.import_module('wwpdb.utils.config.ConfigInfo')
+        importlib.import_module('wwpdb.utils.config.ConfigInfoApp')
         return
     except ImportError:
         pass
@@ -63,14 +64,12 @@ class MainTestBase(unittest.TestCase):
 class EbiCompatCliTest(MainTestBase):
     """Slice 1: option parsing and dispatch"""
 
-    @unittest.expectedFailure
     def test_help_lists_new_options(self):
         status, out, _ = self.run_main('--help')
         self.assertEqual(status, 0)
         self.assertIn('--ebi-compat', out)
         self.assertIn('--build-container', out)
 
-    @unittest.expectedFailure
     def test_flag_dispatches_to_ebi_update_and_returns_its_status(self):
         with mock.patch('scripts.RunUpdateEbi.run_ebi_update', return_value=3) as ebi, \
                 mock.patch.object(RunUpdate, 'UpdateManager') as legacy:
@@ -84,7 +83,6 @@ class EbiCompatCliTest(MainTestBase):
         self.assertTrue(args.skip_taxdb)
         self.assertFalse(args.skip_pip)
 
-    @unittest.expectedFailure
     def test_build_dev_cannot_be_combined(self):
         with mock.patch('scripts.RunUpdateEbi.run_ebi_update') as ebi:
             status, _, err = self.run_main('--ebi-compat', '--build-dev')
@@ -92,13 +90,11 @@ class EbiCompatCliTest(MainTestBase):
         self.assertIn('--build-dev cannot be combined with --ebi-compat', err)
         ebi.assert_not_called()
 
-    @unittest.expectedFailure
     def test_build_container_requires_flag(self):
         status, _, err = self.run_main('--build-container', '/x/y.sif')
         self.assertEqual(status, 2)
         self.assertIn('--build-container requires --ebi-compat', err)
 
-    @unittest.expectedFailure
     def test_build_tools_requires_container(self):
         with mock.patch('scripts.RunUpdateEbi.run_ebi_update') as ebi:
             status, _, err = self.run_main('--ebi-compat', '--build-tools')
@@ -106,7 +102,6 @@ class EbiCompatCliTest(MainTestBase):
         self.assertIn('--build-tools with --ebi-compat requires --build-container', err)
         ebi.assert_not_called()
 
-    @unittest.expectedFailure
     def test_build_tools_with_container_is_accepted(self):
         with mock.patch('scripts.RunUpdateEbi.run_ebi_update', return_value=0) as ebi:
             status, _, _ = self.run_main('--ebi-compat', '--build-tools', '--build-container', '/x/y.sif',

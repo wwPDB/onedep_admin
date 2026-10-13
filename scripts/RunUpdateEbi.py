@@ -296,6 +296,11 @@ class EbiUpdate(UpdateManager):
             self._run('remove', [sys.executable, '-m', 'pip', 'uninstall', '-y', name])
 
     def phase_pip(self):
+        """Install base requirements, then each release pin on its own with --no-deps"""
+        raise NotImplementedError
+
+    def check_mysqlclient_linkage(self):
+        """MySQLdb must import and its extension module must have no unresolved shared libraries"""
         raise NotImplementedError
 
     def phase_webfe(self):

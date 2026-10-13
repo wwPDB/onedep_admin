@@ -426,6 +426,9 @@ class PreflightBase(EbiTestBase):
         self.reqs = self.touch(os.path.join(self.tmp, 'rel-pins'), self.PINS)
         self.webfe_conf = self.touch(os.path.join(self.tmp, 'webfe.rel'), 'x==1\n')
         self.installed = {'mysqlclient': '2.1.1'}
+        self.ro = os.path.join(self.tmp, 'resources_ro')
+        os.mkdir(self.ro)
+        self.site['RO_RESOURCE_PATH'] = self.ro
 
         def version(name):
             try:
@@ -467,9 +470,11 @@ class PreflightBase(EbiTestBase):
 class PreflightConfigTest(PreflightBase):
     """Release configuration, interpreter and requirements files"""
 
-    def test_valid_release_passes_without_running_anything(self):
+    def test_valid_release_passes_without_changing_anything(self):
         self.assertEqual(self.problems(), '')
-        self.assertEqual(self.procs.calls, [])
+        changing = ('fetch', 'checkout', 'pull', 'install', 'uninstall', 'migrate', 'update')
+        for call in self.procs.calls:
+            self.assertFalse(set(call.argv) & set(changing), call.line)
 
     def test_missing_keys_are_named(self):
         for key in ('resourcestag', 'webfetag', 'webfeconf', 'taxdbminsize', 'piprequirements'):
@@ -537,6 +542,171 @@ class PreflightMysqlclientTest(PreflightBase):
     def test_ignored_when_pip_phase_is_skipped(self):
         self.installed['mysqlclient'] = '2.2.0'
         self.assertEqual(self.problems(skip_pip=True), '')
+
+
+class ResourcesPreflightTest(PreflightBase):
+    """The resources repositories must be usable git checkouts without local changes"""
+
+    def git_rule(self, repo, word, returncode=0, output=''):
+        self.procs.on(lambda a: a[:3] == ['git', '-C', repo] and word in a, returncode, output)
+
+    @unittest.expectedFailure
+    def test_unset_resources_path_is_reported(self):
+        del self.site['RO_RESOURCE_PATH']
+        self.assertIn('RO_RESOURCE_PATH', self.problems())
+
+    @unittest.expectedFailure
+    def test_missing_directory_is_reported_not_cloned(self):
+        os.rmdir(self.ro)
+        self.assertIn(self.ro, self.problems())
+        self.assertFalse([c for c in self.procs.calls if 'clone' in c.argv])
+
+    @unittest.expectedFailure
+    def test_directory_that_is_not_a_git_checkout_is_reported(self):
+        self.git_rule(self.ro, 'rev-parse', 128)
+        self.assertIn('not a git checkout', self.problems())
+
+    @unittest.expectedFailure
+    def test_tracked_changes_are_reported_and_not_touched(self):
+        self.git_rule(self.ro, 'status', 0, ' M version.json\n')
+        detail = self.problems()
+        self.assertIn(self.ro, detail)
+        self.assertIn('uncommitted changes', detail)
+        self.assertIn('version.json', detail)
+
+    @unittest.expectedFailure
+    def test_clean_status_ignores_untracked_files(self):
+        self.problems()
+        status = [c for c in self.procs.calls if 'status' in c.argv][0]
+        self.assertIn('--untracked-files=no', status.argv)
+
+    @unittest.expectedFailure
+    def test_writable_copy_is_checked_too_and_must_be_on_a_branch(self):
+        rw = os.path.join(self.tmp, 'resources_rw')
+        os.mkdir(rw)
+        self.site['RW_RESOURCE_PATH'] = rw
+        self.git_rule(rw, 'symbolic-ref', 1)
+        detail = self.problems()
+        self.assertIn(rw, detail)
+        self.assertIn('branch', detail)
+
+    def test_nothing_is_checked_when_resources_are_skipped(self):
+        del self.site['RO_RESOURCE_PATH']
+        self.assertEqual(self.problems(skip_resources=True), '')
+        self.assertEqual(self.procs.calls, [])
+
+
+class ResourcesPhaseTest(PreflightBase):
+    """The release tag is fetched and checked out; a detached HEAD at a tag is the normal end state"""
+
+    def lines(self):
+        return self.procs.lines()
+
+    @unittest.expectedFailure
+    def test_fetch_tags_then_checkout_then_verify_and_never_pull(self):
+        self.procs.on('describe --tags --exact-match', 0, 'v6.1\n')
+        upd = self.make_update()
+        self.quiet(upd.phase_resources)
+        git = ['git -C ' + self.ro + ' ' + c for c in
+               ('fetch --tags', 'rev-parse -q --verify refs/tags/v6.1', 'checkout v6.1',
+                'describe --tags --exact-match')]
+        self.assertEqual(self.lines(), git)
+
+    @unittest.expectedFailure
+    def test_an_unknown_tag_stops_before_checkout(self):
+        self.procs.on('rev-parse -q --verify', 1)
+        upd = self.make_update()
+        with self.assertRaises(UpdateError) as ctx:
+            self.quiet(upd.phase_resources)
+        self.assertEqual(ctx.exception.phase, 'resources')
+        self.assertIn('v6.1 is not a tag', ctx.exception.detail)
+        self.assertFalse([line for line in self.lines() if 'checkout' in line])
+
+    @unittest.expectedFailure
+    def test_checkout_must_land_exactly_on_the_tag(self):
+        self.procs.on('describe --tags --exact-match', 0, 'v6.0\n')
+        upd = self.make_update()
+        with self.assertRaises(UpdateError) as ctx:
+            self.quiet(upd.phase_resources)
+        self.assertIn('v6.0', ctx.exception.detail)
+        self.assertIn('v6.1', ctx.exception.detail)
+
+    @unittest.expectedFailure
+    def test_failed_fetch_is_fatal_and_nothing_follows(self):
+        self.procs.on('fetch --tags', 1)
+        upd = self.make_update()
+        with self.assertRaises(UpdateError):
+            self.quiet(upd.phase_resources)
+        self.assertEqual(len(self.lines()), 1)
+
+    @unittest.expectedFailure
+    def test_writable_copy_is_fast_forwarded_when_configured(self):
+        rw = os.path.join(self.tmp, 'resources_rw')
+        self.site['RW_RESOURCE_PATH'] = rw
+        self.procs.on('describe --tags --exact-match', 0, 'v6.1\n')
+        upd = self.make_update()
+        self.quiet(upd.phase_resources)
+        self.assertEqual(self.lines()[-1], 'git -C {} pull --ff-only'.format(rw))
+
+    @unittest.expectedFailure
+    def test_noop_runs_nothing(self):
+        upd = self.make_update(noop=True)
+        _, out = self.quiet(upd.phase_resources)
+        self.assertEqual(self.procs.calls, [])
+        self.assertIn('fetch --tags', out)
+        self.assertIn('checkout v6.1', out)
+
+
+class RemovePackagesTest(PreflightBase):
+    """Obsolete packages are uninstalled only when the installed version is exactly the listed one"""
+
+    def setUp(self):
+        super().setUp()
+        self.write_conf(removepy='emda=1.1.4  servalcat=0.4.72 ')
+
+    @unittest.expectedFailure
+    def test_exact_match_is_uninstalled_and_other_cases_are_recorded_skips(self):
+        self.installed.update({'emda': '1.1.4', 'servalcat': '0.5.0'})
+        upd = self.make_update()
+        _, out = self.quiet(upd.phase_remove)
+        self.assertEqual(self.procs.lines(), ['{} -m pip uninstall -y emda'.format(sys.executable)])
+        self.assertIn('servalcat: installed 0.5.0, not 0.4.72, skipped', out)
+
+    @unittest.expectedFailure
+    def test_absent_package_is_a_recorded_skip_not_an_error(self):
+        upd = self.make_update()
+        _, out = self.quiet(upd.phase_remove)
+        self.assertEqual(self.procs.calls, [])
+        self.assertIn('emda: not installed, skipped', out)
+
+    @unittest.expectedFailure
+    def test_no_removepy_option_means_nothing_to_do(self):
+        self.write_conf()
+        upd = self.make_update()
+        self.quiet(upd.phase_remove)
+        self.assertEqual(self.procs.calls, [])
+
+    @unittest.expectedFailure
+    def test_failed_uninstall_is_fatal(self):
+        self.installed['emda'] = '1.1.4'
+        self.procs.on('uninstall', 1)
+        upd = self.make_update()
+        with self.assertRaises(UpdateError) as ctx:
+            self.quiet(upd.phase_remove)
+        self.assertEqual(ctx.exception.phase, 'remove')
+
+    @unittest.expectedFailure
+    def test_noop_does_not_uninstall(self):
+        self.installed['emda'] = '1.1.4'
+        upd = self.make_update(noop=True)
+        _, out = self.quiet(upd.phase_remove)
+        self.assertEqual(self.procs.calls, [])
+        self.assertIn('pip uninstall -y emda', out)
+
+    @unittest.expectedFailure
+    def test_malformed_entry_is_a_preflight_problem(self):
+        self.write_conf(removepy='emda')
+        self.assertIn("removepy entry 'emda' is not name=version", self.problems())
 
 
 if __name__ == '__main__':

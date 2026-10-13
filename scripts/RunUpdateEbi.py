@@ -13,6 +13,15 @@ except ImportError:
     # Run as a script rather than as part of the scripts package
     from RunUpdate import UpdateManager
 
+try:
+    from packaging.requirements import InvalidRequirement, Requirement
+    from packaging.utils import canonicalize_name
+    from packaging.version import Version
+except ImportError:
+    from pip._vendor.packaging.requirements import InvalidRequirement, Requirement
+    from pip._vendor.packaging.utils import canonicalize_name
+    from pip._vendor.packaging.version import Version
+
 
 BASE_PACKAGES_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'base_packages'))
 
@@ -49,7 +58,24 @@ class Pin(object):
 
 def parse_pins(path):
     """Return the active Pins of a release requirements file, in file order"""
-    raise NotImplementedError
+    pins = []
+    with open(path) as fin:
+        for number, raw in enumerate(fin, 1):
+            line = re.sub(r'(^|\s)#.*$', '', raw).strip()
+            if not line:
+                continue
+            if line.startswith('-'):
+                # Never echo the line: index options can carry credentials
+                raise UpdateError('preflight', '{} line {}: option {} is not a requirement; release pins are '
+                                  'installed one at a time'.format(path, number, line.split()[0]))
+            try:
+                requirement = Requirement(line)
+            except InvalidRequirement as e:
+                raise UpdateError('preflight', '{} line {}: invalid requirement {!r}: {}'.format(
+                    path, number, redact(line), redact(str(e))))
+            if requirement.marker is None or requirement.marker.evaluate():
+                pins.append(Pin(line, canonicalize_name(requirement.name), requirement))
+    return pins
 
 
 class RunResult(object):
@@ -108,9 +134,80 @@ class EbiUpdate(UpdateManager):
                 print('==== {} ===='.format(name))
                 phase()
 
+    def _opt(self, key):
+        """Value of a release configuration key, or None"""
+        parser = self._UpdateManager__cparser
+        if not parser.has_option('DEFAULT', key):
+            return None
+        return parser.get('DEFAULT', key, vars=self._UpdateManager__confvars)
+
     def phase_preflight(self):
         """Read-only validation of the selected phases' inputs; raises one UpdateError listing every problem"""
-        raise NotImplementedError
+        problems = []
+        for check in (self._check_config, self._check_pins):
+            problems.extend(check())
+        if problems:
+            raise UpdateError('preflight', '{} problem(s) found, nothing was changed:\n  - {}'.format(
+                len(problems), '\n  - '.join(problems)))
+        print('preflight: ok')
+
+    def _check_config(self):
+        a = self.args
+        problems = []
+        needed = [('resourcestag', not a.skip_resources), ('webfetag', not a.skip_webfe),
+                  ('webfeconf', not a.skip_webfe), ('taxdbminsize', not a.skip_taxdb),
+                  ('piprequirements', not a.skip_pip)]
+        for key, selected in needed:
+            if selected and not self._opt(key):
+                problems.append("release configuration has no '{}'".format(key))
+
+        files = [('webfeconf', not a.skip_webfe), ('piprequirements', not a.skip_pip)]
+        paths = [(key, self._opt(key)) for key, selected in files if selected]
+        if not a.skip_pip:
+            paths.extend((name, os.path.join(BASE_PACKAGES_DIR, name))
+                         for name in ('constraints.txt', 'pre-requirements.txt', 'requirements.txt'))
+        for key, path in paths:
+            if path and not os.path.isfile(path):
+                problems.append('{} is not a file: {}'.format(key, path))
+
+        if sys.prefix == sys.base_prefix:
+            problems.append('{} is not running in a virtual environment; run it with the deployment '
+                            'virtual environment\'s python'.format(os.path.basename(__file__)))
+        return problems
+
+    def _release_pins(self):
+        return parse_pins(self._opt('piprequirements'))
+
+    def _check_pins(self):
+        path = self._opt('piprequirements')
+        if self.args.skip_pip or not path or not os.path.isfile(path):
+            return []
+        try:
+            pins = self._release_pins()
+        except UpdateError as e:
+            return [e.detail]
+        return self._check_mysqlclient_pin(pins)
+
+    def _check_mysqlclient_pin(self, pins):
+        """mysqlclient is never reinstalled, so the installed build must already be the pinned one"""
+        for pin in pins:
+            if pin.name == 'mysqlclient':
+                break
+        else:
+            return []
+        specs = list(pin.requirement.specifier)
+        if len(specs) != 1 or specs[0].operator != '==':
+            return ['mysqlclient is not pinned to an exact version in the release requirements: {}'.format(pin.line)]
+        wanted = specs[0].version
+        remedy = ('--ebi-compat never reinstalls it; rebuild it against the host MySQL client library '
+                  'first (see docs/RunUpdate-ebi-compat.md)')
+        try:
+            installed = importlib.metadata.version('mysqlclient')
+        except importlib.metadata.PackageNotFoundError:
+            return ['mysqlclient=={} is pinned but not installed; {}'.format(wanted, remedy)]
+        if Version(installed) != Version(wanted):
+            return ['release pins mysqlclient=={} but {} is installed; {}'.format(wanted, installed, remedy)]
+        return []
 
     def phase_resources(self):
         raise NotImplementedError

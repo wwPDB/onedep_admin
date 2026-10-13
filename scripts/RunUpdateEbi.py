@@ -36,6 +36,14 @@ MYSQLDB_PROBE = (
     'print("MYSQL_SO=" + _mysql.__file__)\n')
 
 
+# The helper scripts print these and still exit 0, so their output is scanned
+TAXDB_FAILURE_MARKERS = ('ERROR', 'Could not')
+SCHEMA_FAILURE_MARKERS = ('ERROR', 'FAILED')
+NO_PLANNED_MIGRATIONS = 'No planned migration operations'
+DEFAULT_TAXDB_MAXSIZE = 999999999
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
 class UpdateError(Exception):
     """A mandatory operation failed; phase names where"""
 
@@ -86,6 +94,11 @@ def parse_pins(path):
             if requirement.marker is None or requirement.marker.evaluate():
                 pins.append(Pin(line, canonicalize_name(requirement.name), requirement))
     return pins
+
+
+def failure_lines(output, markers):
+    """Lines of a helper's output that report a failure"""
+    return [line.strip() for line in output.splitlines() if any(marker in line for marker in markers)]
 
 
 class RunResult(object):
@@ -156,7 +169,7 @@ class EbiUpdate(UpdateManager):
         """Read-only validation of the selected phases' inputs; raises one UpdateError listing every problem"""
         problems = []
         for check in (self._check_config, self._check_pins, self._check_removepy, self._check_resources,
-                      self._check_pip_inputs, self._check_webfe):
+                      self._check_pip_inputs, self._check_webfe, self._check_taxonomy, self._check_django):
             problems.extend(check())
         if problems:
             raise UpdateError('preflight', '{} problem(s) found, nothing was changed:\n  - {}'.format(
@@ -213,6 +226,31 @@ class EbiUpdate(UpdateManager):
         if rw:
             problems.extend(self._check_checkout('resources_rw', rw, on_branch=True))
         return problems
+
+    def _check_taxonomy(self):
+        if self.args.skip_taxdb:
+            return []
+        problems = []
+        for key in ('taxdbminsize', 'taxdbmaxsize'):
+            value = self._opt(key)
+            if value and not re.match(r'^\s*\d+\s*$', value):
+                problems.append("'{}' is not an integer: {}".format(key, value))
+        if self._opt('taxuseftp') is None and not self.get_variable('TAXONOMY_FILE_NAME'):
+            problems.append('there is no taxonomy source: the release has no taxuseftp and TAXONOMY_FILE_NAME is '
+                            'not set in the site configuration')
+        return problems
+
+    def _check_django(self):
+        if self.args.skip_schema:
+            return []
+        try:
+            found = importlib.util.find_spec('wwpdb.apps.deposit.manage')
+        except (ImportError, ValueError):
+            found = None
+        if found is None:
+            return ['wwpdb.apps.deposit.manage cannot be imported by this interpreter, so the DepUI Django '
+                    'migrations cannot be applied']
+        return []
 
     def _webfe_root(self):
         webapps = self.get_variable('TOP_WWPDB_WEBAPPS_DIR')
@@ -402,13 +440,62 @@ class EbiUpdate(UpdateManager):
 
     def _taxonomy_row_count(self):
         """Rows in the status taxonomy table, counted as ManageTaxDB.py counts them"""
-        raise NotImplementedError
+        from wwpdb.utils.db.MyConnectionBase import MyConnectionBase
+        from wwpdb.utils.db.MyDbUtil import MyDbQuery
+        db = MyConnectionBase()
+        db.setResource(resourceName='STATUS')
+        if not db.openConnection():
+            raise UpdateError('taxdb', 'cannot open the status database to count the taxonomy table')
+        try:
+            rows = MyDbQuery(dbcon=db._dbCon).selectRows(queryString='select count(ordinal) from taxonomy ')
+        finally:
+            db.closeConnection()
+        return rows[0][0]
 
     def phase_taxdb(self):
-        raise NotImplementedError
+        """Load the taxonomy when it is out of range, then verify the table rather than trust the exit status"""
+        minimum = int(self._opt('taxdbminsize'))
+        maximum = int(self._opt('taxdbmaxsize') or DEFAULT_TAXDB_MAXSIZE)
+        argv = [sys.executable, os.path.join(SCRIPT_DIR, 'ManageTaxDB.py')]
+        if self.args.noop:
+            argv.append('--noop')
+        argv.extend(['--maxsize', str(maximum), '--taxdbsize', str(minimum)])
+        if self._opt('taxuseftp') is not None:
+            argv.append('--ftpload')
+        # Under --noop the helper only reports what it would do, so it is always run
+        result = self._run('taxdb', argv, mutating=False)
+        failures = failure_lines(result.output, TAXDB_FAILURE_MARKERS)
+        if failures:
+            raise UpdateError('taxdb', 'ManageTaxDB.py reported:\n' + '\n'.join(failures))
+        if self.args.noop:
+            return
+        count = self._taxonomy_row_count()
+        if not minimum <= count < maximum:
+            raise UpdateError('taxdb', 'the taxonomy table has {} rows after the load; expected at least {} and '
+                              'fewer than {}'.format(count, minimum, maximum))
+        print('[taxdb] taxonomy has {} rows'.format(count))
 
     def phase_schema(self):
-        raise NotImplementedError
+        """ManageDB.py update, then the DepUI Django migrations, which it does not cover"""
+        argv = [sys.executable, os.path.join(SCRIPT_DIR, 'ManageDB.py')]
+        if self.args.noop:
+            argv.append('--noop')
+        result = self._run('schema', argv + ['update'], mutating=False)
+        failures = failure_lines(result.output, SCHEMA_FAILURE_MARKERS)
+        if failures:
+            raise UpdateError('schema', 'ManageDB.py reported:\n' + '\n'.join(failures))
+
+        # manage.py sets DJANGO_SETTINGS_MODULE itself unless the deployment already has it
+        migrate = [sys.executable, '-m', 'wwpdb.apps.deposit.manage', 'migrate']
+        planned = self._run('schema', migrate + ['--plan'], mutating=False).output
+        if NO_PLANNED_MIGRATIONS in planned:
+            return
+        self._run('schema', migrate + ['--noinput'])
+        if self.args.noop:
+            return
+        remaining = self._run('schema', migrate + ['--plan'], mutating=False).output
+        if NO_PLANNED_MIGRATIONS not in remaining:
+            raise UpdateError('schema', 'migrations are still planned after migrate:\n' + remaining.strip())
 
     def phase_build(self):
         raise NotImplementedError

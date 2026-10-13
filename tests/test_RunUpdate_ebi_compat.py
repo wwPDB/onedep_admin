@@ -985,14 +985,12 @@ class WebfePhaseTest(PreflightBase):
 class DatabasePreflightTest(PreflightBase):
     """Taxonomy bounds, the taxonomy source and the DepUI Django entry point"""
 
-    @unittest.expectedFailure
     def test_bounds_must_be_integers(self):
         self.write_conf(taxdbminsize='lots')
         self.assertIn("'taxdbminsize'", self.problems())
         self.write_conf(taxdbmaxsize='many')
         self.assertIn("'taxdbmaxsize'", self.problems())
 
-    @unittest.expectedFailure
     def test_taxonomy_file_is_required_unless_the_ftp_load_is_configured(self):
         self.write_conf(taxuseftp=None)
         self.assertIn('TAXONOMY_FILE_NAME', self.problems())
@@ -1006,7 +1004,6 @@ class DatabasePreflightTest(PreflightBase):
         self.write_conf(taxdbminsize=None)
         self.assertEqual(self.problems(skip_taxdb=True), '')
 
-    @unittest.expectedFailure
     def test_depui_django_entry_point_must_be_importable(self):
         with mock.patch.object(RunUpdateEbi.importlib.util, 'find_spec', return_value=None):
             self.assertIn('wwpdb.apps.deposit.manage', self.problems())
@@ -1052,7 +1049,6 @@ class TaxonomyRowCountTest(unittest.TestCase):
         self.addCleanup(patcher.stop)
         return db
 
-    @unittest.expectedFailure
     def test_counts_rows_of_the_status_taxonomy_table(self):
         db = self.fake_db()
         upd = EbiUpdate.__new__(EbiUpdate)
@@ -1061,7 +1057,6 @@ class TaxonomyRowCountTest(unittest.TestCase):
         self.assertIn('taxonomy', db.queries[0])
         self.assertTrue(db.closed)
 
-    @unittest.expectedFailure
     def test_unreachable_database_is_an_error(self):
         self.fake_db(opens=False)
         upd = EbiUpdate.__new__(EbiUpdate)
@@ -1077,7 +1072,7 @@ class TaxonomyPhaseTest(PreflightBase):
         super().setUp()
         self.helper = os.path.join(os.path.dirname(os.path.abspath(RunUpdateEbi.__file__)), 'ManageTaxDB.py')
         self.write_conf(taxuseftp='True')
-        self.count = 5200000
+        self.count = 150
         patcher = mock.patch.object(EbiUpdate, '_taxonomy_row_count', side_effect=lambda: self.count)
         self.row_count = patcher.start()
         self.addCleanup(patcher.stop)
@@ -1086,13 +1081,11 @@ class TaxonomyPhaseTest(PreflightBase):
         upd = self.make_update(**flags)
         return self.quiet(upd.phase_taxdb)
 
-    @unittest.expectedFailure
     def test_helper_is_run_with_the_configured_bounds_and_the_ftp_load(self):
         self.run_phase()
         self.assertEqual(self.procs.lines(), ['{} {} --maxsize 200 --taxdbsize 100 --ftpload'.format(
             sys.executable, self.helper)])
 
-    @unittest.expectedFailure
     def test_without_ftp_load_and_without_max_the_legacy_default_applies(self):
         self.site['TAXONOMY_FILE_NAME'] = '/some/tax.csv'
         self.count = 150
@@ -1101,13 +1094,11 @@ class TaxonomyPhaseTest(PreflightBase):
         self.assertEqual(self.procs.lines(), ['{} {} --maxsize 999999999 --taxdbsize 100'.format(
             sys.executable, self.helper)])
 
-    @unittest.expectedFailure
     def test_row_count_within_bounds_passes(self):
         for count in (100, 150, 199):
             self.count = count
             self.run_phase()
 
-    @unittest.expectedFailure
     def test_row_count_outside_bounds_fails_although_the_helper_exited_zero(self):
         for count in (0, 99, 200, 5000):
             self.count = count
@@ -1118,7 +1109,6 @@ class TaxonomyPhaseTest(PreflightBase):
             self.assertIn('100', ctx.exception.detail)
             self.assertIn('200', ctx.exception.detail)
 
-    @unittest.expectedFailure
     def test_helper_error_output_fails_even_with_exit_zero_and_an_in_range_count(self):
         self.procs.on('ManageTaxDB.py', 0, 'ERROR: Could not open status db\n')
         with self.assertRaises(UpdateError) as ctx:
@@ -1126,13 +1116,11 @@ class TaxonomyPhaseTest(PreflightBase):
         self.assertIn('Could not open status db', ctx.exception.detail)
         self.row_count.assert_not_called()
 
-    @unittest.expectedFailure
     def test_helper_failure_status_is_fatal(self):
         self.procs.on('ManageTaxDB.py', 1)
         with self.assertRaises(UpdateError):
             self.run_phase()
 
-    @unittest.expectedFailure
     def test_noop_lets_the_helper_report_and_skips_the_count(self):
         self.run_phase(noop=True)
         self.assertEqual(self.procs.lines(), ['{} {} --noop --maxsize 200 --taxdbsize 100 --ftpload'.format(
@@ -1167,7 +1155,6 @@ class SchemaPhaseTest(PreflightBase):
         upd = self.make_update(**flags)
         return self.quiet(upd.phase_schema)
 
-    @unittest.expectedFailure
     def test_manage_db_update_then_plan_apply_and_verify(self):
         self.run_phase()
         self.assertEqual(self.procs.lines(), [
@@ -1176,13 +1163,11 @@ class SchemaPhaseTest(PreflightBase):
             self.DJANGO + ' --noinput',
             self.DJANGO + ' --plan'])
 
-    @unittest.expectedFailure
     def test_nothing_is_applied_when_nothing_is_planned(self):
         self.plans[:] = [self.EMPTY]
         self.run_phase()
         self.assertEqual(self.procs.lines()[1:], [self.DJANGO + ' --plan'])
 
-    @unittest.expectedFailure
     def test_remaining_migrations_after_the_apply_are_fatal(self):
         self.plans[:] = [self.PLANNED, self.PLANNED]
         with self.assertRaises(UpdateError) as ctx:
@@ -1190,7 +1175,6 @@ class SchemaPhaseTest(PreflightBase):
         self.assertEqual(ctx.exception.phase, 'schema')
         self.assertIn('still planned', ctx.exception.detail)
 
-    @unittest.expectedFailure
     def test_manage_db_error_output_is_fatal_despite_exit_zero_and_stops_before_django(self):
         self.procs.on('ManageDB.py', 0, 'ERROR UPDATING SCHEMA ALTER TABLE `deposition`\n')
         with self.assertRaises(UpdateError) as ctx:
@@ -1198,7 +1182,6 @@ class SchemaPhaseTest(PreflightBase):
         self.assertIn('ERROR UPDATING SCHEMA', ctx.exception.detail)
         self.assertFalse([line for line in self.procs.lines() if 'migrate' in line])
 
-    @unittest.expectedFailure
     def test_manage_db_failed_marker_and_failure_status_are_fatal(self):
         self.procs.on('ManageDB.py', 0, 'FAILED\n')
         with self.assertRaises(UpdateError):
@@ -1208,14 +1191,12 @@ class SchemaPhaseTest(PreflightBase):
         with self.assertRaises(UpdateError):
             self.run_phase()
 
-    @unittest.expectedFailure
     def test_failing_plan_or_apply_is_fatal(self):
         self.procs.on('migrate --noinput', 1)
         with self.assertRaises(UpdateError) as ctx:
             self.run_phase()
         self.assertIn('migrate --noinput', ctx.exception.detail)
 
-    @unittest.expectedFailure
     def test_noop_reads_the_plan_but_applies_nothing(self):
         self.plans[:] = [self.PLANNED]
         self.run_phase(noop=True)
@@ -1223,7 +1204,6 @@ class SchemaPhaseTest(PreflightBase):
             '{} {} --noop update'.format(sys.executable, self.helper),
             self.DJANGO + ' --plan'])
 
-    @unittest.expectedFailure
     def test_django_settings_are_left_to_the_deployment(self):
         self.run_phase()
         for call in self.procs.calls[1:]:

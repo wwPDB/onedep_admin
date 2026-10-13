@@ -155,7 +155,7 @@ class EbiUpdate(UpdateManager):
         """Read-only validation of the selected phases' inputs; raises one UpdateError listing every problem"""
         problems = []
         for check in (self._check_config, self._check_pins, self._check_removepy, self._check_resources,
-                      self._check_pip_inputs):
+                      self._check_pip_inputs, self._check_webfe):
             problems.extend(check())
         if problems:
             raise UpdateError('preflight', '{} problem(s) found, nothing was changed:\n  - {}'.format(
@@ -213,8 +213,20 @@ class EbiUpdate(UpdateManager):
             problems.extend(self._check_checkout('resources_rw', rw, on_branch=True))
         return problems
 
-    def _check_checkout(self, label, path, on_branch=False):
-        """Read-only: the directory must be a git checkout without tracked changes (nothing is cloned or reset)"""
+    def _webfe_root(self):
+        webapps = self.get_variable('TOP_WWPDB_WEBAPPS_DIR')
+        return os.path.abspath(os.path.join(webapps, '..')) if webapps else None
+
+    def _check_webfe(self):
+        if self.args.skip_webfe:
+            return []
+        root = self._webfe_root()
+        if not root:
+            return ['TOP_WWPDB_WEBAPPS_DIR is not set in the site configuration']
+        return self._check_checkout('webfe', root, untracked=True)
+
+    def _check_checkout(self, label, path, on_branch=False, untracked=False):
+        """Read-only: the directory must be a git checkout without local changes (nothing is cloned or reset)"""
         if not os.path.isdir(path):
             return ['{} {} does not exist; this mode never clones'.format(label, path)]
         git = ['git', '-C', path]
@@ -222,14 +234,16 @@ class EbiUpdate(UpdateManager):
                      check=False).returncode:
             return ['{} {} is not a git checkout'.format(label, path)]
         problems = []
-        status = self._run('preflight', git + ['status', '--porcelain', '--untracked-files=no'], mutating=False,
-                           check=False)
+        status = self._run('preflight', git + ['status', '--porcelain'] + ([] if untracked else ['--untracked-files=no']),
+                           mutating=False, check=False)
         if status.returncode:
             problems.append('cannot read the git status of {}'.format(path))
         elif status.output.strip():
-            problems.append('{} {} has uncommitted changes to tracked files; commit, stash or move them aside '
-                            '(this mode never discards local changes):\n{}'.format(
-                                label, path, status.output.rstrip()))
+            what = ('uncommitted changes; commit or stash modified files and move untracked files aside, for '
+                    'example into the rollback snapshot' if untracked else
+                    'uncommitted changes to tracked files; commit, stash or move them aside')
+            problems.append('{} {} has {} (this mode never discards local changes):\n{}'.format(
+                label, path, what, status.output.rstrip()))
         if on_branch and self._run('preflight', git + ['symbolic-ref', '-q', 'HEAD'], mutating=False,
                                    check=False).returncode:
             problems.append('{} {} is not on a branch, so it cannot be fast-forwarded'.format(label, path))
@@ -297,24 +311,24 @@ class EbiUpdate(UpdateManager):
             return ['release pins mysqlclient=={} but {} is installed; {}'.format(wanted, installed, remedy)]
         return []
 
-    def phase_resources(self):
-        """Check out the release tag (a detached HEAD is expected, so there is no pull) and verify it"""
-        tag = self._opt('resourcestag')
-        ro = self.get_variable('RO_RESOURCE_PATH')
-        git = ['git', '-C', ro]
-        self._run('resources', git + ['fetch', '--tags'])
-        if not self.args.noop and self._run('resources', git + ['rev-parse', '-q', '--verify', 'refs/tags/' + tag],
+    def _checkout_release_tag(self, phase, repo, tag):
+        """Fetch tags, check out tag and verify it; a detached HEAD at a tag is expected, so nothing is pulled"""
+        git = ['git', '-C', repo]
+        self._run(phase, git + ['fetch', '--tags'])
+        if not self.args.noop and self._run(phase, git + ['rev-parse', '-q', '--verify', 'refs/tags/' + tag],
                                             mutating=False, check=False).returncode:
-            raise UpdateError('resources', '{} is not a tag in {}; --ebi-compat requires a release tag'.format(
-                tag, ro))
-        self._run('resources', git + ['checkout', tag])
+            raise UpdateError(phase, '{} is not a tag in {}; --ebi-compat requires a release tag'.format(tag, repo))
+        self._run(phase, git + ['checkout', tag])
         if self.args.noop:
-            print('[resources] noop: the checkout is not verified')
-        else:
-            described = self._run('resources', git + ['describe', '--tags', '--exact-match'],
-                                  mutating=False).output.strip()
-            if described != tag:
-                raise UpdateError('resources', '{} is at {}, expected {}'.format(ro, described, tag))
+            print('[{}] noop: the checkout is not verified'.format(phase))
+            return
+        described = self._run(phase, git + ['describe', '--tags', '--exact-match'], mutating=False).output.strip()
+        if described != tag:
+            raise UpdateError(phase, '{} is at {}, expected {}'.format(repo, described, tag))
+
+    def phase_resources(self):
+        """Check out the release tag of resources_ro and fast-forward resources_rw when configured"""
+        self._checkout_release_tag('resources', self.get_variable('RO_RESOURCE_PATH'), self._opt('resourcestag'))
         rw = self.get_variable('RW_RESOURCE_PATH')
         if rw:
             self._run('resources', ['git', '-C', rw, 'pull', '--ff-only'])
@@ -378,7 +392,12 @@ class EbiUpdate(UpdateManager):
                 found.group(1), '\n'.join(missing)))
 
     def phase_webfe(self):
-        raise NotImplementedError
+        """Check out the release tag, update submodules and check the web root against the release"""
+        root = self._webfe_root()
+        self._checkout_release_tag('webfe', root, self._opt('webfetag'))
+        self._run('webfe', ['git', '-C', root, 'submodule', 'update', '--init', '--recursive'])
+        checker = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ManageWebFE.py')
+        self._run('webfe', [sys.executable, checker, '--webroot', root, 'check', '-r', self._opt('webfeconf')])
 
     def phase_taxdb(self):
         raise NotImplementedError

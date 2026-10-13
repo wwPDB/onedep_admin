@@ -599,7 +599,7 @@ class ResourcesPreflightTest(PreflightBase):
     def test_nothing_is_checked_when_resources_are_skipped(self):
         del self.site['RO_RESOURCE_PATH']
         self.assertEqual(self.problems(skip_resources=True), '')
-        self.assertEqual(self.procs.calls, [])
+        self.assertFalse([c for c in self.procs.calls if self.ro in c.argv])
 
 
 class ResourcesPhaseTest(PreflightBase):
@@ -888,23 +888,19 @@ class WebfePreflightTest(PreflightBase):
     def git_rule(self, word, returncode=0, output=''):
         self.procs.on(lambda a: a[:3] == ['git', '-C', self.webfe] and word in a, returncode, output)
 
-    @unittest.expectedFailure
     def test_unset_webapps_dir_is_reported(self):
         del self.site['TOP_WWPDB_WEBAPPS_DIR']
         self.assertIn('TOP_WWPDB_WEBAPPS_DIR', self.problems())
 
-    @unittest.expectedFailure
     def test_missing_checkout_is_reported_not_cloned(self):
         shutil.rmtree(self.webfe)
         self.assertIn(self.webfe, self.problems())
         self.assertFalse([c for c in self.procs.calls if 'clone' in c.argv])
 
-    @unittest.expectedFailure
     def test_directory_that_is_not_a_git_checkout_is_reported(self):
         self.git_rule('rev-parse', 128)
         self.assertIn('not a git checkout', self.problems())
 
-    @unittest.expectedFailure
     def test_untracked_files_are_listed_with_instructions_and_left_alone(self):
         self.git_rule('status', 0, '?? webapps/htdocs/report.html\n?? webapps/htdocs/reports/\n')
         detail = self.problems()
@@ -914,7 +910,6 @@ class WebfePreflightTest(PreflightBase):
         self.assertNotIn('--untracked-files=no', status.argv)
         self.assertFalse([c for c in self.procs.calls if set(c.argv) & {'clean', 'stash', 'reset', 'rm'}])
 
-    @unittest.expectedFailure
     def test_tracked_modifications_are_rejected(self):
         self.git_rule('status', 0, ' M webapps/htdocs/server_depui.wsgi\n')
         self.assertIn('server_depui.wsgi', self.problems())
@@ -936,7 +931,6 @@ class WebfePhaseTest(PreflightBase):
             self.webfe, self.webfe_conf)
         self.procs.on('describe --tags --exact-match', 0, 'v6.1\n')
 
-    @unittest.expectedFailure
     def test_full_sequence(self):
         upd = self.make_update()
         self.quiet(upd.phase_webfe)
@@ -948,7 +942,6 @@ class WebfePhaseTest(PreflightBase):
             self.git + 'submodule update --init --recursive',
             self.checker])
 
-    @unittest.expectedFailure
     def test_unknown_tag_stops_before_checkout(self):
         self.procs.on('rev-parse -q --verify', 1)
         upd = self.make_update()
@@ -958,7 +951,6 @@ class WebfePhaseTest(PreflightBase):
         self.assertIn('v6.1 is not a tag', ctx.exception.detail)
         self.assertFalse([line for line in self.procs.lines() if 'checkout' in line])
 
-    @unittest.expectedFailure
     def test_failed_submodule_update_is_fatal_and_the_check_does_not_run(self):
         self.procs.on('submodule update', 1)
         upd = self.make_update()
@@ -967,7 +959,6 @@ class WebfePhaseTest(PreflightBase):
         self.assertEqual(ctx.exception.phase, 'webfe')
         self.assertNotIn(self.checker, self.procs.lines())
 
-    @unittest.expectedFailure
     def test_failed_check_is_fatal(self):
         self.procs.on('ManageWebFE.py', 1, 'Mismatch htdocs/wfm   6.1 != 6.0\n')
         upd = self.make_update()
@@ -976,7 +967,6 @@ class WebfePhaseTest(PreflightBase):
         self.assertEqual(ctx.exception.phase, 'webfe')
         self.assertIn('ManageWebFE.py', ctx.exception.detail)
 
-    @unittest.expectedFailure
     def test_noop_changes_and_checks_nothing(self):
         upd = self.make_update(noop=True)
         _, out = self.quiet(upd.phase_webfe)
@@ -984,7 +974,6 @@ class WebfePhaseTest(PreflightBase):
         self.assertIn('checkout v6.1', out)
         self.assertIn('submodule update --init --recursive', out)
 
-    @unittest.expectedFailure
     def test_never_pulls_cleans_stashes_or_resets(self):
         upd = self.make_update()
         self.quiet(upd.phase_webfe)

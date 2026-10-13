@@ -1,5 +1,6 @@
 """Opt-in, fail-fast release update for EBI RHEL 9 deployments (RunUpdate.py --ebi-compat)"""
 
+import importlib.metadata
 import os
 import re
 import shlex
@@ -11,6 +12,9 @@ try:
 except ImportError:
     # Run as a script rather than as part of the scripts package
     from RunUpdate import UpdateManager
+
+
+BASE_PACKAGES_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'base_packages'))
 
 
 class UpdateError(Exception):
@@ -32,6 +36,20 @@ def redact(text, secrets=()):
         if secret:
             text = text.replace(secret, '***')
     return text
+
+
+class Pin(object):
+    """One active release requirement: line is the cleaned text handed to pip, name is canonical"""
+
+    def __init__(self, line, name, requirement):
+        self.line = line
+        self.name = name
+        self.requirement = requirement
+
+
+def parse_pins(path):
+    """Return the active Pins of a release requirements file, in file order"""
+    raise NotImplementedError
 
 
 class RunResult(object):
@@ -91,6 +109,7 @@ class EbiUpdate(UpdateManager):
                 phase()
 
     def phase_preflight(self):
+        """Read-only validation of the selected phases' inputs; raises one UpdateError listing every problem"""
         raise NotImplementedError
 
     def phase_resources(self):

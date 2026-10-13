@@ -140,7 +140,7 @@ class LegacyDispatchTest(MainTestBase):
 
 
 from scripts import RunUpdateEbi  # noqa: E402
-from scripts.RunUpdateEbi import EbiUpdate, UpdateError, redact, run_ebi_update  # noqa: E402
+from scripts.RunUpdateEbi import EbiUpdate, UpdateError, parse_pins, redact, run_ebi_update  # noqa: E402
 
 PHASES = ['phase_preflight', 'phase_resources', 'phase_remove', 'phase_pip', 'phase_webfe',
           'phase_taxdb', 'phase_schema', 'phase_build', 'phase_verify']
@@ -371,6 +371,191 @@ class OrchestrationTest(EbiTestBase):
         EbiUpdate.phase_pip.side_effect = UpdateError('pip', 'failed on https://u:s3cret@h/simple')
         _, out = self.run_update()
         self.assertNotIn('s3cret', out)
+
+
+class ParsePinsTest(unittest.TestCase):
+    """Slice 3: release requirements files, including markers, comments and direct references"""
+
+    def parse(self, text):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, 'rel')
+            with open(path, 'w') as fout:
+                fout.write(text)
+            return parse_pins(path)
+
+    @unittest.expectedFailure
+    def test_order_comments_and_blank_lines(self):
+        pins = self.parse('# header\n\nfoo==1.0\n  \nBar_Baz==2.1  # trailing note\nqux==3\n')
+        self.assertEqual([p.line for p in pins], ['foo==1.0', 'Bar_Baz==2.1', 'qux==3'])
+        self.assertEqual([p.name for p in pins], ['foo', 'bar-baz', 'qux'])
+
+    @unittest.expectedFailure
+    def test_markers_are_evaluated_for_this_interpreter(self):
+        pins = self.parse('old==1 ; python_version < "3.0"\nnew==2 ; python_version >= "3.0"\nplain==3\n')
+        self.assertEqual([p.name for p in pins], ['new', 'plain'])
+        self.assertEqual(pins[0].line, 'new==2 ; python_version >= "3.0"')
+
+    @unittest.expectedFailure
+    def test_direct_reference_is_kept(self):
+        pins = self.parse('pkg @ file:///opt/src/pkg\n')
+        self.assertEqual([p.name for p in pins], ['pkg'])
+        self.assertEqual(pins[0].line, 'pkg @ file:///opt/src/pkg')
+
+    @unittest.expectedFailure
+    def test_option_lines_are_rejected_with_their_line_number(self):
+        for text in ('a==1\n-r other.txt\n', 'a==1\n\n--extra-index-url https://u:p@h/\n', '-e .\n'):
+            with self.assertRaises(UpdateError) as ctx:
+                self.parse(text)
+            self.assertEqual(ctx.exception.phase, 'preflight')
+            self.assertRegex(ctx.exception.detail, r'line \d+')
+            self.assertNotIn('u:p', ctx.exception.detail)
+
+    @unittest.expectedFailure
+    def test_invalid_requirement_is_rejected_with_its_line_number(self):
+        with self.assertRaises(UpdateError) as ctx:
+            self.parse('good==1\nthis is not a requirement\n')
+        self.assertIn('line 2', ctx.exception.detail)
+
+
+class PreflightBase(EbiTestBase):
+    """A release whose inputs are all valid; tests break one thing at a time"""
+
+    PINS = 'foo==1.0\nmysqlclient==2.1.1\n'
+
+    def setUp(self):
+        super().setUp()
+        base = os.path.join(self.tmp, 'base_packages')
+        os.mkdir(base)
+        for name in ('constraints.txt', 'pre-requirements.txt', 'requirements.txt'):
+            self.touch(os.path.join(base, name))
+        self.reqs = self.touch(os.path.join(self.tmp, 'rel-pins'), self.PINS)
+        self.webfe_conf = self.touch(os.path.join(self.tmp, 'webfe.rel'), 'x==1\n')
+        self.installed = {'mysqlclient': '2.1.1'}
+
+        def version(name):
+            try:
+                return self.installed[name]
+            except KeyError:
+                raise RunUpdateEbi.importlib.metadata.PackageNotFoundError(name)
+
+        for patcher in (mock.patch.object(RunUpdateEbi, 'BASE_PACKAGES_DIR', base),
+                        mock.patch.object(RunUpdateEbi.importlib.metadata, 'version', side_effect=version),
+                        mock.patch.object(sys, 'prefix', '/deploy/venv'),
+                        mock.patch.object(sys, 'base_prefix', '/usr')):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.write_conf()
+
+    def touch(self, path, text=''):
+        with open(path, 'w') as fout:
+            fout.write(text)
+        return path
+
+    def write_conf(self, **overrides):
+        keys = dict(resourcestag='v6.1', webfetag='v6.1', webfeconf=self.webfe_conf, taxdbminsize='100',
+                    taxdbmaxsize='200', piprequirements=self.reqs)
+        keys.update(overrides)
+        self.touch(self.conf, '[DEFAULT]\n' + ''.join('{} = {}\n'.format(k, v) for k, v in keys.items()
+                                                      if v is not None))
+
+    def problems(self, **flags):
+        """Message of the UpdateError raised by preflight, or '' if it passes"""
+        upd = self.make_update(**flags)
+        try:
+            self.quiet(upd.phase_preflight)
+        except UpdateError as e:
+            self.assertEqual(e.phase, 'preflight')
+            return e.detail
+        return ''
+
+
+class PreflightConfigTest(PreflightBase):
+    """Slice 3: release configuration, interpreter and requirements files"""
+
+    @unittest.expectedFailure
+    def test_valid_release_passes_without_running_anything(self):
+        self.assertEqual(self.problems(), '')
+        self.assertEqual(self.procs.calls, [])
+
+    @unittest.expectedFailure
+    def test_missing_keys_are_named(self):
+        for key in ('resourcestag', 'webfetag', 'webfeconf', 'taxdbminsize', 'piprequirements'):
+            self.write_conf(**{key: None})
+            self.assertIn(key, self.problems(), key)
+
+    @unittest.expectedFailure
+    def test_missing_files_are_named(self):
+        self.write_conf(piprequirements=os.path.join(self.tmp, 'nope'))
+        self.assertIn(os.path.join(self.tmp, 'nope'), self.problems())
+        self.write_conf(webfeconf=os.path.join(self.tmp, 'nada'))
+        self.assertIn(os.path.join(self.tmp, 'nada'), self.problems())
+
+    @unittest.expectedFailure
+    def test_missing_base_package_file_is_named(self):
+        os.remove(os.path.join(RunUpdateEbi.BASE_PACKAGES_DIR, 'constraints.txt'))
+        self.assertIn('constraints.txt', self.problems())
+
+    @unittest.expectedFailure
+    def test_interpreter_must_be_a_virtualenv(self):
+        with mock.patch.object(sys, 'prefix', '/usr'):
+            self.assertIn('virtual environment', self.problems())
+
+    @unittest.expectedFailure
+    def test_every_problem_is_reported_together(self):
+        self.write_conf(webfetag=None, taxdbminsize=None)
+        with mock.patch.object(sys, 'prefix', '/usr'):
+            detail = self.problems()
+        for expected in ('webfetag', 'taxdbminsize', 'virtual environment'):
+            self.assertIn(expected, detail)
+
+    @unittest.expectedFailure
+    def test_skipped_phases_do_not_require_their_inputs(self):
+        self.write_conf(resourcestag=None, webfetag=None, webfeconf=None, taxdbminsize=None,
+                        piprequirements=None)
+        self.assertEqual(self.problems(skip_resources=True, skip_webfe=True, skip_taxdb=True, skip_pip=True), '')
+
+    @unittest.expectedFailure
+    def test_release_pins_that_cannot_be_installed_one_by_one_fail_early(self):
+        self.touch(self.reqs, 'foo==1.0\n-r more.txt\n')
+        self.assertIn('line 2', self.problems())
+
+
+class PreflightMysqlclientTest(PreflightBase):
+    """Slice 3: the installed mysqlclient must already be the release's, since it is never reinstalled"""
+
+    @unittest.expectedFailure
+    def test_matching_version_passes(self):
+        self.assertEqual(self.problems(), '')
+
+    @unittest.expectedFailure
+    def test_different_version_fails_with_both_versions_and_the_remedy(self):
+        self.installed['mysqlclient'] = '2.2.0'
+        detail = self.problems()
+        self.assertIn('mysqlclient', detail)
+        self.assertIn('2.1.1', detail)
+        self.assertIn('2.2.0', detail)
+        self.assertIn('rebuild', detail)
+
+    @unittest.expectedFailure
+    def test_not_installed_fails(self):
+        del self.installed['mysqlclient']
+        self.assertIn('not installed', self.problems())
+
+    @unittest.expectedFailure
+    def test_release_without_a_mysqlclient_pin_passes(self):
+        self.touch(self.reqs, 'foo==1.0\n')
+        self.installed['mysqlclient'] = '9.9'
+        self.assertEqual(self.problems(), '')
+
+    @unittest.expectedFailure
+    def test_pin_that_is_not_exact_fails(self):
+        self.touch(self.reqs, 'mysqlclient>=2.1\n')
+        self.assertIn('exact', self.problems())
+
+    @unittest.expectedFailure
+    def test_ignored_when_pip_phase_is_skipped(self):
+        self.installed['mysqlclient'] = '2.2.0'
+        self.assertEqual(self.problems(skip_pip=True), '')
 
 
 if __name__ == '__main__':

@@ -50,6 +50,10 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 GITHUB_URL = 'git@github.com:wwPDB/{}.git'
 # Build epoch of onedep-build per container distribution, as install_onedep.sh get_build_ver
 BUILD_EPOCHS = {'rocky': 'v-6000', 'almalinux': 'v-6000'}
+# Runs inside the build container; the positional arguments avoid any quoting of paths
+BUILD_SCRIPT = (
+    '. "$1" --siteid "$2" --locid "$3" || exit 1\n'
+    'exec python3 "$4" --config "$5" --build-version "$6" ${7:+--noop}\n')
 
 
 class UpdateError(Exception):

@@ -9,6 +9,7 @@ import io
 import os
 import shutil
 import sys
+import sysconfig
 import tempfile
 import types
 import unittest
@@ -1728,16 +1729,92 @@ class VerifyPhaseTest(PreflightBase):
             self.assertTrue([line for line in source.splitlines() if 'print(' in line and marker in line], marker)
 
 
-class BuildPhaseTest(PreflightBase):
-    """The containerised tool build is not available yet: asking for it must fail cleanly"""
+class BuildPhaseTest(BuildBase):
+    """The tool build runs BuildTools.py in the Rocky 8 container; the bundles are then checked against the pins"""
 
-    def test_build_tools_fails_with_a_clear_error_instead_of_a_traceback(self):
-        upd = self.make_update(build_tools=True, build_container='/x/y.sif')
+    def setUp(self):
+        super().setUp()
+        patcher = mock.patch.object(EbiUpdate, 'checktoolvers', autospec=True)
+        self.versions_mock = patcher.start()
+        self.addCleanup(patcher.stop)
+        self.tools_path = self.tools
+        self.admin_dir = os.path.dirname(RunUpdateEbi.SCRIPT_DIR)
+
+    def run_phase(self, **flags):
+        upd = self.make_update(**flags)
+        return self.quiet(upd.phase_build)
+
+    def expected_argv(self, runtime='/usr/bin/singularity', extra_binds=(), noop=''):
+        binds = [self.admin_dir, self.site_config, self.tools_path, self.build_tree, sys.prefix]
+        binds += [b for b in extra_binds if b not in binds]
+        argv = [runtime, 'exec']
+        for path in binds:
+            argv += ['--bind', path]
+        argv += ['--env', 'PYTHONPATH=' + sysconfig.get_paths()['purelib'], self.sif,
+                 'bash', '--noprofile', '--norc', '-c', RunUpdateEbi.BUILD_SCRIPT, 'bash', self.env_sh,
+                 'SITE_ID', 'loc', os.path.join(RunUpdateEbi.SCRIPT_DIR, 'BuildTools.py'), self.conf, 'v-6000', noop]
+        return argv
+
+    @unittest.expectedFailure
+    def test_buildtools_runs_in_the_container_after_sourcing_the_site_environment(self):
+        self.run_phase()
+        self.assertEqual([c.argv for c in self.procs.calls], [self.expected_argv()])
+
+    @unittest.expectedFailure
+    def test_apptainer_is_preferred_when_both_runtimes_exist(self):
+        self.runtimes['apptainer'] = '/usr/bin/apptainer'
+        self.run_phase()
+        self.assertEqual(self.procs.calls[0].argv, self.expected_argv(runtime='/usr/bin/apptainer'))
+
+    @unittest.expectedFailure
+    def test_extra_binds_follow_the_derived_ones_without_duplicates(self):
+        extra = os.path.join(self.tmp, 'more')
+        os.mkdir(extra)
+        self.run_phase(build_bind=[extra, self.build_tree])
+        self.assertEqual(self.procs.calls[0].argv, self.expected_argv(extra_binds=[extra]))
+
+    def test_the_script_sources_the_environment_and_stops_if_that_fails(self):
+        self.assertIn('. "$1" --siteid "$2" --locid "$3" || exit 1', RunUpdateEbi.BUILD_SCRIPT)
+        self.assertIn('python3 "$4" --config "$5" --build-version "$6"', RunUpdateEbi.BUILD_SCRIPT)
+
+    @unittest.expectedFailure
+    def test_noop_lets_buildtools_print_its_plan_and_skips_the_bundle_check(self):
+        self.run_phase(noop=True)
+        self.assertEqual([c.argv for c in self.procs.calls], [self.expected_argv(noop='noop')])
+        self.versions_mock.assert_not_called()
+
+    def test_a_failed_container_run_is_fatal_and_bundles_are_not_checked(self):
+        self.procs.on('bash --noprofile', 1, 'ERROR: executing post_install.sh failed\n')
         with self.assertRaises(UpdateError) as ctx:
-            self.quiet(upd.phase_build)
+            self.run_phase()
         self.assertEqual(ctx.exception.phase, 'build')
-        self.assertIn('not implemented', ctx.exception.detail)
+        self.versions_mock.assert_not_called()
+
+    @unittest.expectedFailure
+    def test_bundles_are_checked_after_a_successful_build(self):
+        self.run_phase()
+        self.versions_mock.assert_called_once()
+
+    @unittest.expectedFailure
+    def test_a_bundle_that_is_not_at_its_pin_fails_the_build_although_buildtools_exited_zero(self):
+        self.versions_mock.side_effect = lambda s: print('***ERROR: Version mismatch 1 != 2 in /tools/sf-valid')
+        with self.assertRaises(UpdateError) as ctx:
+            self.run_phase()
+        self.assertEqual(ctx.exception.phase, 'build')
+        self.assertIn('Version mismatch 1 != 2', ctx.exception.detail)
+
+    @unittest.expectedFailure
+    def test_skip_toolvers_skips_the_bundle_check(self):
+        self.run_phase(skip_toolvers=True)
+        self.versions_mock.assert_not_called()
+        self.assertEqual(len(self.procs.calls), 1)
+
+    @unittest.expectedFailure
+    def test_nothing_is_run_when_the_release_has_nothing_to_build(self):
+        self.write_conf(buildupdates=None)
+        _, out = self.run_phase()
         self.assertEqual(self.procs.calls, [])
+        self.assertIn('nothing to build', out)
 
 
 if __name__ == '__main__':

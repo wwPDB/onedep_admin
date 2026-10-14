@@ -618,14 +618,65 @@ class ResourcesPhaseTest(PreflightBase):
                 'describe --tags --exact-match')]
         self.assertEqual(self.lines(), git)
 
-    def test_an_unknown_tag_stops_before_checkout(self):
+    @unittest.expectedFailure
+    def test_a_ref_that_is_neither_tag_nor_branch_stops_before_checkout(self):
         self.procs.on('rev-parse -q --verify', 1)
         upd = self.make_update()
         with self.assertRaises(UpdateError) as ctx:
             self.quiet(upd.phase_resources)
         self.assertEqual(ctx.exception.phase, 'resources')
-        self.assertIn('v6.1 is not a tag', ctx.exception.detail)
+        self.assertIn('v6.1 is neither a tag nor a branch', ctx.exception.detail)
         self.assertFalse([line for line in self.lines() if 'checkout' in line])
+
+    def use_branch(self, ref='develop'):
+        self.write_conf(resourcestag=ref)
+        self.procs.on('refs/tags/' + ref, 1)
+        self.procs.on('--abbrev-ref HEAD', 0, ref + '\n')
+
+    @unittest.expectedFailure
+    def test_a_branch_is_checked_out_and_fast_forwarded(self):
+        self.use_branch()
+        upd = self.make_update()
+        self.quiet(upd.phase_resources)
+        git = ['git -C ' + self.ro + ' ' + c for c in
+               ('fetch --tags', 'rev-parse -q --verify refs/tags/develop',
+                'rev-parse -q --verify refs/remotes/origin/develop', 'checkout develop',
+                'pull --ff-only origin develop', 'rev-parse --abbrev-ref HEAD')]
+        self.assertEqual(self.lines(), git)
+
+    def test_a_tag_wins_over_a_branch_of_the_same_name(self):
+        self.procs.on('describe --tags --exact-match', 0, 'v6.1\n')
+        self.procs.on('refs/remotes/origin/v6.1', 0)
+        upd = self.make_update()
+        self.quiet(upd.phase_resources)
+        self.assertFalse([line for line in self.lines() if 'pull' in line or 'refs/remotes' in line])
+
+    @unittest.expectedFailure
+    def test_a_failed_fast_forward_is_fatal(self):
+        self.use_branch()
+        self.procs.rules.insert(0, ('pull --ff-only', 1, 'fatal: Not possible to fast-forward\n'))
+        upd = self.make_update()
+        with self.assertRaises(UpdateError) as ctx:
+            self.quiet(upd.phase_resources)
+        self.assertEqual(ctx.exception.phase, 'resources')
+        self.assertIn('pull --ff-only origin develop', ctx.exception.detail)
+
+    @unittest.expectedFailure
+    def test_the_branch_must_be_the_one_checked_out(self):
+        self.use_branch()
+        self.procs.rules.insert(0, ('--abbrev-ref HEAD', 0, 'HEAD\n'))
+        upd = self.make_update()
+        with self.assertRaises(UpdateError) as ctx:
+            self.quiet(upd.phase_resources)
+        self.assertIn('develop', ctx.exception.detail)
+        self.assertIn('HEAD', ctx.exception.detail)
+
+    def test_a_branch_under_noop_only_prints_the_plan(self):
+        self.use_branch()
+        upd = self.make_update(noop=True)
+        _, out = self.quiet(upd.phase_resources)
+        self.assertEqual(self.procs.calls, [])
+        self.assertIn('checkout develop', out)
 
     def test_checkout_must_land_exactly_on_the_tag(self):
         self.procs.on('describe --tags --exact-match', 0, 'v6.0\n')
@@ -943,13 +994,31 @@ class WebfePhaseTest(PreflightBase):
             self.git + 'submodule update --init --recursive',
             self.checker])
 
-    def test_unknown_tag_stops_before_checkout(self):
+    @unittest.expectedFailure
+    def test_a_branch_is_checked_out_and_fast_forwarded_before_the_submodules(self):
+        self.write_conf(webfetag='develop')
+        self.procs.on('refs/tags/develop', 1)
+        self.procs.on('--abbrev-ref HEAD', 0, 'develop\n')
+        upd = self.make_update()
+        self.quiet(upd.phase_webfe)
+        self.assertEqual(self.procs.lines(), [
+            self.git + 'fetch --tags',
+            self.git + 'rev-parse -q --verify refs/tags/develop',
+            self.git + 'rev-parse -q --verify refs/remotes/origin/develop',
+            self.git + 'checkout develop',
+            self.git + 'pull --ff-only origin develop',
+            self.git + 'rev-parse --abbrev-ref HEAD',
+            self.git + 'submodule update --init --recursive',
+            self.checker])
+
+    @unittest.expectedFailure
+    def test_a_ref_that_is_neither_tag_nor_branch_stops_before_checkout(self):
         self.procs.on('rev-parse -q --verify', 1)
         upd = self.make_update()
         with self.assertRaises(UpdateError) as ctx:
             self.quiet(upd.phase_webfe)
         self.assertEqual(ctx.exception.phase, 'webfe')
-        self.assertIn('v6.1 is not a tag', ctx.exception.detail)
+        self.assertIn('v6.1 is neither a tag nor a branch', ctx.exception.detail)
         self.assertFalse([line for line in self.procs.lines() if 'checkout' in line])
 
     def test_failed_submodule_update_is_fatal_and_the_check_does_not_run(self):

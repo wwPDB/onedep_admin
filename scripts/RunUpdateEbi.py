@@ -353,24 +353,38 @@ class EbiUpdate(UpdateManager):
             return ['release pins mysqlclient=={} but {} is installed; {}'.format(wanted, installed, remedy)]
         return []
 
-    def _checkout_release_tag(self, phase, repo, tag):
-        """Fetch tags, check out tag and verify it; a detached HEAD at a tag is expected, so nothing is pulled"""
+    def _checkout_release_ref(self, phase, repo, ref):
+        """Check out a release tag (detached, so nothing is pulled) or fast-forward a branch, then verify it"""
         git = ['git', '-C', repo]
         self._run(phase, git + ['fetch', '--tags'])
-        if not self.args.noop and self._run(phase, git + ['rev-parse', '-q', '--verify', 'refs/tags/' + tag],
-                                            mutating=False, check=False).returncode:
-            raise UpdateError(phase, '{} is not a tag in {}; --ebi-compat requires a release tag'.format(tag, repo))
-        self._run(phase, git + ['checkout', tag])
+
+        def exists(name):
+            return self._run(phase, git + ['rev-parse', '-q', '--verify', name], mutating=False,
+                             check=False).returncode == 0
+
+        is_tag = False
+        if not self.args.noop:
+            is_tag = exists('refs/tags/' + ref)
+            if not is_tag and not exists('refs/remotes/origin/' + ref):
+                raise UpdateError(phase, '{} is neither a tag nor a branch in {}'.format(ref, repo))
+        self._run(phase, git + ['checkout', ref])
         if self.args.noop:
-            print('[{}] noop: the checkout is not verified'.format(phase))
+            print('[{}] noop: a branch is then fast-forwarded; nothing is verified'.format(phase))
             return
-        described = self._run(phase, git + ['describe', '--tags', '--exact-match'], mutating=False).output.strip()
-        if described != tag:
-            raise UpdateError(phase, '{} is at {}, expected {}'.format(repo, described, tag))
+        if is_tag:
+            described = self._run(phase, git + ['describe', '--tags', '--exact-match'],
+                                  mutating=False).output.strip()
+            if described != ref:
+                raise UpdateError(phase, '{} is at {}, expected {}'.format(repo, described, ref))
+            return
+        self._run(phase, git + ['pull', '--ff-only', 'origin', ref])
+        current = self._run(phase, git + ['rev-parse', '--abbrev-ref', 'HEAD'], mutating=False).output.strip()
+        if current != ref:
+            raise UpdateError(phase, '{} is on {}, expected branch {}'.format(repo, current, ref))
 
     def phase_resources(self):
         """Check out the release tag of resources_ro and fast-forward resources_rw when configured"""
-        self._checkout_release_tag('resources', self.get_variable('RO_RESOURCE_PATH'), self._opt('resourcestag'))
+        self._checkout_release_ref('resources', self.get_variable('RO_RESOURCE_PATH'), self._opt('resourcestag'))
         rw = self.get_variable('RW_RESOURCE_PATH')
         if rw:
             self._run('resources', ['git', '-C', rw, 'pull', '--ff-only'])
@@ -436,7 +450,7 @@ class EbiUpdate(UpdateManager):
     def phase_webfe(self):
         """Check out the release tag, update submodules and check the web root against the release"""
         root = self._webfe_root()
-        self._checkout_release_tag('webfe', root, self._opt('webfetag'))
+        self._checkout_release_ref('webfe', root, self._opt('webfetag'))
         self._run('webfe', ['git', '-C', root, 'submodule', 'update', '--init', '--recursive'])
         checker = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ManageWebFE.py')
         self._run('webfe', [sys.executable, checker, '--webroot', root, 'check', '-r', self._opt('webfeconf')])

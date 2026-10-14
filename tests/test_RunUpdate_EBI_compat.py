@@ -618,7 +618,6 @@ class ResourcesPhaseTest(PreflightBase):
                 'describe --tags --exact-match')]
         self.assertEqual(self.lines(), git)
 
-    @unittest.expectedFailure
     def test_a_ref_that_is_neither_tag_nor_branch_stops_before_checkout(self):
         self.procs.on('rev-parse -q --verify', 1)
         upd = self.make_update()
@@ -633,7 +632,6 @@ class ResourcesPhaseTest(PreflightBase):
         self.procs.on('refs/tags/' + ref, 1)
         self.procs.on('--abbrev-ref HEAD', 0, ref + '\n')
 
-    @unittest.expectedFailure
     def test_a_branch_is_checked_out_and_fast_forwarded(self):
         self.use_branch()
         upd = self.make_update()
@@ -651,7 +649,6 @@ class ResourcesPhaseTest(PreflightBase):
         self.quiet(upd.phase_resources)
         self.assertFalse([line for line in self.lines() if 'pull' in line or 'refs/remotes' in line])
 
-    @unittest.expectedFailure
     def test_a_failed_fast_forward_is_fatal(self):
         self.use_branch()
         self.procs.rules.insert(0, ('pull --ff-only', 1, 'fatal: Not possible to fast-forward\n'))
@@ -661,7 +658,6 @@ class ResourcesPhaseTest(PreflightBase):
         self.assertEqual(ctx.exception.phase, 'resources')
         self.assertIn('pull --ff-only origin develop', ctx.exception.detail)
 
-    @unittest.expectedFailure
     def test_the_branch_must_be_the_one_checked_out(self):
         self.use_branch()
         self.procs.rules.insert(0, ('--abbrev-ref HEAD', 0, 'HEAD\n'))
@@ -994,7 +990,6 @@ class WebfePhaseTest(PreflightBase):
             self.git + 'submodule update --init --recursive',
             self.checker])
 
-    @unittest.expectedFailure
     def test_a_branch_is_checked_out_and_fast_forwarded_before_the_submodules(self):
         self.write_conf(webfetag='develop')
         self.procs.on('refs/tags/develop', 1)
@@ -1011,7 +1006,6 @@ class WebfePhaseTest(PreflightBase):
             self.git + 'submodule update --init --recursive',
             self.checker])
 
-    @unittest.expectedFailure
     def test_a_ref_that_is_neither_tag_nor_branch_stops_before_checkout(self):
         self.procs.on('rev-parse -q --verify', 1)
         upd = self.make_update()

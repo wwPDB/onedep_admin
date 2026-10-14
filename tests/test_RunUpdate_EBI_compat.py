@@ -102,13 +102,11 @@ class EbiCompatCliTest(MainTestBase):
         self.assertIn('--build-tools with --ebi-compat requires --build-container', err)
         ebi.assert_not_called()
 
-    @unittest.expectedFailure
     def test_build_bind_requires_the_flag(self):
         status, _, err = self.run_main('--build-bind', '/x')
         self.assertEqual(status, 2)
         self.assertIn('--build-bind requires --ebi-compat', err)
 
-    @unittest.expectedFailure
     def test_build_bind_can_be_repeated(self):
         with mock.patch('scripts.RunUpdateEbi.run_ebi_update', return_value=0) as ebi:
             status, _, _ = self.run_main('--ebi-compat', '--build-tools', '--build-container', '/x/y.sif',
@@ -1317,19 +1315,16 @@ class BuildPreflightTest(BuildBase):
     def test_valid_build_inputs_pass(self):
         self.assertEqual(self.problems(), '')
 
-    @unittest.expectedFailure
     def test_a_missing_container_runtime_is_reported(self):
         self.runtimes.clear()
         detail = self.problems()
         self.assertIn('apptainer', detail)
         self.assertIn('singularity', detail)
 
-    @unittest.expectedFailure
     def test_the_image_must_exist(self):
         detail = self.problems(build_container='/no/such/builder.sif')
         self.assertIn('/no/such/builder.sif', detail)
 
-    @unittest.expectedFailure
     def test_the_image_must_be_a_rocky_or_alma_8_system(self):
         self.procs.rules.insert(0, ('cat /etc/os-release', 0, 'ID="ubuntu"\nVERSION_ID="22.04"\n'))
         detail = self.problems()
@@ -1340,25 +1335,21 @@ class BuildPreflightTest(BuildBase):
         self.procs.rules.insert(0, ('cat /etc/os-release', 0, 'ID="almalinux"\nVERSION_ID="8.9"\n'))
         self.assertEqual(self.problems(), '')
 
-    @unittest.expectedFailure
     def test_an_image_that_cannot_run_is_reported(self):
         self.procs.rules.insert(0, ('cat /etc/os-release', 255, 'FATAL: could not open image\n'))
         self.assertIn('cannot run', self.problems())
 
-    @unittest.expectedFailure
     def test_the_build_version_must_match_the_distribution(self):
         detail = self.problems(build_version='v-5200')
         self.assertIn('v-5200', detail)
         self.assertIn('--build-version v-6000', detail)
 
-    @unittest.expectedFailure
     def test_the_build_tree_must_be_set_and_exist(self):
         del self.site['WWPDB_ONEDEP_BUILD']
         self.assertIn('WWPDB_ONEDEP_BUILD', self.problems())
         self.site['WWPDB_ONEDEP_BUILD'] = os.path.join(self.tmp, 'absent')
         self.assertIn(os.path.join(self.tmp, 'absent'), self.problems())
 
-    @unittest.expectedFailure
     def test_a_build_tree_with_tracked_changes_is_reported_and_left_alone(self):
         self.procs.on(lambda a: a[:3] == ['git', '-C', self.build_tree] and 'status' in a, 0, ' M v-6000/x.sh\n')
         detail = self.problems()
@@ -1366,7 +1357,6 @@ class BuildPreflightTest(BuildBase):
         self.assertIn('v-6000/x.sh', detail)
         self.assertFalse([c for c in self.procs.calls if set(c.argv) & {'stash', 'reset', 'checkout', 'clean'}])
 
-    @unittest.expectedFailure
     def test_every_package_needs_its_build_function_in_the_epoch(self):
         self.write_conf(buildupdates='annotation_pack phenix_22')
         detail = self.problems()
@@ -1374,7 +1364,6 @@ class BuildPreflightTest(BuildBase):
         self.assertIn('v-6000', detail)
         self.assertNotIn('pkg_build_annotation_pack', detail)
 
-    @unittest.expectedFailure
     def test_the_site_environment_must_resolve(self):
         os.remove(self.env_sh)
         self.assertIn(self.env_sh, self.problems())
@@ -1385,7 +1374,6 @@ class BuildPreflightTest(BuildBase):
         del self.site['WWPDB_SITE_LOC']
         self.assertIn('WWPDB_SITE_LOC', self.problems())
 
-    @unittest.expectedFailure
     def test_extra_bind_paths_must_exist(self):
         detail = self.problems(build_bind=['/no/such/dir', self.tmp])
         self.assertIn('/no/such/dir', detail)

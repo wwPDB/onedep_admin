@@ -1,6 +1,7 @@
 """Opt-in, fail-fast release update for EBI RHEL 9 deployments (RunUpdate.py --ebi-compat)"""
 
 import contextlib
+import glob
 import importlib.metadata
 import importlib.util
 import io
@@ -47,6 +48,8 @@ NO_PLANNED_MIGRATIONS = 'No planned migration operations'
 DEFAULT_TAXDB_MAXSIZE = 999999999
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 GITHUB_URL = 'git@github.com:wwPDB/{}.git'
+# Build epoch of onedep-build per container distribution, as install_onedep.sh get_build_ver
+BUILD_EPOCHS = {'rocky': 'v-6000', 'almalinux': 'v-6000'}
 
 
 class UpdateError(Exception):
@@ -175,7 +178,7 @@ class EbiUpdate(UpdateManager):
         problems = []
         for check in (self._check_config, self._check_pins, self._check_removepy, self._check_resources,
                       self._check_pip_inputs, self._check_dev_checkouts, self._check_webfe, self._check_taxonomy,
-                      self._check_django):
+                      self._check_django, self._check_build):
             problems.extend(check())
         if problems:
             raise UpdateError('preflight', '{} problem(s) found, nothing was changed:\n  - {}'.format(
@@ -326,6 +329,67 @@ class EbiUpdate(UpdateManager):
             if listing.returncode or index['URL_NETLOC'] not in listing.output:
                 problems.append('pip is not configured for the package index {}; configure it first '
                                 '(this mode never rewrites pip configuration)'.format(index['URL_NETLOC']))
+        return problems
+
+    def _buildupdates(self):
+        return (self._opt('buildupdates') or '').split()
+
+    def _container_runtime(self):
+        return shutil.which('apptainer') or shutil.which('singularity')
+
+    def _check_build(self):
+        a = self.args
+        if not a.build_tools or not self._buildupdates():
+            return []
+        problems = []
+        runtime = self._container_runtime()
+        if not runtime:
+            problems.append('neither apptainer nor singularity is on PATH; load the site module that provides one')
+        if not a.build_container or not os.path.isfile(a.build_container):
+            problems.append('--build-container is not a file: {}'.format(a.build_container))
+        elif runtime:
+            problems.extend(self._check_container_system(runtime))
+        problems.extend('--build-bind is not a directory: {}'.format(path)
+                        for path in a.build_bind or [] if not os.path.isdir(path))
+        problems.extend(self._check_build_tree())
+        config_dir = self.get_variable('TOP_WWPDB_SITE_CONFIG_DIR')
+        if not config_dir:
+            problems.append('TOP_WWPDB_SITE_CONFIG_DIR is not set in the site configuration')
+        elif not os.path.isfile(os.path.join(config_dir, 'init', 'env.sh')):
+            problems.append('the site environment script is not a file: {}'.format(
+                os.path.join(config_dir, 'init', 'env.sh')))
+        problems.extend('{} is not set in the site configuration'.format(name)
+                        for name in ('WWPDB_SITE_ID', 'WWPDB_SITE_LOC') if not self.get_variable(name))
+        return problems
+
+    def _check_container_system(self, runtime):
+        image = self.args.build_container
+        result = self._run('preflight', [runtime, 'exec', image, 'cat', '/etc/os-release'], mutating=False,
+                           check=False, echo=False)
+        if result.returncode:
+            lines = result.output.strip().splitlines()
+            return ['cannot run the build container {}: {}'.format(image, lines[-1] if lines else 'no output')]
+        fields = dict(re.findall(r'^(\w+)="?([^"\n]*)"?$', result.output, re.MULTILINE))
+        distro, version = fields.get('ID', ''), fields.get('VERSION_ID', '')
+        if distro not in BUILD_EPOCHS or not version.startswith('8.'):
+            return ['the build container is {} {}, not a Rocky Linux or AlmaLinux 8 image'.format(distro, version)]
+        if self.args.build_version != BUILD_EPOCHS[distro]:
+            return ['--build-version is {} but a {} container builds with {}; pass --build-version {}'.format(
+                self.args.build_version, distro, BUILD_EPOCHS[distro], BUILD_EPOCHS[distro])]
+        return []
+
+    def _check_build_tree(self):
+        tree = self.get_variable('WWPDB_ONEDEP_BUILD')
+        if not tree:
+            return ['WWPDB_ONEDEP_BUILD is not set in the site configuration']
+        if not os.path.isdir(tree):
+            return ['WWPDB_ONEDEP_BUILD is not a directory: {}'.format(tree)]
+        problems = self._check_checkout('onedep-build', tree)
+        epoch = os.path.join(tree, self.args.build_version, 'packages')
+        text = ''.join(open(path).read() for path in sorted(glob.glob(os.path.join(epoch, '*.sh'))))
+        for pack in self._buildupdates():
+            if not re.search(r'^\s*(function\s+)?pkg_build_{}\s*\(\)'.format(re.escape(pack)), text, re.MULTILINE):
+                problems.append('pkg_build_{} is not defined in {}'.format(pack, epoch))
         return problems
 
     def _dev_repos_file(self):

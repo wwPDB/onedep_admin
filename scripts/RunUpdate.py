@@ -538,11 +538,15 @@ def main():
                              '(see docs/RunUpdate-EBI-compat.md); other sites should not use this')
     parser.add_argument("--build-container", default=None, metavar='PATH',
                         help='Rocky 8 Singularity/Apptainer image in which --ebi-compat runs --build-tools')
+    parser.add_argument("--build-bind", action='append', metavar='PATH',
+                        help='Extra directory to bind into the --build-container (may be repeated)')
 
     args = parser.parse_args()
 
     if args.build_container and not args.ebi_compat:
         parser.error('--build-container requires --ebi-compat')
+    if args.build_bind and not args.ebi_compat:
+        parser.error('--build-bind requires --ebi-compat')
     if args.ebi_compat and args.build_tools and not args.build_container:
         parser.error('--build-tools with --ebi-compat requires --build-container')
 

@@ -344,7 +344,7 @@ class EbiUpdate(UpdateManager):
             return ['mysqlclient is not pinned to an exact version in the release requirements: {}'.format(pin.line)]
         wanted = specs[0].version
         remedy = ('--ebi-compat never reinstalls it; rebuild it against the host MySQL client library '
-                  'first (see docs/RunUpdate-ebi-compat.md)')
+                  'first (see docs/RunUpdate-EBI-compat.md)')
         try:
             installed = importlib.metadata.version('mysqlclient')
         except importlib.metadata.PackageNotFoundError:

@@ -535,7 +535,7 @@ def main():
     parser.add_argument("--get-latest-version", default=False, action='store_true', help='get latest version number')
     parser.add_argument("--ebi-compat", default=False, action='store_true',
                         help='Use the strict, fail-fast update procedure for EBI RHEL 9 deployments '
-                             '(see docs/RunUpdate-ebi-compat.md); other sites should not use this')
+                             '(see docs/RunUpdate-EBI-compat.md); other sites should not use this')
     parser.add_argument("--build-container", default=None, metavar='PATH',
                         help='Rocky 8 Singularity/Apptainer image in which --ebi-compat runs --build-tools')
 

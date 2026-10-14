@@ -102,6 +102,20 @@ class EbiCompatCliTest(MainTestBase):
         self.assertIn('--build-tools with --ebi-compat requires --build-container', err)
         ebi.assert_not_called()
 
+    @unittest.expectedFailure
+    def test_build_bind_requires_the_flag(self):
+        status, _, err = self.run_main('--build-bind', '/x')
+        self.assertEqual(status, 2)
+        self.assertIn('--build-bind requires --ebi-compat', err)
+
+    @unittest.expectedFailure
+    def test_build_bind_can_be_repeated(self):
+        with mock.patch('scripts.RunUpdateEbi.run_ebi_update', return_value=0) as ebi:
+            status, _, _ = self.run_main('--ebi-compat', '--build-tools', '--build-container', '/x/y.sif',
+                                         '--build-bind', '/a', '--build-bind', '/b')
+        self.assertEqual(status, 0)
+        self.assertEqual(ebi.call_args[0][1].build_bind, ['/a', '/b'])
+
     def test_build_tools_with_container_is_accepted(self):
         with mock.patch('scripts.RunUpdateEbi.run_ebi_update', return_value=0) as ebi:
             status, _, _ = self.run_main('--ebi-compat', '--build-tools', '--build-container', '/x/y.sif',
@@ -151,7 +165,7 @@ def make_args(**overrides):
     values = dict(config='latest', noop=False, skip_pip=False, skip_remove=False, skip_resources=False,
                   skip_webfe=False, skip_taxdb=False, skip_schema=False, skip_toolvers=False,
                   build_tools=False, build_version='v-5200', build_dev=False, get_latest_version=False,
-                  ebi_compat=True, build_container=None)
+                  ebi_compat=True, build_container=None, build_bind=None)
     values.update(overrides)
     return types.SimpleNamespace(**values)
 
@@ -1265,6 +1279,125 @@ class DevBuildPhaseTest(PreflightBase):
         self.assertIn('{} install --no-deps -c {} wwpdb.apps.deposit==0.68'.format(self.pip, self.constraints),
                       installs)
         self.assertFalse([line for line in installs if ' -e ' in line])
+
+
+class BuildBase(PreflightBase):
+    """A release with packages to build, a Rocky 8 image, a build tree and a site environment"""
+
+    def setUp(self):
+        super().setUp()
+        self.sif = self.touch(os.path.join(self.tmp, 'builder.sif'))
+        self.build_tree = os.path.join(self.tmp, 'onedep-build')
+        packages = os.path.join(self.build_tree, 'v-6000', 'packages')
+        os.makedirs(packages)
+        self.touch(os.path.join(packages, 'build-project-package-functions.sh'),
+                   'pkg_build_annotation_pack() {\n  :\n}\npkg_build_chem_comp_pack() {\n  :\n}\n')
+        self.site_config = os.path.join(self.tmp, 'site-config')
+        os.makedirs(os.path.join(self.site_config, 'init'))
+        self.env_sh = self.touch(os.path.join(self.site_config, 'init', 'env.sh'))
+        self.site.update(WWPDB_ONEDEP_BUILD=self.build_tree, TOP_WWPDB_SITE_CONFIG_DIR=self.site_config,
+                         WWPDB_SITE_ID='SITE_ID', WWPDB_SITE_LOC='loc')
+        self.write_conf(buildupdates='annotation_pack chem_comp_pack')
+        self.runtimes = {'singularity': '/usr/bin/singularity'}
+        patcher = mock.patch.object(RunUpdateEbi.shutil, 'which', side_effect=lambda name: self.runtimes.get(name))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.procs.on('cat /etc/os-release', 0, 'NAME="Rocky Linux"\nID="rocky"\nVERSION_ID="8.10"\n')
+
+    def make_update(self, **flags):
+        flags.setdefault('build_tools', True)
+        flags.setdefault('build_container', self.sif)
+        flags.setdefault('build_version', 'v-6000')
+        return super().make_update(**flags)
+
+
+class BuildPreflightTest(BuildBase):
+    """The container build needs a runtime, a Rocky 8 image, a clean build tree and the site environment"""
+
+    def test_valid_build_inputs_pass(self):
+        self.assertEqual(self.problems(), '')
+
+    @unittest.expectedFailure
+    def test_a_missing_container_runtime_is_reported(self):
+        self.runtimes.clear()
+        detail = self.problems()
+        self.assertIn('apptainer', detail)
+        self.assertIn('singularity', detail)
+
+    @unittest.expectedFailure
+    def test_the_image_must_exist(self):
+        detail = self.problems(build_container='/no/such/builder.sif')
+        self.assertIn('/no/such/builder.sif', detail)
+
+    @unittest.expectedFailure
+    def test_the_image_must_be_a_rocky_or_alma_8_system(self):
+        self.procs.rules.insert(0, ('cat /etc/os-release', 0, 'ID="ubuntu"\nVERSION_ID="22.04"\n'))
+        detail = self.problems()
+        self.assertIn('ubuntu', detail)
+        self.assertIn('22.04', detail)
+
+    def test_alma_linux_8_is_accepted(self):
+        self.procs.rules.insert(0, ('cat /etc/os-release', 0, 'ID="almalinux"\nVERSION_ID="8.9"\n'))
+        self.assertEqual(self.problems(), '')
+
+    @unittest.expectedFailure
+    def test_an_image_that_cannot_run_is_reported(self):
+        self.procs.rules.insert(0, ('cat /etc/os-release', 255, 'FATAL: could not open image\n'))
+        self.assertIn('cannot run', self.problems())
+
+    @unittest.expectedFailure
+    def test_the_build_version_must_match_the_distribution(self):
+        detail = self.problems(build_version='v-5200')
+        self.assertIn('v-5200', detail)
+        self.assertIn('--build-version v-6000', detail)
+
+    @unittest.expectedFailure
+    def test_the_build_tree_must_be_set_and_exist(self):
+        del self.site['WWPDB_ONEDEP_BUILD']
+        self.assertIn('WWPDB_ONEDEP_BUILD', self.problems())
+        self.site['WWPDB_ONEDEP_BUILD'] = os.path.join(self.tmp, 'absent')
+        self.assertIn(os.path.join(self.tmp, 'absent'), self.problems())
+
+    @unittest.expectedFailure
+    def test_a_build_tree_with_tracked_changes_is_reported_and_left_alone(self):
+        self.procs.on(lambda a: a[:3] == ['git', '-C', self.build_tree] and 'status' in a, 0, ' M v-6000/x.sh\n')
+        detail = self.problems()
+        self.assertIn(self.build_tree, detail)
+        self.assertIn('v-6000/x.sh', detail)
+        self.assertFalse([c for c in self.procs.calls if set(c.argv) & {'stash', 'reset', 'checkout', 'clean'}])
+
+    @unittest.expectedFailure
+    def test_every_package_needs_its_build_function_in_the_epoch(self):
+        self.write_conf(buildupdates='annotation_pack phenix_22')
+        detail = self.problems()
+        self.assertIn('pkg_build_phenix_22', detail)
+        self.assertIn('v-6000', detail)
+        self.assertNotIn('pkg_build_annotation_pack', detail)
+
+    @unittest.expectedFailure
+    def test_the_site_environment_must_resolve(self):
+        os.remove(self.env_sh)
+        self.assertIn(self.env_sh, self.problems())
+        self.touch(self.env_sh)
+        del self.site['WWPDB_SITE_ID']
+        self.assertIn('WWPDB_SITE_ID', self.problems())
+        self.site['WWPDB_SITE_ID'] = 'SITE_ID'
+        del self.site['WWPDB_SITE_LOC']
+        self.assertIn('WWPDB_SITE_LOC', self.problems())
+
+    @unittest.expectedFailure
+    def test_extra_bind_paths_must_exist(self):
+        detail = self.problems(build_bind=['/no/such/dir', self.tmp])
+        self.assertIn('/no/such/dir', detail)
+
+    def test_nothing_is_checked_without_build_tools(self):
+        self.runtimes.clear()
+        self.assertEqual(self.problems(build_tools=False), '')
+
+    def test_a_release_without_packages_to_build_has_nothing_to_check(self):
+        self.write_conf(buildupdates=None)
+        self.runtimes.clear()
+        self.assertEqual(self.problems(), '')
 
 
 class DatabasePreflightTest(PreflightBase):

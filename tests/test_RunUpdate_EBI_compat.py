@@ -567,10 +567,19 @@ class ResourcesPreflightTest(PreflightBase):
         del self.site['RO_RESOURCE_PATH']
         self.assertIn('RO_RESOURCE_PATH', self.problems())
 
-    def test_missing_directory_is_reported_not_cloned(self):
+    @unittest.expectedFailure
+    def test_missing_directory_is_planned_for_cloning_not_an_error(self):
         os.rmdir(self.ro)
-        self.assertIn(self.ro, self.problems())
+        self.assertEqual(self.problems(), '')
         self.assertFalse([c for c in self.procs.calls if 'clone' in c.argv])
+
+    @unittest.expectedFailure
+    def test_missing_directory_in_an_unwritable_place_is_an_error(self):
+        os.rmdir(self.ro)
+        with mock.patch.object(RunUpdateEbi.os, 'access', return_value=False):
+            detail = self.problems()
+        self.assertIn(self.ro, detail)
+        self.assertIn('not writable', detail)
 
     def test_directory_that_is_not_a_git_checkout_is_reported(self):
         self.git_rule(self.ro, 'rev-parse', 128)
@@ -703,6 +712,50 @@ class ResourcesPhaseTest(PreflightBase):
         self.assertEqual(self.procs.calls, [])
         self.assertIn('fetch --tags', out)
         self.assertIn('checkout v6.1', out)
+
+
+    @unittest.expectedFailure
+    def test_a_missing_checkout_is_cloned_first(self):
+        os.rmdir(self.ro)
+        self.procs.on('describe --tags --exact-match', 0, 'v6.1\n')
+        upd = self.make_update()
+        self.quiet(upd.phase_resources)
+        self.assertEqual(self.lines()[:2], ['git clone git@github.com:wwPDB/onedep-resources_ro.git ' + self.ro,
+                                            'git -C ' + self.ro + ' fetch --tags'])
+
+    @unittest.expectedFailure
+    def test_a_missing_writable_copy_is_cloned_then_updated(self):
+        rw = os.path.join(self.tmp, 'resources_rw')
+        self.site['RW_RESOURCE_PATH'] = rw
+        self.procs.on('describe --tags --exact-match', 0, 'v6.1\n')
+        upd = self.make_update()
+        self.quiet(upd.phase_resources)
+        self.assertEqual(self.lines()[-2:], ['git clone git@github.com:wwPDB/onedep-resources_rw.git ' + rw,
+                                             'git -C {} pull --ff-only'.format(rw)])
+
+    def test_existing_checkouts_are_not_cloned(self):
+        self.procs.on('describe --tags --exact-match', 0, 'v6.1\n')
+        upd = self.make_update()
+        self.quiet(upd.phase_resources)
+        self.assertFalse([line for line in self.lines() if ' clone ' in line])
+
+    @unittest.expectedFailure
+    def test_a_failed_clone_is_fatal_and_nothing_follows(self):
+        os.rmdir(self.ro)
+        self.procs.on('clone', 128)
+        upd = self.make_update()
+        with self.assertRaises(UpdateError) as ctx:
+            self.quiet(upd.phase_resources)
+        self.assertEqual(ctx.exception.phase, 'resources')
+        self.assertEqual(len(self.lines()), 1)
+
+    @unittest.expectedFailure
+    def test_noop_prints_the_clone_without_running_it(self):
+        os.rmdir(self.ro)
+        upd = self.make_update(noop=True)
+        _, out = self.quiet(upd.phase_resources)
+        self.assertEqual(self.procs.calls, [])
+        self.assertIn('git clone git@github.com:wwPDB/onedep-resources_ro.git ' + self.ro, out)
 
 
 class RemovePackagesTest(PreflightBase):
@@ -940,10 +993,19 @@ class WebfePreflightTest(PreflightBase):
         del self.site['TOP_WWPDB_WEBAPPS_DIR']
         self.assertIn('TOP_WWPDB_WEBAPPS_DIR', self.problems())
 
-    def test_missing_checkout_is_reported_not_cloned(self):
+    @unittest.expectedFailure
+    def test_missing_checkout_is_planned_for_cloning_not_an_error(self):
         shutil.rmtree(self.webfe)
-        self.assertIn(self.webfe, self.problems())
+        self.assertEqual(self.problems(), '')
         self.assertFalse([c for c in self.procs.calls if 'clone' in c.argv])
+
+    @unittest.expectedFailure
+    def test_missing_checkout_in_an_unwritable_place_is_an_error(self):
+        shutil.rmtree(self.webfe)
+        with mock.patch.object(RunUpdateEbi.os, 'access', return_value=False):
+            detail = self.problems()
+        self.assertIn(self.webfe, detail)
+        self.assertIn('not writable', detail)
 
     def test_directory_that_is_not_a_git_checkout_is_reported(self):
         self.git_rule('rev-parse', 128)
@@ -1043,6 +1105,45 @@ class WebfePhaseTest(PreflightBase):
         self.quiet(upd.phase_webfe)
         for call in self.procs.calls:
             self.assertFalse(set(call.argv) & {'pull', 'clean', 'stash', 'reset', 'rm'}, call.line)
+
+
+    @unittest.expectedFailure
+    def test_a_missing_checkout_is_cloned_with_submodules_first(self):
+        shutil.rmtree(self.webfe)
+        upd = self.make_update()
+        self.quiet(upd.phase_webfe)
+        self.assertEqual(self.procs.lines()[0],
+                         'git clone --recurse-submodules git@github.com:wwPDB/onedep-webfe.git ' + self.webfe)
+        self.assertEqual(self.procs.lines()[1], self.git + 'fetch --tags')
+
+    def source_directory_missing(self):
+        src = os.path.join(self.tmp, 'src')
+        root = os.path.join(src, 'onedep-webfe')
+        self.site['TOP_WWPDB_WEBAPPS_DIR'] = os.path.join(root, 'webapps')
+        return src, root
+
+    @unittest.expectedFailure
+    def test_the_source_directory_is_created_when_it_is_missing(self):
+        src, root = self.source_directory_missing()
+        upd = self.make_update()
+        self.quiet(upd.phase_webfe)
+        self.assertTrue(os.path.isdir(src))
+        self.assertIn('git clone --recurse-submodules git@github.com:wwPDB/onedep-webfe.git ' + root,
+                      self.procs.lines())
+
+    @unittest.expectedFailure
+    def test_noop_creates_nothing_and_prints_the_clone(self):
+        src, root = self.source_directory_missing()
+        upd = self.make_update(noop=True)
+        _, out = self.quiet(upd.phase_webfe)
+        self.assertFalse(os.path.exists(src))
+        self.assertEqual(self.procs.calls, [])
+        self.assertIn('git clone --recurse-submodules git@github.com:wwPDB/onedep-webfe.git ' + root, out)
+
+    def test_an_existing_checkout_is_not_cloned(self):
+        upd = self.make_update()
+        self.quiet(upd.phase_webfe)
+        self.assertFalse([line for line in self.procs.lines() if ' clone ' in line])
 
 
 class DatabasePreflightTest(PreflightBase):

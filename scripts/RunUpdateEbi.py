@@ -558,25 +558,35 @@ class EbiUpdate(UpdateManager):
         if failures:
             raise UpdateError(phase, '\n'.join(failures))
 
+    def _verify_finalcheck(self):
+        result = self._run('verify', [sys.executable, os.path.join(SCRIPT_DIR, 'ManageDB.py'), 'finalcheck'],
+                           mutating=False)
+        failures = failure_lines(result.output, SCHEMA_FAILURE_MARKERS)
+        if failures:
+            raise UpdateError('verify', 'ManageDB.py finalcheck reported:\n' + '\n'.join(failures))
+
+    def _verify_webfe(self):
+        self._run('verify', [sys.executable, os.path.join(SCRIPT_DIR, 'ManageWebFE.py'), '--webroot',
+                             self._webfe_root(), 'check', '-r', self._opt('webfeconf')], mutating=False)
+
     def phase_verify(self):
-        """Final checks; unlike the stock script, any failure here fails the run"""
+        """Final checks; any failure fails the run, except under --noop where they are only reported"""
         a = self.args
-        if a.noop:
-            print('[verify] noop: nothing was changed, so the final checks are not run')
-            return
+        checks = []
         if not a.skip_toolvers:
-            self._capture_legacy_check('verify', self.checktoolvers)
-            self._capture_legacy_check('verify', self.checkoelicense)
-            result = self._run('verify', [sys.executable, os.path.join(SCRIPT_DIR, 'ManageDB.py'), 'finalcheck'],
-                               mutating=False)
-            failures = failure_lines(result.output, SCHEMA_FAILURE_MARKERS)
-            if failures:
-                raise UpdateError('verify', 'ManageDB.py finalcheck reported:\n' + '\n'.join(failures))
+            checks.extend([lambda: self._capture_legacy_check('verify', self.checktoolvers),
+                           lambda: self._capture_legacy_check('verify', self.checkoelicense),
+                           self._verify_finalcheck])
         if not a.skip_webfe:
-            self._run('verify', [sys.executable, os.path.join(SCRIPT_DIR, 'ManageWebFE.py'), '--webroot',
-                                 self._webfe_root(), 'check', '-r', self._opt('webfeconf')], mutating=False)
-        self._pip('check', mutating=False, phase='verify')
-        self.check_mysqlclient_linkage()
+            checks.append(self._verify_webfe)
+        checks.extend([lambda: self._pip('check', mutating=False, phase='verify'), self.check_mysqlclient_linkage])
+        for check in checks:
+            try:
+                check()
+            except UpdateError as e:
+                if not a.noop:
+                    raise
+                print('[verify] noop: would fail: {}'.format(redact(e.detail, self.secrets)))
 
 
 def run_ebi_update(config_file, args):

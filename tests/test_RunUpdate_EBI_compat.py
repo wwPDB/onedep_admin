@@ -1442,7 +1442,6 @@ class VerifyPhaseTest(PreflightBase):
         self.assertNotIn(self.webfe_check, self.procs.lines())
         self.assertIn(self.pip_check, self.procs.lines())
 
-    @unittest.expectedFailure
     def test_noop_runs_every_check_and_reports_problems_without_failing(self):
         self.versions_mock.side_effect = lambda s: print('***ERROR: Version mismatch 1 != 2 in /tools/x')
         self.procs.on('pip check', 1, 'foo requires bar\n')
@@ -1456,7 +1455,6 @@ class VerifyPhaseTest(PreflightBase):
         self.assertIn('Version mismatch 1 != 2', out)
         self.assertIn('pip check', out)
 
-    @unittest.expectedFailure
     def test_noop_with_nothing_wrong_reports_nothing(self):
         _, out = self.run_phase(noop=True)
         self.assertNotIn('would fail', out)

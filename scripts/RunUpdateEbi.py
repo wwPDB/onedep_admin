@@ -45,6 +45,7 @@ TOOL_FAILURE_MARKERS = ('ERROR', 'WARNING: Tool out of date')
 NO_PLANNED_MIGRATIONS = 'No planned migration operations'
 DEFAULT_TAXDB_MAXSIZE = 999999999
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+GITHUB_URL = 'git@github.com:wwPDB/{}.git'
 
 
 class UpdateError(Exception):
@@ -270,7 +271,13 @@ class EbiUpdate(UpdateManager):
     def _check_checkout(self, label, path, on_branch=False, untracked=False):
         """Read-only: the directory must be a git checkout without local changes (nothing is cloned or reset)"""
         if not os.path.isdir(path):
-            return ['{} {} does not exist; this mode never clones'.format(label, path)]
+            ancestor = os.path.dirname(path)
+            while not os.path.isdir(ancestor):
+                ancestor = os.path.dirname(ancestor)
+            if not os.access(ancestor, os.W_OK):
+                return ['{} {} does not exist and cannot be cloned: {} is not writable'.format(label, path, ancestor)]
+            print('[preflight] {} {} does not exist; it will be cloned'.format(label, path))
+            return []
         git = ['git', '-C', path]
         if self._run('preflight', git + ['rev-parse', '--is-inside-work-tree'], mutating=False,
                      check=False).returncode:
@@ -382,11 +389,27 @@ class EbiUpdate(UpdateManager):
         if current != ref:
             raise UpdateError(phase, '{} is on {}, expected branch {}'.format(repo, current, ref))
 
+    def _make_directory(self, phase, path):
+        if os.path.isdir(path):
+            return
+        print('[{}] mkdir -p {}'.format(phase, path))
+        if self.args.noop:
+            print('[{}] noop: not executed'.format(phase))
+            return
+        os.makedirs(path)
+
+    def _clone_if_missing(self, phase, repo, path, *options):
+        if not os.path.isdir(path):
+            self._run(phase, ['git', 'clone'] + list(options) + [GITHUB_URL.format(repo), path])
+
     def phase_resources(self):
-        """Check out the release tag of resources_ro and fast-forward resources_rw when configured"""
-        self._checkout_release_ref('resources', self.get_variable('RO_RESOURCE_PATH'), self._opt('resourcestag'))
+        """Check out the release tag or branch of resources_ro and fast-forward resources_rw when configured"""
+        ro = self.get_variable('RO_RESOURCE_PATH')
+        self._clone_if_missing('resources', 'onedep-resources_ro', ro)
+        self._checkout_release_ref('resources', ro, self._opt('resourcestag'))
         rw = self.get_variable('RW_RESOURCE_PATH')
         if rw:
+            self._clone_if_missing('resources', 'onedep-resources_rw', rw)
             self._run('resources', ['git', '-C', rw, 'pull', '--ff-only'])
 
     def phase_remove(self):
@@ -450,6 +473,9 @@ class EbiUpdate(UpdateManager):
     def phase_webfe(self):
         """Check out the release tag, update submodules and check the web root against the release"""
         root = self._webfe_root()
+        if not os.path.isdir(root):
+            self._make_directory('webfe', os.path.dirname(root))
+            self._clone_if_missing('webfe', 'onedep-webfe', root, '--recurse-submodules')
         self._checkout_release_ref('webfe', root, self._opt('webfetag'))
         self._run('webfe', ['git', '-C', root, 'submodule', 'update', '--init', '--recursive'])
         checker = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'ManageWebFE.py')

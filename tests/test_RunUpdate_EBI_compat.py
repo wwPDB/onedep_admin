@@ -1755,18 +1755,15 @@ class BuildPhaseTest(BuildBase):
                  'SITE_ID', 'loc', os.path.join(RunUpdateEbi.SCRIPT_DIR, 'BuildTools.py'), self.conf, 'v-6000', noop]
         return argv
 
-    @unittest.expectedFailure
     def test_buildtools_runs_in_the_container_after_sourcing_the_site_environment(self):
         self.run_phase()
         self.assertEqual([c.argv for c in self.procs.calls], [self.expected_argv()])
 
-    @unittest.expectedFailure
     def test_apptainer_is_preferred_when_both_runtimes_exist(self):
         self.runtimes['apptainer'] = '/usr/bin/apptainer'
         self.run_phase()
         self.assertEqual(self.procs.calls[0].argv, self.expected_argv(runtime='/usr/bin/apptainer'))
 
-    @unittest.expectedFailure
     def test_extra_binds_follow_the_derived_ones_without_duplicates(self):
         extra = os.path.join(self.tmp, 'more')
         os.mkdir(extra)
@@ -1777,7 +1774,6 @@ class BuildPhaseTest(BuildBase):
         self.assertIn('. "$1" --siteid "$2" --locid "$3" || exit 1', RunUpdateEbi.BUILD_SCRIPT)
         self.assertIn('python3 "$4" --config "$5" --build-version "$6"', RunUpdateEbi.BUILD_SCRIPT)
 
-    @unittest.expectedFailure
     def test_noop_lets_buildtools_print_its_plan_and_skips_the_bundle_check(self):
         self.run_phase(noop=True)
         self.assertEqual([c.argv for c in self.procs.calls], [self.expected_argv(noop='noop')])
@@ -1790,12 +1786,10 @@ class BuildPhaseTest(BuildBase):
         self.assertEqual(ctx.exception.phase, 'build')
         self.versions_mock.assert_not_called()
 
-    @unittest.expectedFailure
     def test_bundles_are_checked_after_a_successful_build(self):
         self.run_phase()
         self.versions_mock.assert_called_once()
 
-    @unittest.expectedFailure
     def test_a_bundle_that_is_not_at_its_pin_fails_the_build_although_buildtools_exited_zero(self):
         self.versions_mock.side_effect = lambda s: print('***ERROR: Version mismatch 1 != 2 in /tools/sf-valid')
         with self.assertRaises(UpdateError) as ctx:
@@ -1803,13 +1797,11 @@ class BuildPhaseTest(BuildBase):
         self.assertEqual(ctx.exception.phase, 'build')
         self.assertIn('Version mismatch 1 != 2', ctx.exception.detail)
 
-    @unittest.expectedFailure
     def test_skip_toolvers_skips_the_bundle_check(self):
         self.run_phase(skip_toolvers=True)
         self.versions_mock.assert_not_called()
         self.assertEqual(len(self.procs.calls), 1)
 
-    @unittest.expectedFailure
     def test_nothing_is_run_when_the_release_has_nothing_to_build(self):
         self.write_conf(buildupdates=None)
         _, out = self.run_phase()

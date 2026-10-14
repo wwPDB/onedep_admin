@@ -11,6 +11,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+import sysconfig
 import warnings
 from urllib.parse import urlparse
 
@@ -655,8 +656,31 @@ class EbiUpdate(UpdateManager):
             raise UpdateError('schema', 'migrations are still planned after migrate:\n' + remaining.strip())
 
     def phase_build(self):
-        raise UpdateError('build', '--build-tools is not implemented yet for --ebi-compat; build the tool bundles '
-                          'in the Rocky 8 container yourself and re-run without --build-tools')
+        """Run BuildTools.py in the Rocky 8 container, then check the bundles it should have produced"""
+        a = self.args
+        if not self._buildupdates():
+            print('[build] nothing to build: the release lists no buildupdates')
+            return
+        binds = []
+        for path in ([os.path.dirname(SCRIPT_DIR), self.get_variable('TOP_WWPDB_SITE_CONFIG_DIR'),
+                       self.get_variable('TOOLS_PATH'), self.get_variable('WWPDB_ONEDEP_BUILD'), sys.prefix] +
+                      list(a.build_bind or [])):
+            if path and path not in binds:
+                binds.append(path)
+        argv = [self._container_runtime(), 'exec']
+        for path in binds:
+            argv.extend(['--bind', path])
+        argv.extend(['--env', 'PYTHONPATH=' + sysconfig.get_paths()['purelib'], a.build_container,
+                     'bash', '--noprofile', '--norc', '-c', BUILD_SCRIPT, 'bash',
+                     os.path.join(self.get_variable('TOP_WWPDB_SITE_CONFIG_DIR'), 'init', 'env.sh'),
+                     self.get_variable('WWPDB_SITE_ID'), self.get_variable('WWPDB_SITE_LOC'),
+                     os.path.join(SCRIPT_DIR, 'BuildTools.py'), self._UpdateManager__configfile,
+                     a.build_version, 'noop' if a.noop else ''])
+        # Under --noop BuildTools.py itself only prints its plan, so the container is still run
+        self._run('build', argv, mutating=False)
+        if not a.noop and not a.skip_toolvers:
+            # BuildTools.py exits 0 even when a package fails to build, so the bundles are the evidence
+            self._capture_legacy_check('build', self.checktoolvers)
 
     def _capture_legacy_check(self, phase, check):
         """Run a stock check, which only prints, and turn its failure messages into an UpdateError"""

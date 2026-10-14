@@ -84,7 +84,6 @@ class EbiCompatCliTest(MainTestBase):
         self.assertTrue(args.skip_taxdb)
         self.assertFalse(args.skip_pip)
 
-    @unittest.expectedFailure
     def test_build_dev_is_accepted_and_passed_on(self):
         with mock.patch('scripts.RunUpdateEbi.run_ebi_update', return_value=0) as ebi:
             status, _, _ = self.run_main('--ebi-compat', '--build-dev')
@@ -1148,12 +1147,10 @@ class DevBuildPreflightTest(PreflightBase):
         self.assertEqual(self.problems(build_dev=True), '')
         self.assertFalse([c for c in self.procs.calls if 'clone' in c.argv])
 
-    @unittest.expectedFailure
     def test_missing_dependency_list_is_reported(self):
         os.remove(os.path.join(RunUpdateEbi.BASE_PACKAGES_DIR, 'requirements_wwpdb_dependencies.txt'))
         self.assertIn('requirements_wwpdb_dependencies.txt', self.problems(build_dev=True))
 
-    @unittest.expectedFailure
     def test_existing_checkout_with_tracked_changes_is_reported_and_not_touched(self):
         os.mkdir(self.config_repo)
         self.procs.on(lambda a: a[:3] == ['git', '-C', self.config_repo] and 'status' in a, 0, ' M setup.py\n')
@@ -1162,7 +1159,6 @@ class DevBuildPreflightTest(PreflightBase):
         self.assertIn('setup.py', detail)
         self.assertFalse([c for c in self.procs.calls if set(c.argv) & {'checkout', 'stash', 'reset', 'clean'}])
 
-    @unittest.expectedFailure
     def test_unwritable_source_directory_is_reported_for_the_missing_checkouts(self):
         with mock.patch.object(RunUpdateEbi.os, 'access', return_value=False):
             detail = self.problems(build_dev=True)
@@ -1198,7 +1194,6 @@ class DevBuildPhaseTest(PreflightBase):
     def editable(self, repo):
         return '{} install --no-deps -c {} -e {}'.format(self.pip, self.constraints, repo)
 
-    @unittest.expectedFailure
     def test_third_party_pins_then_develop_checkouts_installed_editable(self):
         self.run_phase()
         installs = [line for line in self.procs.lines() if ' install ' in line]
@@ -1211,7 +1206,6 @@ class DevBuildPhaseTest(PreflightBase):
             self.editable(self.config_repo),
             self.editable(self.deposit_repo)])
 
-    @unittest.expectedFailure
     def test_missing_checkouts_are_cloned_and_put_on_develop(self):
         self.run_phase()
         lines = self.procs.lines()
@@ -1220,7 +1214,6 @@ class DevBuildPhaseTest(PreflightBase):
             self.assertEqual(lines[clone + 1], 'git -C {} checkout develop'.format(repo))
             self.assertEqual(lines[clone + 2], self.editable(repo))
 
-    @unittest.expectedFailure
     def test_an_existing_checkout_keeps_its_branch_and_is_fast_forwarded(self):
         os.mkdir(self.config_repo)
         self.run_phase()
@@ -1230,7 +1223,6 @@ class DevBuildPhaseTest(PreflightBase):
         pull = lines.index('git -C {} pull --ff-only'.format(self.config_repo))
         self.assertEqual(lines[pull + 1], self.editable(self.config_repo))
 
-    @unittest.expectedFailure
     def test_a_detached_checkout_is_left_as_it_is_with_a_note(self):
         os.mkdir(self.config_repo)
         self.procs.on(lambda a: a[:3] == ['git', '-C', self.config_repo] and 'symbolic-ref' in a, 1)
@@ -1240,7 +1232,6 @@ class DevBuildPhaseTest(PreflightBase):
         self.assertIn('detached', out)
         self.assertIn(self.editable(self.config_repo), self.procs.lines())
 
-    @unittest.expectedFailure
     def test_a_failed_clone_is_fatal_and_no_editable_install_follows(self):
         self.procs.on('clone', 128)
         with self.assertRaises(UpdateError) as ctx:
@@ -1248,7 +1239,6 @@ class DevBuildPhaseTest(PreflightBase):
         self.assertEqual(ctx.exception.phase, 'pip')
         self.assertFalse([line for line in self.procs.lines() if ' -e ' in line])
 
-    @unittest.expectedFailure
     def test_a_failed_editable_install_names_the_checkout(self):
         self.procs.on('-e ' + self.config_repo, 1)
         with self.assertRaises(UpdateError) as ctx:
@@ -1256,14 +1246,12 @@ class DevBuildPhaseTest(PreflightBase):
         self.assertIn(self.config_repo, ctx.exception.detail)
         self.assertNotIn(self.editable(self.deposit_repo), self.procs.lines())
 
-    @unittest.expectedFailure
     def test_pip_check_and_mysqlclient_check_follow(self):
         self.run_phase()
         lines = self.procs.lines()
         self.assertLess(lines.index(self.editable(self.deposit_repo)), lines.index(self.pip + ' check'))
         self.assertTrue(lines[-1].startswith('ldd '))
 
-    @unittest.expectedFailure
     def test_noop_prints_the_plan_and_runs_nothing(self):
         _, out = self.run_phase(noop=True)
         self.assertEqual(self.procs.calls, [])

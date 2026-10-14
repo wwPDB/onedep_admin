@@ -173,7 +173,8 @@ class EbiUpdate(UpdateManager):
         """Read-only validation of the selected phases' inputs; raises one UpdateError listing every problem"""
         problems = []
         for check in (self._check_config, self._check_pins, self._check_removepy, self._check_resources,
-                      self._check_pip_inputs, self._check_webfe, self._check_taxonomy, self._check_django):
+                      self._check_pip_inputs, self._check_dev_checkouts, self._check_webfe, self._check_taxonomy,
+                      self._check_django):
             problems.extend(check())
         if problems:
             raise UpdateError('preflight', '{} problem(s) found, nothing was changed:\n  - {}'.format(
@@ -326,6 +327,29 @@ class EbiUpdate(UpdateManager):
                                 '(this mode never rewrites pip configuration)'.format(index['URL_NETLOC']))
         return problems
 
+    def _dev_repos_file(self):
+        return os.path.join(BASE_PACKAGES_DIR, 'requirements_wwpdb_dependencies.txt')
+
+    def _dev_repos(self):
+        with open(self._dev_repos_file()) as fin:
+            return [line.strip() for line in fin if line.strip()]
+
+    def _dev_source_dir(self):
+        return os.path.dirname(self._webfe_root())
+
+    def _check_dev_checkouts(self):
+        if not (self.args.build_dev and not self.args.skip_pip):
+            return []
+        if not self._webfe_root():
+            return ['TOP_WWPDB_WEBAPPS_DIR is not set in the site configuration, so the source directory '
+                    'of the develop checkouts is unknown']
+        if not os.path.isfile(self._dev_repos_file()):
+            return ['the list of develop repositories is not a file: {}'.format(self._dev_repos_file())]
+        problems = []
+        for repo in self._dev_repos():
+            problems.extend(self._check_checkout(repo, os.path.join(self._dev_source_dir(), repo)))
+        return problems
+
     def _release_pins(self):
         return parse_pins(self._opt('piprequirements'))
 
@@ -444,19 +468,40 @@ class EbiUpdate(UpdateManager):
         env = {'PKG_CONFIG_PATH': self._pkg_config_path()}
         for name in ('pre-requirements.txt', 'requirements.txt'):
             self._pip('install', '-c', constraints, '-r', os.path.join(BASE_PACKAGES_DIR, name), env=env)
+        # A develop build installs the wwPDB packages from their checkouts instead of their release pins
+        provided = set(canonicalize_name(repo[3:] if repo.startswith('py-') else repo)
+                       for repo in self._dev_repos()) if self.args.build_dev else set()
         for pin in self._release_pins():
-            if pin.name == 'mysqlclient':
+            if pin.name == 'mysqlclient' or pin.name in provided:
                 continue
             self._pip('install', '--no-deps', '-c', constraints, pin.line)
         extra = self._opt('pip_extra_reqs')
         if extra:
             # The requirements file expands the index credentials itself, so they travel in the environment
             self._pip('install', '--no-deps', '-c', constraints, '-r', extra, env=self._index_settings())
+        if self.args.build_dev:
+            self._install_dev_checkouts(constraints)
         if self.args.noop:
             print('[pip] noop: pip check and the mysqlclient check are left to the final verification')
             return
         self._pip('check')
         self.check_mysqlclient_linkage()
+
+    def _install_dev_checkouts(self, constraints):
+        """Develop checkouts of the wwPDB packages, installed editable; an existing checkout keeps its branch"""
+        source = self._dev_source_dir()
+        self._make_directory('pip', source)
+        for repo in self._dev_repos():
+            path = os.path.join(source, repo)
+            if not os.path.isdir(path):
+                self._clone_if_missing('pip', repo, path, '--recursive')
+                self._run('pip', ['git', '-C', path, 'checkout', 'develop'])
+            elif self._run('pip', ['git', '-C', path, 'symbolic-ref', '-q', 'HEAD'], mutating=False,
+                           check=False).returncode == 0:
+                self._run('pip', ['git', '-C', path, 'pull', '--ff-only'])
+            else:
+                print('[pip] {} is on a detached HEAD; left as it is'.format(path))
+            self._pip('install', '--no-deps', '-c', constraints, '-e', path)
 
     def check_mysqlclient_linkage(self):
         """MySQLdb must import and its extension module must have no unresolved shared libraries"""

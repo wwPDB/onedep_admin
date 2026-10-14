@@ -541,8 +541,6 @@ def main():
 
     args = parser.parse_args()
 
-    if args.ebi_compat and args.build_dev:
-        parser.error('--build-dev cannot be combined with --ebi-compat')
     if args.build_container and not args.ebi_compat:
         parser.error('--build-container requires --ebi-compat')
     if args.ebi_compat and args.build_tools and not args.build_container:

@@ -84,12 +84,12 @@ class EbiCompatCliTest(MainTestBase):
         self.assertTrue(args.skip_taxdb)
         self.assertFalse(args.skip_pip)
 
-    def test_build_dev_cannot_be_combined(self):
-        with mock.patch('scripts.RunUpdateEbi.run_ebi_update') as ebi:
-            status, _, err = self.run_main('--ebi-compat', '--build-dev')
-        self.assertEqual(status, 2)
-        self.assertIn('--build-dev cannot be combined with --ebi-compat', err)
-        ebi.assert_not_called()
+    @unittest.expectedFailure
+    def test_build_dev_is_accepted_and_passed_on(self):
+        with mock.patch('scripts.RunUpdateEbi.run_ebi_update', return_value=0) as ebi:
+            status, _, _ = self.run_main('--ebi-compat', '--build-dev')
+        self.assertEqual(status, 0)
+        self.assertTrue(ebi.call_args[0][1].build_dev)
 
     def test_build_container_requires_flag(self):
         status, _, err = self.run_main('--build-container', '/x/y.sif')
@@ -424,6 +424,8 @@ class PreflightBase(EbiTestBase):
         os.mkdir(base)
         for name in ('constraints.txt', 'pre-requirements.txt', 'requirements.txt'):
             self.touch(os.path.join(base, name))
+        self.touch(os.path.join(base, 'requirements_wwpdb_dependencies.txt'),
+                   'py-wwpdb_utils_config\npy-wwpdb_apps_deposit\n')
         self.reqs = self.touch(os.path.join(self.tmp, 'rel-pins'), self.PINS)
         self.webfe_conf = self.touch(os.path.join(self.tmp, 'webfe.rel'), 'x==1\n')
         self.installed = {'mysqlclient': '2.1.1'}
@@ -1133,6 +1135,148 @@ class WebfePhaseTest(PreflightBase):
         upd = self.make_update()
         self.quiet(upd.phase_webfe)
         self.assertFalse([line for line in self.procs.lines() if ' clone ' in line])
+
+
+class DevBuildPreflightTest(PreflightBase):
+    """--build-dev: the develop checkouts of the wwPDB packages must be usable"""
+
+    def setUp(self):
+        super().setUp()
+        self.config_repo = os.path.join(self.tmp, 'py-wwpdb_utils_config')
+
+    def test_missing_checkouts_are_planned_for_cloning(self):
+        self.assertEqual(self.problems(build_dev=True), '')
+        self.assertFalse([c for c in self.procs.calls if 'clone' in c.argv])
+
+    @unittest.expectedFailure
+    def test_missing_dependency_list_is_reported(self):
+        os.remove(os.path.join(RunUpdateEbi.BASE_PACKAGES_DIR, 'requirements_wwpdb_dependencies.txt'))
+        self.assertIn('requirements_wwpdb_dependencies.txt', self.problems(build_dev=True))
+
+    @unittest.expectedFailure
+    def test_existing_checkout_with_tracked_changes_is_reported_and_not_touched(self):
+        os.mkdir(self.config_repo)
+        self.procs.on(lambda a: a[:3] == ['git', '-C', self.config_repo] and 'status' in a, 0, ' M setup.py\n')
+        detail = self.problems(build_dev=True)
+        self.assertIn(self.config_repo, detail)
+        self.assertIn('setup.py', detail)
+        self.assertFalse([c for c in self.procs.calls if set(c.argv) & {'checkout', 'stash', 'reset', 'clean'}])
+
+    @unittest.expectedFailure
+    def test_unwritable_source_directory_is_reported_for_the_missing_checkouts(self):
+        with mock.patch.object(RunUpdateEbi.os, 'access', return_value=False):
+            detail = self.problems(build_dev=True)
+        self.assertIn(self.config_repo, detail)
+        self.assertIn('not writable', detail)
+
+    def test_checkouts_are_not_examined_without_build_dev(self):
+        os.mkdir(self.config_repo)
+        self.procs.on(lambda a: a[:3] == ['git', '-C', self.config_repo] and 'status' in a, 0, ' M setup.py\n')
+        self.assertEqual(self.problems(), '')
+
+
+class DevBuildPhaseTest(PreflightBase):
+    """--build-dev: base requirements, third-party pins, then the develop checkouts installed editable"""
+
+    PINS = ('foo==1.0\nmysqlclient==2.1.1\nwwpdb.apps.deposit==0.68\nwwpdb.utils.config==1.0.1\nwwpdb.io==1.2.1\n')
+
+    def setUp(self):
+        super().setUp()
+        self.constraints = os.path.join(RunUpdateEbi.BASE_PACKAGES_DIR, 'constraints.txt')
+        self.pip = '{} -m pip'.format(sys.executable)
+        self.config_repo = os.path.join(self.tmp, 'py-wwpdb_utils_config')
+        self.deposit_repo = os.path.join(self.tmp, 'py-wwpdb_apps_deposit')
+        self.procs.on(lambda a: a[0] == sys.executable and '-c' in a[1:3], 0, 'MYSQL_SO=/venv/MySQLdb/_mysql.so\n')
+
+    def run_phase(self, **flags):
+        upd = self.make_update(build_dev=True, **flags)
+        return self.quiet(upd.phase_pip)
+
+    def clone(self, repo):
+        return 'git clone --recursive git@github.com:wwPDB/{}.git {}'.format(os.path.basename(repo), repo)
+
+    def editable(self, repo):
+        return '{} install --no-deps -c {} -e {}'.format(self.pip, self.constraints, repo)
+
+    @unittest.expectedFailure
+    def test_third_party_pins_then_develop_checkouts_installed_editable(self):
+        self.run_phase()
+        installs = [line for line in self.procs.lines() if ' install ' in line]
+        base = RunUpdateEbi.BASE_PACKAGES_DIR
+        self.assertEqual(installs, [
+            '{} install -c {} -r {}/pre-requirements.txt'.format(self.pip, self.constraints, base),
+            '{} install -c {} -r {}/requirements.txt'.format(self.pip, self.constraints, base),
+            '{} install --no-deps -c {} foo==1.0'.format(self.pip, self.constraints),
+            '{} install --no-deps -c {} wwpdb.io==1.2.1'.format(self.pip, self.constraints),
+            self.editable(self.config_repo),
+            self.editable(self.deposit_repo)])
+
+    @unittest.expectedFailure
+    def test_missing_checkouts_are_cloned_and_put_on_develop(self):
+        self.run_phase()
+        lines = self.procs.lines()
+        for repo in (self.config_repo, self.deposit_repo):
+            clone = lines.index(self.clone(repo))
+            self.assertEqual(lines[clone + 1], 'git -C {} checkout develop'.format(repo))
+            self.assertEqual(lines[clone + 2], self.editable(repo))
+
+    @unittest.expectedFailure
+    def test_an_existing_checkout_keeps_its_branch_and_is_fast_forwarded(self):
+        os.mkdir(self.config_repo)
+        self.run_phase()
+        lines = self.procs.lines()
+        self.assertNotIn(self.clone(self.config_repo), lines)
+        self.assertNotIn('git -C {} checkout develop'.format(self.config_repo), lines)
+        pull = lines.index('git -C {} pull --ff-only'.format(self.config_repo))
+        self.assertEqual(lines[pull + 1], self.editable(self.config_repo))
+
+    @unittest.expectedFailure
+    def test_a_detached_checkout_is_left_as_it_is_with_a_note(self):
+        os.mkdir(self.config_repo)
+        self.procs.on(lambda a: a[:3] == ['git', '-C', self.config_repo] and 'symbolic-ref' in a, 1)
+        _, out = self.run_phase()
+        self.assertFalse([line for line in self.procs.lines() if line == 'git -C {} pull --ff-only'.format(
+            self.config_repo)])
+        self.assertIn('detached', out)
+        self.assertIn(self.editable(self.config_repo), self.procs.lines())
+
+    @unittest.expectedFailure
+    def test_a_failed_clone_is_fatal_and_no_editable_install_follows(self):
+        self.procs.on('clone', 128)
+        with self.assertRaises(UpdateError) as ctx:
+            self.run_phase()
+        self.assertEqual(ctx.exception.phase, 'pip')
+        self.assertFalse([line for line in self.procs.lines() if ' -e ' in line])
+
+    @unittest.expectedFailure
+    def test_a_failed_editable_install_names_the_checkout(self):
+        self.procs.on('-e ' + self.config_repo, 1)
+        with self.assertRaises(UpdateError) as ctx:
+            self.run_phase()
+        self.assertIn(self.config_repo, ctx.exception.detail)
+        self.assertNotIn(self.editable(self.deposit_repo), self.procs.lines())
+
+    @unittest.expectedFailure
+    def test_pip_check_and_mysqlclient_check_follow(self):
+        self.run_phase()
+        lines = self.procs.lines()
+        self.assertLess(lines.index(self.editable(self.deposit_repo)), lines.index(self.pip + ' check'))
+        self.assertTrue(lines[-1].startswith('ldd '))
+
+    @unittest.expectedFailure
+    def test_noop_prints_the_plan_and_runs_nothing(self):
+        _, out = self.run_phase(noop=True)
+        self.assertEqual(self.procs.calls, [])
+        self.assertIn(self.clone(self.config_repo), out)
+        self.assertIn(self.editable(self.deposit_repo), out)
+
+    def test_release_mode_still_installs_the_wwpdb_pins_and_no_checkouts(self):
+        upd = self.make_update()
+        self.quiet(upd.phase_pip)
+        installs = [line for line in self.procs.lines() if ' install ' in line]
+        self.assertIn('{} install --no-deps -c {} wwpdb.apps.deposit==0.68'.format(self.pip, self.constraints),
+                      installs)
+        self.assertFalse([line for line in installs if ' -e ' in line])
 
 
 class DatabasePreflightTest(PreflightBase):

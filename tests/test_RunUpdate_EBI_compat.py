@@ -1442,11 +1442,31 @@ class VerifyPhaseTest(PreflightBase):
         self.assertNotIn(self.webfe_check, self.procs.lines())
         self.assertIn(self.pip_check, self.procs.lines())
 
-    def test_noop_runs_no_check(self):
+    @unittest.expectedFailure
+    def test_noop_runs_every_check_and_reports_problems_without_failing(self):
+        self.versions_mock.side_effect = lambda s: print('***ERROR: Version mismatch 1 != 2 in /tools/x')
+        self.procs.on('pip check', 1, 'foo requires bar\n')
         _, out = self.run_phase(noop=True)
-        self.assertEqual(self.procs.calls, [])
-        self.versions_mock.assert_not_called()
-        self.assertIn('noop', out)
+        lines = self.procs.lines()
+        for expected in (self.finalcheck, self.webfe_check, self.pip_check):
+            self.assertIn(expected, lines)
+        self.assertTrue([line for line in lines if line.startswith('ldd ')])
+        self.licence_mock.assert_called_once()
+        self.assertIn('noop: would fail', out)
+        self.assertIn('Version mismatch 1 != 2', out)
+        self.assertIn('pip check', out)
+
+    @unittest.expectedFailure
+    def test_noop_with_nothing_wrong_reports_nothing(self):
+        _, out = self.run_phase(noop=True)
+        self.assertNotIn('would fail', out)
+        self.assertEqual(len(self.procs.calls), 5)
+
+    def test_noop_only_reads(self):
+        self.run_phase(noop=True)
+        for call in self.procs.calls:
+            self.assertFalse(set(call.argv) & {'install', 'checkout', 'fetch', 'pull', 'update', 'migrate'},
+                             call.line)
 
     def test_the_failure_markers_still_match_the_messages_printed_by_the_stock_checks(self):
         source = open(RunUpdate.__file__.replace('.pyc', '.py')).read()

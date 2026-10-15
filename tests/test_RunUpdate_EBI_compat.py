@@ -1854,28 +1854,24 @@ class BuildScriptTest(unittest.TestCase):
     def logged(self):
         return open(self.log).read().split('\n')[:-1] if os.path.exists(self.log) else []
 
-    @unittest.expectedFailure
     def test_packages_are_built_in_order_after_the_environment_is_prepared(self):
         result = self.run_script(['a', 'c'])
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual(self.logged(), ['environment ready', 'a YES ' + self.tree, 'c'])
 
-    @unittest.expectedFailure
     def test_the_first_failing_package_stops_the_build_and_is_named(self):
         result = self.run_script(['a', 'b', 'c'])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('pkg_build_b', result.stdout)
         self.assertNotIn('c', self.logged())
 
-    @unittest.expectedFailure
     def test_a_package_without_a_build_function_is_reported_before_anything_is_built(self):
         result = self.run_script(['a', 'nosuch'])
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('pkg_build_nosuch', result.stdout)
-        self.assertEqual(self.logged(), [])
+        self.assertEqual(self.logged(), ['environment ready'])
         self.assertTrue(os.path.exists(os.path.join(self.distrib, 'old.tar.gz')))
 
-    @unittest.expectedFailure
     def test_cached_downloads_are_moved_aside_so_they_are_fetched_again(self):
         self.run_script(['a'])
         self.assertEqual(os.listdir(self.distrib), [])
@@ -1883,7 +1879,6 @@ class BuildScriptTest(unittest.TestCase):
         self.assertEqual(len(asides), 1)
         self.assertEqual(os.listdir(os.path.join(self.tmp, asides[0])), ['old.tar.gz'])
 
-    @unittest.expectedFailure
     def test_noop_checks_the_functions_but_builds_and_moves_nothing(self):
         result = self.run_script(['a', 'c'], noop='noop')
         self.assertEqual(result.returncode, 0, result.stdout)
@@ -1906,13 +1901,11 @@ class BuildScriptTest(unittest.TestCase):
         result = self.run_script(['stage'], path=bindir, STAGE=os.path.join(self.tmp, 'stage'), DEST=dest)
         return result, dest
 
-    @unittest.expectedFailure
     def test_a_missing_rsync_is_replaced_by_a_copy(self):
         result, dest = self.stage_with_path(with_rsync=False)
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertTrue(os.path.isdir(os.path.join(dest, 'Pkg')))
 
-    @unittest.expectedFailure
     def test_an_installed_rsync_is_left_alone(self):
         result, dest = self.stage_with_path(with_rsync=True)
         self.assertEqual(result.returncode, 0, result.stdout)
@@ -1946,30 +1939,25 @@ class BuildPhaseTest(BuildBase):
                  'SITE_ID', 'loc', self.build_tree, 'v-6000', noop, 'annotation_pack', 'chem_comp_pack']
         return argv
 
-    @unittest.expectedFailure
     def test_the_build_functions_run_in_the_container_after_sourcing_the_site_environment(self):
         self.run_phase()
         self.assertEqual([c.argv for c in self.procs.calls], [self.expected_argv()])
 
-    @unittest.expectedFailure
     def test_apptainer_is_preferred_when_both_runtimes_exist(self):
         self.runtimes['apptainer'] = '/usr/bin/apptainer'
         self.run_phase()
         self.assertEqual(self.procs.calls[0].argv, self.expected_argv(runtime='/usr/bin/apptainer'))
 
-    @unittest.expectedFailure
     def test_extra_binds_follow_the_derived_ones_without_duplicates(self):
         extra = os.path.join(self.tmp, 'more')
         os.mkdir(extra)
         self.run_phase(build_bind=[extra, self.build_tree])
         self.assertEqual(self.procs.calls[0].argv, self.expected_argv(extra_binds=[extra]))
 
-    @unittest.expectedFailure
     def test_the_script_sources_the_environment_without_the_cache_and_stops_if_that_fails(self):
         self.assertIn('. "$1" --siteid "$2" --locid "$3" --nocache || exit 1', RunUpdateEbi.BUILD_SCRIPT)
         self.assertNotIn('BuildTools', RunUpdateEbi.BUILD_SCRIPT)
 
-    @unittest.expectedFailure
     def test_noop_lets_the_script_print_its_plan_and_skips_the_bundle_check(self):
         self.run_phase(noop=True)
         self.assertEqual([c.argv for c in self.procs.calls], [self.expected_argv(noop='noop')])

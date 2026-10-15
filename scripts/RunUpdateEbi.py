@@ -55,10 +55,42 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 GITHUB_URL = 'git@github.com:wwPDB/{}.git'
 # Build epoch of onedep-build per container distribution, as install_onedep.sh get_build_ver
 BUILD_EPOCHS = {'rocky': 'v-6000', 'almalinux': 'v-6000'}
-# Runs inside the build container; the positional arguments avoid any quoting of paths
-BUILD_SCRIPT = (
-    '. "$1" --siteid "$2" --locid "$3" || exit 1\n'
-    'exec python3 "$4" --config "$5" --build-version "$6" ${7:+--noop}\n')
+# Runs inside the build container; the positional arguments avoid any quoting of paths. It follows the
+# sequence BuildTools.py runs for each package (BuildTools.py itself cannot find the build tree from inside
+# the container): site environment, pkg-utils, get_environment, forced rebuild, the epoch's package
+# functions. Arguments: environment script, site id, location id, build tree, epoch, "noop" or "", packages
+BUILD_SCRIPT = r'''. "$1" --siteid "$2" --locid "$3" --nocache || exit 1
+export WWPDB_ONEDEP_BUILD="$4"
+epoch=$5
+noop=$6
+shift 6
+cd "$WWPDB_ONEDEP_BUILD" || exit 1
+. utils/pkg-utils-v2.sh || exit 1
+get_environment
+export FORCE_REBUILD=YES
+. "$epoch/packages/all-packages.sh" || exit 1
+for p; do
+  declare -F "pkg_build_$p" >/dev/null || { echo "ERROR: pkg_build_$p is not defined in $WWPDB_ONEDEP_BUILD/$epoch"; exit 1; }
+done
+if [ -n "$noop" ]; then
+  for p; do echo "noop: would build pkg_build_$p"; done
+  exit 0
+fi
+[ -n "$DISTRIB_DIR" ] || { echo "ERROR: DISTRIB_DIR is not defined"; exit 1; }
+# The stock build clears the download cache so that every file is fetched again; it is moved aside here instead
+aside="$DISTRIB_DIR.aside.$(date +%Y%m%d%H%M%S)"
+mkdir -p "$aside" && find "$DISTRIB_DIR" -mindepth 1 -maxdepth 1 -exec mv {} "$aside"/ \; || exit 1
+# The build image has no rsync; the build functions only use it to copy a staged directory into place
+command -v rsync >/dev/null || rsync() {
+  local a src= dst=
+  for a; do case $a in -*) ;; *) if [ -z "$src" ]; then src=$a; else dst=$a; fi;; esac; done
+  cp -a "$src" "$dst"
+}
+for p; do
+  echo "==== pkg_build_$p"
+  "pkg_build_$p" || { echo "ERROR: pkg_build_$p failed"; exit 1; }
+done
+'''
 
 
 class UpdateError(Exception):
@@ -683,7 +715,7 @@ class EbiUpdate(UpdateManager):
             raise UpdateError('schema', 'migrations are still planned after migrate:\n' + remaining.strip())
 
     def phase_build(self):
-        """Run BuildTools.py in the Rocky 8 container, then check the bundles it should have produced"""
+        """Run the release's build functions in the Rocky 8 container, then check the bundles they should produce"""
         a = self.args
         if not self._buildupdates():
             print('[build] nothing to build: the release lists no buildupdates')
@@ -701,12 +733,12 @@ class EbiUpdate(UpdateManager):
                      'bash', '--noprofile', '--norc', '-c', BUILD_SCRIPT, 'bash',
                      os.path.join(self.get_variable('TOP_WWPDB_SITE_CONFIG_DIR'), 'init', 'env.sh'),
                      self.get_variable('WWPDB_SITE_ID'), self.get_variable('WWPDB_SITE_LOC'),
-                     os.path.join(SCRIPT_DIR, 'BuildTools.py'), self._UpdateManager__configfile,
-                     a.build_version, 'noop' if a.noop else ''])
-        # Under --noop BuildTools.py itself only prints its plan, so the container is still run
+                     self.get_variable('WWPDB_ONEDEP_BUILD'), a.build_version, 'noop' if a.noop else ''] +
+                    self._buildupdates())
+        # Under --noop the script itself only prints its plan, so the container is still run
         self._run('build', argv, mutating=False)
         if not a.noop and not a.skip_toolvers:
-            # BuildTools.py exits 0 even when a package fails to build, so the bundles are the evidence
+            # A build function can fail without failing the sequence, so the bundles are the evidence
             self._capture_legacy_check('build', self.checktoolvers)
 
     def _capture_legacy_check(self, phase, check):

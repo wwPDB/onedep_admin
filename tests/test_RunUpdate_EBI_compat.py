@@ -1859,6 +1859,17 @@ class BuildScriptTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual(self.logged(), ['environment ready', 'a YES ' + self.tree, 'c'])
 
+    @unittest.expectedFailure
+    def test_the_virtual_environment_is_not_visible_to_the_build_functions(self):
+        # The image's own Python reads PYTHONPATH too, so a package installed by a build function would
+        # otherwise find, upgrade and remove the packages of the deployment's virtual environment
+        self.write('tree/v-6000/packages/all-packages.sh', 'pkg_build_seen() { echo "seen ${PYTHONPATH-unset}" >> "$LOG"; }\n')
+        self.write('tree/utils/pkg-utils-v2.sh',
+                   'get_environment() { echo "environment ${PYTHONPATH-unset}" >> "$LOG"; }\n')
+        result = self.run_script(['seen'], PYTHONPATH='/venv/site-packages')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.logged(), ['environment /venv/site-packages', 'seen unset'])
+
     def test_the_first_failing_package_stops_the_build_and_is_named(self):
         result = self.run_script(['a', 'b', 'c'])
         self.assertNotEqual(result.returncode, 0)

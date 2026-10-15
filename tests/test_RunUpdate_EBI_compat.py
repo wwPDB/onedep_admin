@@ -1859,7 +1859,6 @@ class BuildScriptTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual(self.logged(), ['environment ready', 'a YES ' + self.tree, 'c'])
 
-    @unittest.expectedFailure
     def test_the_virtual_environment_is_not_visible_to_the_build_functions(self):
         # The image's own Python reads PYTHONPATH too, so a package installed by a build function would
         # otherwise find, upgrade and remove the packages of the deployment's virtual environment

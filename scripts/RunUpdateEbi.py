@@ -69,6 +69,9 @@ cd "$WWPDB_ONEDEP_BUILD" || exit 1
 get_environment
 export FORCE_REBUILD=YES
 . "$epoch/packages/all-packages.sh" || exit 1
+# PYTHONPATH only serves the site environment scripts above; the image's own Python would otherwise treat the
+# deployment's virtual environment as its own and let a build function upgrade or remove its packages
+unset PYTHONPATH
 for p; do
   declare -F "pkg_build_$p" >/dev/null || { echo "ERROR: pkg_build_$p is not defined in $WWPDB_ONEDEP_BUILD/$epoch"; exit 1; }
 done

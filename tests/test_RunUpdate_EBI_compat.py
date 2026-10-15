@@ -8,6 +8,7 @@ import importlib
 import io
 import os
 import shutil
+import subprocess
 import sys
 import sysconfig
 import tempfile
@@ -1817,8 +1818,110 @@ class PipCheckScopeTest(PreflightBase):
         self.assertNotIn('log-finder', would_fail[0])
 
 
+class BuildScriptTest(unittest.TestCase):
+    """The build script, run under bash against a stub build tree and a stub site environment"""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.log = os.path.join(self.tmp, 'log')
+        self.distrib = os.path.join(self.tmp, 'distrib')
+        os.makedirs(self.distrib)
+        open(os.path.join(self.distrib, 'old.tar.gz'), 'w').close()
+        self.env_sh = self.write('env.sh', 'export DISTRIB_DIR={}\n'.format(self.distrib))
+        self.tree = os.path.join(self.tmp, 'tree')
+        self.write('tree/utils/pkg-utils-v2.sh', 'get_environment() { echo "environment ready" >> "$LOG"; }\n')
+        self.write('tree/v-6000/packages/all-packages.sh', (
+            'pkg_build_a() { echo "a $FORCE_REBUILD $WWPDB_ONEDEP_BUILD" >> "$LOG"; }\n'
+            'pkg_build_b() { echo b >> "$LOG"; return 1; }\n'
+            'pkg_build_c() { echo c >> "$LOG"; }\n'
+            'pkg_build_stage() { mkdir -p "$STAGE/Pkg"; cd "$STAGE" && rsync -av "$STAGE/Pkg" "$DEST"; }\n'))
+
+    def write(self, name, text):
+        path = os.path.join(self.tmp, name)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w') as fout:
+            fout.write(text)
+        return path
+
+    def run_script(self, packages, noop='', path=None, **extra):
+        env = {'PATH': path or os.environ['PATH'], 'LOG': self.log}
+        env.update(extra)
+        return subprocess.run([shutil.which('bash'), '--noprofile', '--norc', '-c', RunUpdateEbi.BUILD_SCRIPT, 'bash',
+                               self.env_sh, 'SITE', 'loc', self.tree, 'v-6000', noop] + packages,
+                              env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+
+    def logged(self):
+        return open(self.log).read().split('\n')[:-1] if os.path.exists(self.log) else []
+
+    @unittest.expectedFailure
+    def test_packages_are_built_in_order_after_the_environment_is_prepared(self):
+        result = self.run_script(['a', 'c'])
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.logged(), ['environment ready', 'a YES ' + self.tree, 'c'])
+
+    @unittest.expectedFailure
+    def test_the_first_failing_package_stops_the_build_and_is_named(self):
+        result = self.run_script(['a', 'b', 'c'])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('pkg_build_b', result.stdout)
+        self.assertNotIn('c', self.logged())
+
+    @unittest.expectedFailure
+    def test_a_package_without_a_build_function_is_reported_before_anything_is_built(self):
+        result = self.run_script(['a', 'nosuch'])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('pkg_build_nosuch', result.stdout)
+        self.assertEqual(self.logged(), [])
+        self.assertTrue(os.path.exists(os.path.join(self.distrib, 'old.tar.gz')))
+
+    @unittest.expectedFailure
+    def test_cached_downloads_are_moved_aside_so_they_are_fetched_again(self):
+        self.run_script(['a'])
+        self.assertEqual(os.listdir(self.distrib), [])
+        asides = [d for d in os.listdir(self.tmp) if d.startswith('distrib.aside.')]
+        self.assertEqual(len(asides), 1)
+        self.assertEqual(os.listdir(os.path.join(self.tmp, asides[0])), ['old.tar.gz'])
+
+    @unittest.expectedFailure
+    def test_noop_checks_the_functions_but_builds_and_moves_nothing(self):
+        result = self.run_script(['a', 'c'], noop='noop')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertIn('would build pkg_build_a', result.stdout)
+        self.assertEqual(self.logged(), ['environment ready'])
+        self.assertTrue(os.path.exists(os.path.join(self.distrib, 'old.tar.gz')))
+        self.assertNotEqual(self.run_script(['nosuch'], noop='noop').returncode, 0)
+
+    def stage_with_path(self, with_rsync):
+        bindir = os.path.join(self.tmp, 'bin')
+        os.makedirs(bindir)
+        for tool in ('mkdir', 'mv', 'find', 'date', 'cp'):
+            os.symlink(shutil.which(tool), os.path.join(bindir, tool))
+        if with_rsync:
+            rsync = self.write('bin-real/rsync', '#!/bin/sh\necho real rsync >> "$LOG"\n')
+            os.chmod(rsync, 0o755)
+            bindir += os.pathsep + os.path.dirname(rsync)
+        dest = os.path.join(self.tmp, 'packages')
+        os.makedirs(dest)
+        result = self.run_script(['stage'], path=bindir, STAGE=os.path.join(self.tmp, 'stage'), DEST=dest)
+        return result, dest
+
+    @unittest.expectedFailure
+    def test_a_missing_rsync_is_replaced_by_a_copy(self):
+        result, dest = self.stage_with_path(with_rsync=False)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertTrue(os.path.isdir(os.path.join(dest, 'Pkg')))
+
+    @unittest.expectedFailure
+    def test_an_installed_rsync_is_left_alone(self):
+        result, dest = self.stage_with_path(with_rsync=True)
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.logged()[-1], 'real rsync')
+        self.assertFalse(os.path.isdir(os.path.join(dest, 'Pkg')))
+
+
 class BuildPhaseTest(BuildBase):
-    """The tool build runs BuildTools.py in the Rocky 8 container; the bundles are then checked against the pins"""
+    """The tool build functions run in the Rocky 8 container; the bundles are then checked against the pins"""
 
     def setUp(self):
         super().setUp()
@@ -1840,29 +1943,34 @@ class BuildPhaseTest(BuildBase):
             argv += ['--bind', path]
         argv += ['--env', 'PYTHONPATH=' + sysconfig.get_paths()['purelib'], self.sif,
                  'bash', '--noprofile', '--norc', '-c', RunUpdateEbi.BUILD_SCRIPT, 'bash', self.env_sh,
-                 'SITE_ID', 'loc', os.path.join(RunUpdateEbi.SCRIPT_DIR, 'BuildTools.py'), self.conf, 'v-6000', noop]
+                 'SITE_ID', 'loc', self.build_tree, 'v-6000', noop, 'annotation_pack', 'chem_comp_pack']
         return argv
 
-    def test_buildtools_runs_in_the_container_after_sourcing_the_site_environment(self):
+    @unittest.expectedFailure
+    def test_the_build_functions_run_in_the_container_after_sourcing_the_site_environment(self):
         self.run_phase()
         self.assertEqual([c.argv for c in self.procs.calls], [self.expected_argv()])
 
+    @unittest.expectedFailure
     def test_apptainer_is_preferred_when_both_runtimes_exist(self):
         self.runtimes['apptainer'] = '/usr/bin/apptainer'
         self.run_phase()
         self.assertEqual(self.procs.calls[0].argv, self.expected_argv(runtime='/usr/bin/apptainer'))
 
+    @unittest.expectedFailure
     def test_extra_binds_follow_the_derived_ones_without_duplicates(self):
         extra = os.path.join(self.tmp, 'more')
         os.mkdir(extra)
         self.run_phase(build_bind=[extra, self.build_tree])
         self.assertEqual(self.procs.calls[0].argv, self.expected_argv(extra_binds=[extra]))
 
-    def test_the_script_sources_the_environment_and_stops_if_that_fails(self):
-        self.assertIn('. "$1" --siteid "$2" --locid "$3" || exit 1', RunUpdateEbi.BUILD_SCRIPT)
-        self.assertIn('python3 "$4" --config "$5" --build-version "$6"', RunUpdateEbi.BUILD_SCRIPT)
+    @unittest.expectedFailure
+    def test_the_script_sources_the_environment_without_the_cache_and_stops_if_that_fails(self):
+        self.assertIn('. "$1" --siteid "$2" --locid "$3" --nocache || exit 1', RunUpdateEbi.BUILD_SCRIPT)
+        self.assertNotIn('BuildTools', RunUpdateEbi.BUILD_SCRIPT)
 
-    def test_noop_lets_buildtools_print_its_plan_and_skips_the_bundle_check(self):
+    @unittest.expectedFailure
+    def test_noop_lets_the_script_print_its_plan_and_skips_the_bundle_check(self):
         self.run_phase(noop=True)
         self.assertEqual([c.argv for c in self.procs.calls], [self.expected_argv(noop='noop')])
         self.versions_mock.assert_not_called()

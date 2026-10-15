@@ -1752,7 +1752,6 @@ class PipCheckScopeTest(PreflightBase):
             run()
         return ctx.exception
 
-    @unittest.expectedFailure
     def test_problems_of_packages_outside_the_release_are_reported_but_not_fatal(self):
         self.procs.on('pip check', 1, self.OUTSIDE)
         _, out = self.verify()
@@ -1760,27 +1759,23 @@ class PipCheckScopeTest(PreflightBase):
         self.assertIn('odtf', out)
         self.assertIn('not part of the release', out)
 
-    @unittest.expectedFailure
     def test_a_problem_of_a_release_package_is_fatal_and_named(self):
         self.procs.on('pip check', 1, 'foo 1.0 has requirement bar>=2, but you have bar 1.\n')
         error = self.fails(self.verify)
         self.assertEqual(error.phase, 'verify')
         self.assertIn('foo 1.0 has requirement bar>=2', error.detail)
 
-    @unittest.expectedFailure
     def test_package_names_are_compared_in_canonical_form(self):
         self.procs.on('pip check', 1, 'open_eye.toolkits 1 has requirement x==1, but you have x 2.\n'
                                       'FOO 1.0 has requirement bar>=2, but you have bar 1.\n')
         self.assertIn('FOO 1.0', self.fails(self.verify).detail)
 
-    @unittest.expectedFailure
     def test_only_release_problems_are_listed_when_both_kinds_are_reported(self):
         self.procs.on('pip check', 1, self.OUTSIDE + 'foo 1.0 has requirement bar>=2, but you have bar 1.\n')
         detail = self.fails(self.verify).detail
         self.assertIn('foo 1.0', detail)
         self.assertNotIn('log-finder', detail)
 
-    @unittest.expectedFailure
     def test_the_openeye_wheel_metadata_fault_is_accepted(self):
         self.procs.on('pip check', 1, self.OPENEYE_FAULT)
         _, out = self.verify()
@@ -1804,7 +1799,6 @@ class PipCheckScopeTest(PreflightBase):
         _, out = self.verify()
         self.assertNotIn('not part of the release', out)
 
-    @unittest.expectedFailure
     def test_the_pip_phase_applies_the_same_scope(self):
         self.procs.on('pip check', 1, self.OUTSIDE + self.OPENEYE_FAULT)
         self.quiet(self.make_update().phase_pip)
@@ -1814,7 +1808,6 @@ class PipCheckScopeTest(PreflightBase):
         error = self.fails(lambda: self.quiet(self.make_update().phase_pip))
         self.assertEqual(error.phase, 'pip')
 
-    @unittest.expectedFailure
     def test_noop_reports_only_the_release_problems_as_would_fail(self):
         self.procs.on('pip check', 1, self.OUTSIDE + 'foo 1.0 has requirement bar>=2, but you have bar 1.\n')
         _, out = self.verify(noop=True)

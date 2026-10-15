@@ -47,6 +47,10 @@ SCHEMA_FAILURE_MARKERS = ('ERROR', 'FAILED')
 TOOL_FAILURE_MARKERS = ('ERROR', 'WARNING: Tool out of date')
 NO_PLANNED_MIGRATIONS = 'No planned migration operations'
 DEFAULT_TAXDB_MAXSIZE = 999999999
+PIP_CHECK_LINE = re.compile(r'^(\S+) \S+ (?:has requirement|requires) ')
+# The OpenEye 2020.2.4 wheel names a platform package that no index publishes; the installed one works
+OPENEYE_METADATA_FAULT = re.compile(
+    r'^openeye-toolkits \S+ requires openeye-toolkits-python3-python3-linux-x64, which is not installed\.?$')
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 GITHUB_URL = 'git@github.com:wwPDB/{}.git'
 # Build epoch of onedep-build per container distribution, as install_onedep.sh get_build_ver
@@ -524,6 +528,29 @@ class EbiUpdate(UpdateManager):
     def _pip(self, *args, **kwargs):
         return self._run(kwargs.pop('phase', 'pip'), [sys.executable, '-m', 'pip'] + list(args), **kwargs)
 
+    def _pip_check(self, phase, mutating=True):
+        """pip check; only problems reported for a package of the release fail, the others are noted"""
+        result = self._pip('check', phase=phase, mutating=mutating, check=False)
+        if not result.returncode:
+            return
+        release = set(pin.name for pin in self._release_pins())
+        problems = []
+        for line in filter(None, (l.strip() for l in result.output.splitlines())):
+            match = PIP_CHECK_LINE.match(line)
+            if not match:
+                problems.append(line)
+            elif OPENEYE_METADATA_FAULT.match(line):
+                print('[{}] note: accepted, the OpenEye wheel metadata names a package that does not exist: '
+                      '{}'.format(phase, line))
+            elif canonicalize_name(match.group(1)) in release:
+                problems.append(line)
+            else:
+                print('[{}] note: {} is not part of the release, not failing on: {}'.format(
+                    phase, match.group(1), line))
+        if problems or not result.output.strip():
+            raise UpdateError(phase, 'pip check reported problems for the release packages: {}'.format(
+                ' | '.join(problems) or 'exit {} without output'.format(result.returncode)))
+
     def _pkg_config_path(self):
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')
@@ -554,7 +581,7 @@ class EbiUpdate(UpdateManager):
         if self.args.noop:
             print('[pip] noop: pip check and the mysqlclient check are left to the final verification')
             return
-        self._pip('check')
+        self._pip_check('pip')
         self.check_mysqlclient_linkage()
 
     def _install_dev_checkouts(self, constraints):
@@ -717,7 +744,7 @@ class EbiUpdate(UpdateManager):
                            self._verify_finalcheck])
         if not a.skip_webfe:
             checks.append(self._verify_webfe)
-        checks.extend([lambda: self._pip('check', mutating=False, phase='verify'), self.check_mysqlclient_linkage])
+        checks.extend([lambda: self._pip_check('verify', mutating=False), self.check_mysqlclient_linkage])
         for check in checks:
             try:
                 check()

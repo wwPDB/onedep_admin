@@ -1729,6 +1729,101 @@ class VerifyPhaseTest(PreflightBase):
             self.assertTrue([line for line in source.splitlines() if 'print(' in line and marker in line], marker)
 
 
+class PipCheckScopeTest(PreflightBase):
+    """pip check: only problems reported for a package of the release are fatal"""
+
+    PINS = 'foo==1.0\nOpenEye-toolkits==2020.2.4\nmysqlclient==2.1.1\n'
+    OUTSIDE = ('log-finder 1.0.0 has requirement click==8.1.3, but you have click 8.1.8.\n'
+               'odtf 0.1.0 has requirement PyYAML==6.0.2, but you have pyyaml 6.0.3.\n')
+    OPENEYE_FAULT = ('openeye-toolkits 2020.2.4 requires openeye-toolkits-python3-python3-linux-x64, '
+                     'which is not installed.\n')
+
+    def setUp(self):
+        super().setUp()
+        self.procs.on(lambda a: a[0] == sys.executable and '-c' in a[1:3], 0, 'MYSQL_SO=/venv/_mysql.so\n')
+
+    def verify(self, **flags):
+        flags.setdefault('skip_toolvers', True)
+        flags.setdefault('skip_webfe', True)
+        return self.quiet(self.make_update(**flags).phase_verify)
+
+    def fails(self, run):
+        with self.assertRaises(UpdateError) as ctx:
+            run()
+        return ctx.exception
+
+    @unittest.expectedFailure
+    def test_problems_of_packages_outside_the_release_are_reported_but_not_fatal(self):
+        self.procs.on('pip check', 1, self.OUTSIDE)
+        _, out = self.verify()
+        self.assertIn('log-finder', out)
+        self.assertIn('odtf', out)
+        self.assertIn('not part of the release', out)
+
+    @unittest.expectedFailure
+    def test_a_problem_of_a_release_package_is_fatal_and_named(self):
+        self.procs.on('pip check', 1, 'foo 1.0 has requirement bar>=2, but you have bar 1.\n')
+        error = self.fails(self.verify)
+        self.assertEqual(error.phase, 'verify')
+        self.assertIn('foo 1.0 has requirement bar>=2', error.detail)
+
+    @unittest.expectedFailure
+    def test_package_names_are_compared_in_canonical_form(self):
+        self.procs.on('pip check', 1, 'open_eye.toolkits 1 has requirement x==1, but you have x 2.\n'
+                                      'FOO 1.0 has requirement bar>=2, but you have bar 1.\n')
+        self.assertIn('FOO 1.0', self.fails(self.verify).detail)
+
+    @unittest.expectedFailure
+    def test_only_release_problems_are_listed_when_both_kinds_are_reported(self):
+        self.procs.on('pip check', 1, self.OUTSIDE + 'foo 1.0 has requirement bar>=2, but you have bar 1.\n')
+        detail = self.fails(self.verify).detail
+        self.assertIn('foo 1.0', detail)
+        self.assertNotIn('log-finder', detail)
+
+    @unittest.expectedFailure
+    def test_the_openeye_wheel_metadata_fault_is_accepted(self):
+        self.procs.on('pip check', 1, self.OPENEYE_FAULT)
+        _, out = self.verify()
+        self.assertIn('openeye-toolkits', out)
+
+    def test_other_openeye_problems_are_still_fatal(self):
+        self.procs.on('pip check', 1, self.OPENEYE_FAULT.replace('python3-python3-linux', 'python3-other'))
+        self.fails(self.verify)
+        del self.procs.rules[:]
+        self.procs.on('pip check', 1, 'openeye-toolkits 2020.2.4 has requirement x==1, but you have x 2.\n')
+        self.fails(self.verify)
+
+    def test_a_failure_that_names_no_package_is_fatal(self):
+        for output in ('', 'ERROR: pip crashed\n', 'foo requires bar\n'):
+            del self.procs.rules[:]
+            self.procs.on(lambda a: a[0] == sys.executable and '-c' in a[1:3], 0, 'MYSQL_SO=/venv/_mysql.so\n')
+            self.procs.on('pip check', 1, output)
+            self.fails(self.verify)
+
+    def test_a_clean_pip_check_passes_without_notes(self):
+        _, out = self.verify()
+        self.assertNotIn('not part of the release', out)
+
+    @unittest.expectedFailure
+    def test_the_pip_phase_applies_the_same_scope(self):
+        self.procs.on('pip check', 1, self.OUTSIDE + self.OPENEYE_FAULT)
+        self.quiet(self.make_update().phase_pip)
+        del self.procs.rules[:]
+        self.procs.on(lambda a: a[0] == sys.executable and '-c' in a[1:3], 0, 'MYSQL_SO=/venv/_mysql.so\n')
+        self.procs.on('pip check', 1, 'foo 1.0 has requirement bar>=2, but you have bar 1.\n')
+        error = self.fails(lambda: self.quiet(self.make_update().phase_pip))
+        self.assertEqual(error.phase, 'pip')
+
+    @unittest.expectedFailure
+    def test_noop_reports_only_the_release_problems_as_would_fail(self):
+        self.procs.on('pip check', 1, self.OUTSIDE + 'foo 1.0 has requirement bar>=2, but you have bar 1.\n')
+        _, out = self.verify(noop=True)
+        would_fail = [line for line in out.splitlines() if 'noop: would fail' in line]
+        self.assertEqual(len(would_fail), 1)
+        self.assertIn('foo 1.0', would_fail[0])
+        self.assertNotIn('log-finder', would_fail[0])
+
+
 class BuildPhaseTest(BuildBase):
     """The tool build runs BuildTools.py in the Rocky 8 container; the bundles are then checked against the pins"""
 

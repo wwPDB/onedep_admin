@@ -258,12 +258,13 @@ class EbiUpdate(UpdateManager):
         problems = []
         needed = [('resourcestag', not a.skip_resources), ('webfetag', not a.skip_webfe),
                   ('webfeconf', not a.skip_webfe), ('taxdbminsize', not a.skip_taxdb),
-                  ('piprequirements', not a.skip_pip)]
+                  ('piprequirements', True)]
         for key, selected in needed:
             if selected and not self._opt(key):
                 problems.append("release configuration has no '{}'".format(key))
 
-        files = [('webfeconf', not a.skip_webfe), ('piprequirements', not a.skip_pip)]
+        # The final verification reads the release requirements whichever phases are skipped
+        files = [('webfeconf', not a.skip_webfe), ('piprequirements', True)]
         paths = [(key, self._opt(key)) for key, selected in files if selected]
         if not a.skip_pip:
             paths.extend((name, os.path.join(BASE_PACKAGES_DIR, name))
@@ -483,15 +484,24 @@ class EbiUpdate(UpdateManager):
             problems.extend(self._check_checkout(repo, os.path.join(self._dev_source_dir(), repo)))
         return problems
 
-    def _release_pins(self):
-        return parse_pins(self._opt('piprequirements'))
+    def _release_pins(self, phase='pip'):
+        """The release's pins; every failure is an UpdateError of the given phase"""
+        path = self._opt('piprequirements')
+        if not path:
+            raise UpdateError(phase, "release configuration has no 'piprequirements'")
+        try:
+            return parse_pins(path)
+        except OSError as e:
+            raise UpdateError(phase, 'cannot read the release requirements {}: {}'.format(path, e))
+        except UpdateError as e:
+            raise UpdateError(phase, e.detail)
 
     def _check_pins(self):
         path = self._opt('piprequirements')
-        if self.args.skip_pip or not path or not os.path.isfile(path):
+        if not path or not os.path.isfile(path):
             return []
         try:
-            pins = self._release_pins()
+            pins = self._release_pins('preflight')
         except UpdateError as e:
             return [e.detail]
         return self._check_mysqlclient_pin(pins)
@@ -592,7 +602,7 @@ class EbiUpdate(UpdateManager):
         result = self._pip('check', phase=phase, mutating=mutating, check=False)
         if not result.returncode:
             return
-        release = set(pin.name for pin in self._release_pins())
+        release = set(pin.name for pin in self._release_pins(phase))
         problems = []
         for line in filter(None, (l.strip() for l in result.output.splitlines())):
             match = PIP_CHECK_LINE.match(line)
@@ -829,6 +839,12 @@ class EbiUpdate(UpdateManager):
         if failures:
             raise UpdateError('verify', 'ManageDB.py finalcheck reported:\n' + '\n'.join(failures))
 
+    def _verify_mysqlclient_pin(self):
+        """mysqlclient is never reinstalled; the installed build must be the pinned one when the run ends"""
+        problems = self._check_mysqlclient_pin(self._release_pins('verify'))
+        if problems:
+            raise UpdateError('verify', '\n'.join(problems))
+
     def _verify_webfe(self):
         self._run('verify', [sys.executable, os.path.join(SCRIPT_DIR, 'ManageWebFE.py'), '--webroot',
                              self._webfe_root(), 'check', '-r', self._opt('webfeconf')], mutating=False)
@@ -843,7 +859,8 @@ class EbiUpdate(UpdateManager):
                            self._verify_finalcheck])
         if not a.skip_webfe:
             checks.append(self._verify_webfe)
-        checks.extend([lambda: self._pip_check('verify', mutating=False), self.check_mysqlclient_linkage])
+        checks.extend([lambda: self._pip_check('verify', mutating=False), self._verify_mysqlclient_pin,
+                       self.check_mysqlclient_linkage])
         for check in checks:
             try:
                 check()

@@ -1722,6 +1722,84 @@ class VerifyRequirementsTest(PreflightBase):
         self.assertIn('line 2', self.failure(skip_pip=True))
 
 
+class OpenEyeLicenceRecordTest(PreflightBase):
+    """The stock licence check prints nothing for a licence without an expiration record; verification must not"""
+
+    EXPIRY = '2027 07 22'
+
+    def setUp(self):
+        super().setUp()
+        for name in ('checktoolvers', 'checkoelicense'):
+            patcher = mock.patch.object(EbiUpdate, name, autospec=True)
+            patcher.start()
+            self.addCleanup(patcher.stop)
+        self.procs.on(lambda a: a[0] == sys.executable and '-c' in a[1:3], 0, 'MYSQL_SO=/venv/_mysql.so\n')
+        self.licence = self.touch(os.path.join(self.tmp, 'oe_license.txt'), '#EXP_DATE: {}\n'.format(self.EXPIRY))
+        self.write_conf(openeyeexp=self.EXPIRY)
+
+    def verify(self, licence='configured', **flags):
+        flags.setdefault('skip_webfe', True)
+        upd = self.make_update(**flags)
+        path = self.licence if licence == 'configured' else licence
+        upd._UpdateManager__ci_common = mock.Mock(get_site_cc_oe_licence=lambda: path)
+        return self.quiet(upd.phase_verify)
+
+    def failure(self, **kwargs):
+        with self.assertRaises(UpdateError) as ctx:
+            self.verify(**kwargs)
+        self.assertEqual(ctx.exception.phase, 'verify')
+        return ctx.exception.detail
+
+    def test_a_licence_with_the_expected_record_passes(self):
+        self.verify()
+
+    @unittest.expectedFailure
+    def test_an_empty_licence_fails(self):
+        self.touch(self.licence, '')
+        detail = self.failure()
+        self.assertIn(self.licence, detail)
+        self.assertIn('#EXP_DATE:', detail)
+
+    @unittest.expectedFailure
+    def test_a_licence_without_an_expiration_record_fails(self):
+        self.touch(self.licence, '# OpenEye licence\nLICENSE oechem 2027.Jul.22 FAKE\n')
+        self.assertIn(self.EXPIRY, self.failure())
+
+    def test_nothing_is_read_when_the_release_has_no_expiry(self):
+        self.write_conf()
+        self.verify(licence=os.path.join(self.tmp, 'absent'))
+
+    @unittest.expectedFailure
+    def test_an_unreadable_licence_fails(self):
+        real_open = open
+
+        def deny(path, *args, **kwargs):
+            if path == self.licence:
+                raise PermissionError(13, 'Permission denied', path)
+            return real_open(path, *args, **kwargs)
+
+        with mock.patch('builtins.open', side_effect=deny):
+            self.assertIn(self.licence, self.failure())
+
+    @unittest.expectedFailure
+    def test_the_site_setting_is_used_when_the_configuration_has_no_licence_path(self):
+        fallback = self.touch(os.path.join(self.tmp, 'site_license.txt'), '')
+        self.site['SITE_CC_OE_LICENSE'] = fallback
+        self.assertIn(fallback, self.failure(licence=None))
+
+    def test_the_site_setting_with_a_record_passes(self):
+        self.site['SITE_CC_OE_LICENSE'] = self.touch(os.path.join(self.tmp, 'site_license.txt'),
+                                                     '#EXP_DATE: {}\n'.format(self.EXPIRY))
+        self.verify(licence=None)
+
+    def test_a_licence_that_cannot_be_located_is_left_to_the_stock_check(self):
+        self.verify(licence=None)
+
+    def test_skip_toolvers_skips_the_licence_check(self):
+        self.touch(self.licence, '')
+        self.verify(skip_toolvers=True)
+
+
 class VerifyPhaseTest(PreflightBase):
     """Final verification: every check affects the exit status"""
 

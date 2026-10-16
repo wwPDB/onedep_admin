@@ -234,8 +234,42 @@ class DbSchemaManager(object):
               Structure_ID,
               ordinal
               );"""
-          ]]
+          ]],
 
+            ['V6.2 da_internal em_experiment', 'DA_INTERNAL', 'em_experiment', '_dainttablenotexists', 
+             ["""CREATE TABLE em_experiment
+             (
+             Structure_ID                                                 varchar(15)    not null,
+             entry_id                                                     varchar(15)    not null,
+             id                                                           varchar(10)        null,
+             reconstruction_method                                        varchar(80)        null,
+             aggregation_state                                            varchar(80)        null,
+             specimen_type                                                varchar(200)       null,
+             entity_assembly_id                                           varchar(10)        null
+             );""",
+              """CREATE UNIQUE INDEX primary_index ON em_experiment
+              (
+              Structure_ID,
+              entry_id
+              );"""
+          ]],
+
+
+            ['V6.2 da_internal pdbx_exptl_subtype', 'DA_INTERNAL', 'pdbx_exptl_subtype', '_dainttablenotexists', 
+             ["""CREATE TABLE pdbx_exptl_subtype
+             (
+             Structure_ID                                                 varchar(15)    not null,
+             exptl_method                                                 varchar(80)    not null,
+             method_type                                                  varchar(80)    not null,
+             details                                                      varchar(511)       null
+             );""",
+              """CREATE UNIQUE INDEX primary_index ON pdbx_exptl_subtype
+              (
+              Structure_ID,
+              exptl_method,
+              method_type
+              );"""
+          ]],
         ]
 
 

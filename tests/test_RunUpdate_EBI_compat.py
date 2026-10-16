@@ -116,13 +116,11 @@ class EbiCompatCliTest(MainTestBase):
         self.assertEqual(status, 0)
         self.assertEqual(ebi.call_args[0][1].build_bind, ['/a', '/b'])
 
-    @unittest.expectedFailure
     def test_force_build_requires_the_flag(self):
         status, _, err = self.run_main('--force-build')
         self.assertEqual(status, 2)
         self.assertIn('--force-build requires --ebi-compat', err)
 
-    @unittest.expectedFailure
     def test_force_build_is_passed_on(self):
         with mock.patch('scripts.RunUpdateEbi.run_ebi_update', return_value=0) as ebi:
             status, _, _ = self.run_main('--ebi-compat', '--build-tools', '--build-container', '/x/y.sif',
@@ -2112,7 +2110,6 @@ class CurrentBundlesTest(BuildBase):
         argv = self.procs.calls[0].argv
         return argv[argv.index('v-6000') + 2:], out
 
-    @unittest.expectedFailure
     def test_a_bundle_at_its_pin_is_not_rebuilt(self):
         self.installed['cctoolsver'] = '2026-08-31:20-58'
         packages, out = self.built()
@@ -2120,7 +2117,6 @@ class CurrentBundlesTest(BuildBase):
         self.assertIn('annotation_pack', out)
         self.assertIn('already at its pin', out)
 
-    @unittest.expectedFailure
     def test_nothing_is_run_when_every_bundle_is_at_its_pin(self):
         packages, out = self.built()
         self.assertIsNone(packages)
@@ -2131,13 +2127,11 @@ class CurrentBundlesTest(BuildBase):
         self.assertEqual(packages, ['annotation_pack', 'chem_comp_pack'])
         self.assertNotIn('already at its pin', out)
 
-    @unittest.expectedFailure
     def test_a_package_whose_pin_is_not_in_the_release_is_built(self):
         self.configure(annotver=self.ANNOT)
         packages, _ = self.built()
         self.assertEqual(packages, ['chem_comp_pack'])
 
-    @unittest.expectedFailure
     def test_a_package_whose_bundle_is_missing_is_built(self):
         del self.installed['annotver']
         packages, _ = self.built()
@@ -2148,7 +2142,6 @@ class CurrentBundlesTest(BuildBase):
         packages, _ = self.built()
         self.assertEqual(packages, ['ccp4_9', 'annotation_pack'])
 
-    @unittest.expectedFailure
     def test_phenix_builds_are_judged_by_the_phenix_pin(self):
         self.configure(buildupdates='phenix_22 annotation_pack', phenixver='2.2-6143', annotver='new')
         self.installed.update(phenixver='2.2-6143')
@@ -2165,7 +2158,6 @@ class CurrentBundlesTest(BuildBase):
         packages, _ = self.built(skip_toolvers=True)
         self.assertEqual(packages, ['annotation_pack', 'chem_comp_pack'])
 
-    @unittest.expectedFailure
     def test_noop_plans_only_the_packages_that_would_be_built(self):
         self.installed['cctoolsver'] = '2026-08-31:20-58'
         packages, _ = self.built(noop=True)

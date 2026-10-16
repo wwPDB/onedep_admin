@@ -540,6 +540,8 @@ def main():
                         help='Rocky 8 Singularity/Apptainer image in which --ebi-compat runs --build-tools')
     parser.add_argument("--build-bind", action='append', metavar='PATH',
                         help='Extra directory to bind into the --build-container (may be repeated)')
+    parser.add_argument("--force-build", default=False, action='store_true',
+                        help='With --ebi-compat, also rebuild packages whose bundle is already at its pin')
 
     args = parser.parse_args()
 
@@ -547,6 +549,8 @@ def main():
         parser.error('--build-container requires --ebi-compat')
     if args.build_bind and not args.ebi_compat:
         parser.error('--build-bind requires --ebi-compat')
+    if args.force_build and not args.ebi_compat:
+        parser.error('--force-build requires --ebi-compat')
     if args.ebi_compat and args.build_tools and not args.build_container:
         parser.error('--build-tools with --ebi-compat requires --build-container')
 

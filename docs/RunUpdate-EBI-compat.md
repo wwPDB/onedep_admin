@@ -53,6 +53,8 @@ For test servers. As in the stock update, the wwPDB packages come from the `deve
 
 The release's `buildupdates` are built by their `pkg_build_*` functions inside the Rocky 8 Singularity/Apptainer image given with `--build-container` (required, no default, because its location is a site convention). `BuildTools.py` is not used, because from inside the image it cannot find the build tree through the site configuration. Instead the same sequence it runs is followed: the site environment is sourced (`--nocache`), `utils/pkg-utils-v2.sh`, `get_environment`, a forced rebuild, the epoch's `all-packages.sh`, then each function in the order the release lists them, stopping at the first one that fails. `PYTHONPATH`, which the site environment scripts need to read the configuration, is unset before the first build function, so the image's own Python cannot see the deployment's virtual environment (a build function that runs `pip` would otherwise upgrade and remove packages in it). Three differences from the stock build: the download cache (`$DISTRIB_DIR`) is moved aside to `$DISTRIB_DIR.aside.<timestamp>` instead of being deleted; because the image has no `rsync`, a plain copy stands in for it when `rsync` is missing; and when `$PREFIX/include/openssl/ssl.h` does not exist, the build functions being run that pass `--with-openssl=$PREFIX` to Python's `configure` (it would otherwise build without the `ssl` module, so that `pip` reaches no index) run without that flag, and the image's own OpenSSL is used. The functions in the build tree are not modified, and a note names each function run this way.
 
+A package whose bundle is already at the release pin is skipped, and the run says so. The decision uses the stock tool-version check, run for that one pin, so a bundle counts as current only when the check finds it at the pin; a package is built when the release has no pin for it, when the bundle is missing or at another version, when the check cannot run, when the package is not one the check knows (anything other than the annotation, chemical component, mapFix, sf-valid, FindGeo, metalcoord and Phenix bundles), or with `--skip-toolvers`. `--force-build` builds every listed package regardless. When all are current, the container is not run.
+
 The build tree is the one `WWPDB_ONEDEP_BUILD` names (set in the site configuration or exported before the run). The admin, site-config, tools, build-tree and virtual-environment directories are bound in; add others with `--build-bind PATH` (repeatable). The preflight checks that the runtime is on `PATH`, that the image reports a Rocky or AlmaLinux 8 system, that `--build-version` is the epoch of that distribution (`v-6000`; the stock default `v-5200` is rejected with a message), that the `onedep-build` tree has no tracked changes and defines every `pkg_build_*` function the release lists, and that the site environment resolves. A build function can fail without failing the sequence, so the bundle versions are checked against the release pins afterwards (unless `--skip-toolvers`); a bundle that is behind its pin therefore fails the run, including bundles an earlier release should have built.
 
 ## Options
@@ -60,6 +62,7 @@ The build tree is the one `WWPDB_ONEDEP_BUILD` names (set in the site configurat
 - `--noop`: the preflight runs, as do the read-only reports of `ManageTaxDB.py` and `ManageDB.py`, `migrate --plan` and the build script's `--noop` plan (it checks that every build function exists); nothing else is executed. The read-only final checks also run, and each problem is printed as `noop: would fail`; they do not change the exit status.
 - `--skip-resources`, `--skip-remove`, `--skip-pip`, `--skip-webfe`, `--skip-taxdb`, `--skip-schema`, `--skip-toolvers`: as in the stock update. The preflight and the `pip check` and `mysqlclient` checks always run.
 - `--build-container PATH`, `--build-bind PATH`: only with `--ebi-compat`; the container is required with `--build-tools`.
+- `--force-build`: only with `--ebi-compat`; rebuild every package the release lists, including those whose bundle is already at its pin.
 
 ## Differences from the stock update
 
@@ -69,6 +72,7 @@ The build tree is the one `WWPDB_ONEDEP_BUILD` names (set in the site configurat
 - A tag is checked out detached and never pulled; a branch is fast-forwarded only.
 - The DepUI Django migrations are applied.
 - Tools are built in the container, not on the host, with the `rsync` and OpenSSL adjustments described under *Tool build*.
+- Packages whose bundle is already at its pin are not rebuilt (`--force-build` overrides).
 - The taxonomy load and the helper scripts' results are verified, because those scripts exit 0 after printing errors.
 
 ## Host prerequisites enforced by the strict checks

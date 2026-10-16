@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+import tempfile
 import warnings
 from urllib.parse import urlparse
 
@@ -55,6 +56,17 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 GITHUB_URL = 'git@github.com:wwPDB/{}.git'
 # Build epoch of onedep-build per container distribution, as install_onedep.sh get_build_ver
 BUILD_EPOCHS = {'rocky': 'v-6000', 'almalinux': 'v-6000'}
+# Release option that pins the bundle a build function produces, as the stock tool-version check reads it. A
+# package that is not listed here (or has no pin in the release) cannot be judged and is always built
+BUNDLE_PIN_OPTIONS = {'annotation_pack': 'annotver', 'chem_comp_pack': 'cctoolsver', 'sf_valid': 'sfvalidver',
+                      'mapfix': 'mapfixver', 'findgeo': 'findgeover', 'metalcoord': 'metalcoordvers'}
+
+
+def bundle_pin_option(package):
+    """Name of the release option that pins the bundle of a pkg_build_ function, or None"""
+    if package.startswith('phenix'):
+        return 'phenixver'
+    return BUNDLE_PIN_OPTIONS.get(package)
 # Runs inside the build container; the positional arguments avoid any quoting of paths. It follows the
 # sequence BuildTools.py runs for each package (BuildTools.py itself cannot find the build tree from inside
 # the container): site environment, pkg-utils, get_environment, forced rebuild, the epoch's package
@@ -735,6 +747,10 @@ class EbiUpdate(UpdateManager):
         if not self._buildupdates():
             print('[build] nothing to build: the release lists no buildupdates')
             return
+        packages = self._packages_to_build()
+        if not packages:
+            print('[build] nothing to build: every bundle is already at its pin')
+            return
         binds = []
         for path in ([os.path.dirname(SCRIPT_DIR), self.get_variable('TOP_WWPDB_SITE_CONFIG_DIR'),
                        self.get_variable('TOOLS_PATH'), self.get_variable('WWPDB_ONEDEP_BUILD'), sys.prefix] +
@@ -749,15 +765,46 @@ class EbiUpdate(UpdateManager):
                      os.path.join(self.get_variable('TOP_WWPDB_SITE_CONFIG_DIR'), 'init', 'env.sh'),
                      self.get_variable('WWPDB_SITE_ID'), self.get_variable('WWPDB_SITE_LOC'),
                      self.get_variable('WWPDB_ONEDEP_BUILD'), a.build_version, 'noop' if a.noop else ''] +
-                    self._buildupdates())
+                    packages)
         # Under --noop the script itself only prints its plan, so the container is still run
         self._run('build', argv, mutating=False)
         if not a.noop and not a.skip_toolvers:
             # A build function can fail without failing the sequence, so the bundles are the evidence
             self._capture_legacy_check('build', self.checktoolvers)
 
-    def _capture_legacy_check(self, phase, check):
-        """Run a stock check, which only prints, and turn its failure messages into an UpdateError"""
+    def _packages_to_build(self):
+        """The release's packages minus those whose bundle the stock check finds at its pin"""
+        packages = self._buildupdates()
+        if self.args.force_build or self.args.skip_toolvers:
+            return packages
+        todo = []
+        for package in packages:
+            option = bundle_pin_option(package)
+            if option and self._bundle_at_pin(option):
+                print('[build] skipping pkg_build_{}: its bundle is already at its pin ({} = {}); '
+                      '--force-build rebuilds it'.format(package, option, self._opt(option)))
+            else:
+                todo.append(package)
+        return todo
+
+    def _bundle_at_pin(self, option):
+        """True only when the stock check, run for this one pin, finds the installed bundle at it"""
+        pin = self._opt(option)
+        if not pin:
+            return False
+        with tempfile.TemporaryDirectory() as tmp:
+            conf = os.path.join(tmp, 'pin.conf')
+            with open(conf, 'w') as fout:
+                fout.write('[DEFAULT]\n{} = {}\n'.format(option, pin.replace('%', '%%')))
+            single = EbiUpdate(conf, self.args)
+            try:
+                output = single._legacy_check_output('build', single.checktoolvers)
+            except UpdateError:
+                return False
+        return not failure_lines(output, TOOL_FAILURE_MARKERS)
+
+    def _legacy_check_output(self, phase, check):
+        """Run a stock check, which only prints, and return what it printed"""
         out = io.StringIO()
         try:
             with warnings.catch_warnings(), contextlib.redirect_stdout(out):
@@ -765,8 +812,13 @@ class EbiUpdate(UpdateManager):
                 check()
         except Exception as e:
             raise UpdateError(phase, '{}: {}'.format(check.__name__, e))
-        sys.stdout.write(out.getvalue())
-        failures = failure_lines(out.getvalue(), TOOL_FAILURE_MARKERS)
+        return out.getvalue()
+
+    def _capture_legacy_check(self, phase, check):
+        """Run a stock check, which only prints, and turn its failure messages into an UpdateError"""
+        output = self._legacy_check_output(phase, check)
+        sys.stdout.write(output)
+        failures = failure_lines(output, TOOL_FAILURE_MARKERS)
         if failures:
             raise UpdateError(phase, '\n'.join(failures))
 

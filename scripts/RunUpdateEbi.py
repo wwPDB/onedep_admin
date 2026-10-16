@@ -839,6 +839,26 @@ class EbiUpdate(UpdateManager):
         if failures:
             raise UpdateError('verify', 'ManageDB.py finalcheck reported:\n' + '\n'.join(failures))
 
+    def _verify_openeye_record(self):
+        """The stock licence check prints nothing for a licence without an expiration record; here that fails"""
+        expected = self._opt('openeyeexp')
+        if not expected:
+            return
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')
+            path = (self._UpdateManager__ci_common.get_site_cc_oe_licence()
+                    or self.get_variable('SITE_CC_OE_LICENSE'))
+        if not path:
+            return  # the stock check reports that it cannot determine the licence
+        try:
+            with open(path) as fin:
+                records = [line for line in fin if '#EXP_DATE:' in line]
+        except OSError as e:
+            raise UpdateError('verify', 'cannot read the OpenEye licence {}: {}'.format(path, e))
+        if not records:
+            raise UpdateError('verify', 'the OpenEye licence {} has no #EXP_DATE: record, so its expiry cannot be '
+                              'checked against {}'.format(path, expected))
+
     def _verify_mysqlclient_pin(self):
         """mysqlclient is never reinstalled; the installed build must be the pinned one when the run ends"""
         problems = self._check_mysqlclient_pin(self._release_pins('verify'))
@@ -856,7 +876,7 @@ class EbiUpdate(UpdateManager):
         if not a.skip_toolvers:
             checks.extend([lambda: self._capture_legacy_check('verify', self.checktoolvers),
                            lambda: self._capture_legacy_check('verify', self.checkoelicense),
-                           self._verify_finalcheck])
+                           self._verify_openeye_record, self._verify_finalcheck])
         if not a.skip_webfe:
             checks.append(self._verify_webfe)
         checks.extend([lambda: self._pip_check('verify', mutating=False), self._verify_mysqlclient_pin,

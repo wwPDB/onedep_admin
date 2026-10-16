@@ -1753,14 +1753,12 @@ class OpenEyeLicenceRecordTest(PreflightBase):
     def test_a_licence_with_the_expected_record_passes(self):
         self.verify()
 
-    @unittest.expectedFailure
     def test_an_empty_licence_fails(self):
         self.touch(self.licence, '')
         detail = self.failure()
         self.assertIn(self.licence, detail)
         self.assertIn('#EXP_DATE:', detail)
 
-    @unittest.expectedFailure
     def test_a_licence_without_an_expiration_record_fails(self):
         self.touch(self.licence, '# OpenEye licence\nLICENSE oechem 2027.Jul.22 FAKE\n')
         self.assertIn(self.EXPIRY, self.failure())
@@ -1769,7 +1767,6 @@ class OpenEyeLicenceRecordTest(PreflightBase):
         self.write_conf()
         self.verify(licence=os.path.join(self.tmp, 'absent'))
 
-    @unittest.expectedFailure
     def test_an_unreadable_licence_fails(self):
         real_open = open
 
@@ -1781,7 +1778,6 @@ class OpenEyeLicenceRecordTest(PreflightBase):
         with mock.patch('builtins.open', side_effect=deny):
             self.assertIn(self.licence, self.failure())
 
-    @unittest.expectedFailure
     def test_the_site_setting_is_used_when_the_configuration_has_no_licence_path(self):
         fallback = self.touch(os.path.join(self.tmp, 'site_license.txt'), '')
         self.site['SITE_CC_OE_LICENSE'] = fallback

@@ -116,6 +116,20 @@ class EbiCompatCliTest(MainTestBase):
         self.assertEqual(status, 0)
         self.assertEqual(ebi.call_args[0][1].build_bind, ['/a', '/b'])
 
+    @unittest.expectedFailure
+    def test_force_build_requires_the_flag(self):
+        status, _, err = self.run_main('--force-build')
+        self.assertEqual(status, 2)
+        self.assertIn('--force-build requires --ebi-compat', err)
+
+    @unittest.expectedFailure
+    def test_force_build_is_passed_on(self):
+        with mock.patch('scripts.RunUpdateEbi.run_ebi_update', return_value=0) as ebi:
+            status, _, _ = self.run_main('--ebi-compat', '--build-tools', '--build-container', '/x/y.sif',
+                                         '--force-build')
+        self.assertEqual(status, 0)
+        self.assertTrue(ebi.call_args[0][1].force_build)
+
     def test_build_tools_with_container_is_accepted(self):
         with mock.patch('scripts.RunUpdateEbi.run_ebi_update', return_value=0) as ebi:
             status, _, _ = self.run_main('--ebi-compat', '--build-tools', '--build-container', '/x/y.sif',
@@ -165,7 +179,7 @@ def make_args(**overrides):
     values = dict(config='latest', noop=False, skip_pip=False, skip_remove=False, skip_resources=False,
                   skip_webfe=False, skip_taxdb=False, skip_schema=False, skip_toolvers=False,
                   build_tools=False, build_version='v-5200', build_dev=False, get_latest_version=False,
-                  ebi_compat=True, build_container=None, build_bind=None)
+                  ebi_compat=True, build_container=None, build_bind=None, force_build=False)
     values.update(overrides)
     return types.SimpleNamespace(**values)
 
@@ -2053,6 +2067,109 @@ class BuildPhaseTest(BuildBase):
         _, out = self.run_phase()
         self.assertEqual(self.procs.calls, [])
         self.assertIn('nothing to build', out)
+
+
+class CurrentBundlesTest(BuildBase):
+    """A package whose bundle is already at the release pin is not rebuilt, unless --force-build says so"""
+
+    ANNOT = '2026-09-14:09-51'
+    CCTOOLS = '2026-09-18:14-54'
+    OPTIONS = ('annotver', 'cctoolsver', 'sfvalidver', 'mapfixver', 'findgeover', 'metalcoordvers', 'phenixver')
+
+    def setUp(self):
+        super().setUp()
+        self.installed = {'annotver': self.ANNOT, 'cctoolsver': self.CCTOOLS}
+        self.stock_check_fails = False
+        patcher = mock.patch.object(EbiUpdate, 'checktoolvers', autospec=True, side_effect=self.stock_check)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.configure()
+
+    def configure(self, buildupdates='annotation_pack chem_comp_pack', **pins):
+        pins = pins or dict(annotver=self.ANNOT, cctoolsver=self.CCTOOLS)
+        self.write_conf(buildupdates=buildupdates, **pins)
+
+    def stock_check(self, upd):
+        """What UpdateManager.checktoolvers prints for the pins the update's configuration carries"""
+        if self.procs.calls:
+            return  # after the container run the bundles are the ones the release asks for
+        if self.stock_check_fails:
+            raise RuntimeError('cannot read the bundle')
+        for option in self.OPTIONS:
+            pin = upd._opt(option)
+            if pin is None:
+                continue
+            if option not in self.installed:
+                print('WARNING: Tool out of date. /tools/{} not found'.format(option))
+            elif self.installed[option] != pin:
+                print('***ERROR: Version mismatch {} != {} in /tools/{}'.format(pin, self.installed[option], option))
+
+    def built(self, **flags):
+        """Packages handed to the container (None if it was not run) and the output of the phase"""
+        _, out = self.quiet(self.make_update(**flags).phase_build)
+        if not self.procs.calls:
+            return None, out
+        argv = self.procs.calls[0].argv
+        return argv[argv.index('v-6000') + 2:], out
+
+    @unittest.expectedFailure
+    def test_a_bundle_at_its_pin_is_not_rebuilt(self):
+        self.installed['cctoolsver'] = '2026-08-31:20-58'
+        packages, out = self.built()
+        self.assertEqual(packages, ['chem_comp_pack'])
+        self.assertIn('annotation_pack', out)
+        self.assertIn('already at its pin', out)
+
+    @unittest.expectedFailure
+    def test_nothing_is_run_when_every_bundle_is_at_its_pin(self):
+        packages, out = self.built()
+        self.assertIsNone(packages)
+        self.assertIn('nothing to build', out)
+
+    def test_force_build_rebuilds_every_listed_package(self):
+        packages, out = self.built(force_build=True)
+        self.assertEqual(packages, ['annotation_pack', 'chem_comp_pack'])
+        self.assertNotIn('already at its pin', out)
+
+    @unittest.expectedFailure
+    def test_a_package_whose_pin_is_not_in_the_release_is_built(self):
+        self.configure(annotver=self.ANNOT)
+        packages, _ = self.built()
+        self.assertEqual(packages, ['chem_comp_pack'])
+
+    @unittest.expectedFailure
+    def test_a_package_whose_bundle_is_missing_is_built(self):
+        del self.installed['annotver']
+        packages, _ = self.built()
+        self.assertEqual(packages, ['annotation_pack'])
+
+    def test_a_package_with_no_known_bundle_is_always_built(self):
+        self.configure(buildupdates='ccp4_9 annotation_pack', annotver='old')
+        packages, _ = self.built()
+        self.assertEqual(packages, ['ccp4_9', 'annotation_pack'])
+
+    @unittest.expectedFailure
+    def test_phenix_builds_are_judged_by_the_phenix_pin(self):
+        self.configure(buildupdates='phenix_22 annotation_pack', phenixver='2.2-6143', annotver='new')
+        self.installed.update(phenixver='2.2-6143')
+        packages, out = self.built()
+        self.assertEqual(packages, ['annotation_pack'])
+        self.assertIn('phenix_22', out)
+
+    def test_a_check_that_cannot_run_counts_as_not_at_its_pin(self):
+        self.stock_check_fails = True
+        packages, _ = self.built()
+        self.assertEqual(packages, ['annotation_pack', 'chem_comp_pack'])
+
+    def test_without_the_tool_check_every_listed_package_is_built(self):
+        packages, _ = self.built(skip_toolvers=True)
+        self.assertEqual(packages, ['annotation_pack', 'chem_comp_pack'])
+
+    @unittest.expectedFailure
+    def test_noop_plans_only_the_packages_that_would_be_built(self):
+        self.installed['cctoolsver'] = '2026-08-31:20-58'
+        packages, _ = self.built(noop=True)
+        self.assertEqual(packages, ['chem_comp_pack'])
 
 
 if __name__ == '__main__':

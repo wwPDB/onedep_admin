@@ -455,7 +455,11 @@ class EbiUpdate(UpdateManager):
             return ['WWPDB_ONEDEP_BUILD is not a directory: {}'.format(tree)]
         problems = self._check_checkout('onedep-build', tree)
         epoch = os.path.join(tree, self.args.build_version, 'packages')
-        text = ''.join(open(path).read() for path in sorted(glob.glob(os.path.join(epoch, '*.sh'))))
+        chunks = []
+        for path in sorted(glob.glob(os.path.join(epoch, '*.sh'))):
+            with open(path) as fin:
+                chunks.append(fin.read())
+        text = ''.join(chunks)
         for pack in self._buildupdates():
             if not re.search(r'^\s*(function\s+)?pkg_build_{}\s*\(\)'.format(re.escape(pack)), text, re.MULTILINE):
                 problems.append('pkg_build_{} is not defined in {}'.format(pack, epoch))

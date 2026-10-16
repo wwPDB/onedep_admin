@@ -1418,7 +1418,6 @@ class BuildPreflightTest(BuildBase):
         self.runtimes.clear()
         self.assertEqual(self.problems(), '')
 
-    @unittest.expectedFailure
     def test_the_build_functions_are_read_without_leaving_files_open(self):
         # A ResourceWarning is raised while the unclosed file object is finalized, where an error cannot
         # propagate and is reported as unraisable instead, so the hook is what makes it observable

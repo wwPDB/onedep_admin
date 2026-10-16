@@ -1922,6 +1922,59 @@ class BuildScriptTest(unittest.TestCase):
         self.assertEqual(self.logged()[-1], 'real rsync')
         self.assertFalse(os.path.isdir(os.path.join(dest, 'Pkg')))
 
+    def with_prefix(self, headers, functions):
+        """A tools tree (PREFIX) with or without the OpenSSL headers, and the stub package functions to run"""
+        self.prefix = os.path.join(self.tmp, 'tools')
+        os.makedirs(self.prefix)
+        if headers:
+            self.write('tools/include/openssl/ssl.h', '')
+        self.write('env.sh', 'export DISTRIB_DIR={}\nexport PREFIX={}\n'.format(self.distrib, self.prefix))
+        self.write('tree/v-6000/packages/all-packages.sh', functions)
+
+    CONFIGURE = 'pkg_build_py() {{ echo "configure --enable-shared {} --disable-test-modules" >> "$LOG"; }}\n'
+    WITH_FLAG = CONFIGURE.format('--with-openssl=$PREFIX')
+
+    @unittest.expectedFailure
+    def test_a_tools_tree_without_openssl_headers_builds_without_the_flag_that_names_it(self):
+        # The flag makes Python's configure look for the headers in the tools tree; finding none it builds
+        # without the ssl module and pip cannot reach any index. The image's own OpenSSL is used instead
+        self.with_prefix(headers=False, functions=self.WITH_FLAG)
+        result = self.run_script(['py'])
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(len(self.logged()), 2)
+        self.assertIn('--enable-shared', self.logged()[1])
+        self.assertNotIn('--with-openssl', self.logged()[1])
+        self.assertIn('pkg_build_py', result.stdout)
+        self.assertIn('OpenSSL', result.stdout)
+
+    def test_a_tools_tree_with_openssl_headers_keeps_the_flag(self):
+        self.with_prefix(headers=True, functions=self.WITH_FLAG)
+        result = self.run_script(['py'])
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.logged()[1:], ['configure --enable-shared --with-openssl={} --disable-test-modules'.format(self.prefix)])
+        self.assertNotIn('OpenSSL', result.stdout)
+
+    def test_a_function_that_does_not_pass_the_flag_is_left_alone(self):
+        self.with_prefix(headers=False, functions=self.CONFIGURE.format('--with-zlib=$PREFIX'))
+        result = self.run_script(['py'])
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.logged()[1:], ['configure --enable-shared --with-zlib={} --disable-test-modules'.format(self.prefix)])
+        self.assertNotIn('OpenSSL', result.stdout)
+
+    def test_only_the_packages_being_built_are_rewritten(self):
+        self.with_prefix(headers=False, functions=self.WITH_FLAG + (
+            'pkg_build_probe() { declare -f pkg_build_py | grep -c -e "--with-openssl" >> "$LOG"; }\n'))
+        result = self.run_script(['probe'])
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.logged()[-1], '1')
+
+    def test_noop_rewrites_and_builds_nothing(self):
+        self.with_prefix(headers=False, functions=self.WITH_FLAG)
+        result = self.run_script(['py'], noop='noop')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.logged(), ['environment ready'])
+        self.assertNotIn('OpenSSL', result.stdout)
+
 
 class BuildPhaseTest(BuildBase):
     """The tool build functions run in the Rocky 8 container; the bundles are then checked against the pins"""

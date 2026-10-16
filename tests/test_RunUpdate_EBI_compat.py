@@ -543,9 +543,19 @@ class PreflightConfigTest(PreflightBase):
             self.assertIn(expected, detail)
 
     def test_skipped_phases_do_not_require_their_inputs(self):
-        self.write_conf(resourcestag=None, webfetag=None, webfeconf=None, taxdbminsize=None,
-                        piprequirements=None)
+        self.write_conf(resourcestag=None, webfetag=None, webfeconf=None, taxdbminsize=None)
         self.assertEqual(self.problems(skip_resources=True, skip_webfe=True, skip_taxdb=True, skip_pip=True), '')
+
+    @unittest.expectedFailure
+    def test_the_release_requirements_are_needed_although_the_pip_phase_is_skipped(self):
+        # The final verification reads them for pip check and for the mysqlclient pin
+        self.write_conf(piprequirements=None)
+        self.assertIn('piprequirements', self.problems(skip_pip=True))
+
+    @unittest.expectedFailure
+    def test_the_release_requirements_must_be_a_file_although_the_pip_phase_is_skipped(self):
+        self.write_conf(piprequirements=os.path.join(self.tmp, 'nope'))
+        self.assertIn(os.path.join(self.tmp, 'nope'), self.problems(skip_pip=True))
 
     def test_release_pins_that_cannot_be_installed_one_by_one_fail_early(self):
         self.touch(self.reqs, 'foo==1.0\n-r more.txt\n')
@@ -579,9 +589,18 @@ class PreflightMysqlclientTest(PreflightBase):
         self.touch(self.reqs, 'mysqlclient>=2.1\n')
         self.assertIn('exact', self.problems())
 
-    def test_ignored_when_pip_phase_is_skipped(self):
+    @unittest.expectedFailure
+    def test_a_different_version_fails_although_the_pip_phase_is_skipped(self):
         self.installed['mysqlclient'] = '2.2.0'
-        self.assertEqual(self.problems(skip_pip=True), '')
+        detail = self.problems(skip_pip=True)
+        self.assertIn('mysqlclient', detail)
+        self.assertIn('2.1.1', detail)
+        self.assertIn('2.2.0', detail)
+
+    @unittest.expectedFailure
+    def test_not_installed_fails_although_the_pip_phase_is_skipped(self):
+        del self.installed['mysqlclient']
+        self.assertIn('not installed', self.problems(skip_pip=True))
 
 
 class ResourcesPreflightTest(PreflightBase):
@@ -1629,6 +1648,90 @@ class SchemaPhaseTest(PreflightBase):
         for call in self.procs.calls[1:]:
             self.assertEqual(call.kwargs['env'].get('DJANGO_SETTINGS_MODULE'),
                              os.environ.get('DJANGO_SETTINGS_MODULE'))
+
+
+class VerifyRequirementsTest(PreflightBase):
+    """Final verification reads the release requirements and checks the installed mysqlclient against its pin"""
+
+    PIP_PROBLEM = 'foo 1.0 has requirement bar>=2, but you have bar 1.\n'
+
+    def setUp(self):
+        super().setUp()
+        self.procs.on(lambda a: a[0] == sys.executable and '-c' in a[1:3], 0, 'MYSQL_SO=/venv/_mysql.so\n')
+
+    def verify(self, **flags):
+        flags.setdefault('skip_toolvers', True)
+        flags.setdefault('skip_webfe', True)
+        return self.quiet(self.make_update(**flags).phase_verify)
+
+    def failure(self, **flags):
+        with self.assertRaises(UpdateError) as ctx:
+            self.verify(**flags)
+        self.assertEqual(ctx.exception.phase, 'verify')
+        return ctx.exception.detail
+
+    def test_a_matching_mysqlclient_passes(self):
+        self.verify()
+        self.verify(skip_pip=True)
+
+    def test_a_release_without_a_mysqlclient_pin_passes(self):
+        self.touch(self.reqs, 'foo==1.0\n')
+        self.installed['mysqlclient'] = '9.9'
+        self.verify()
+
+    @unittest.expectedFailure
+    def test_a_different_mysqlclient_version_fails(self):
+        self.installed['mysqlclient'] = '2.2.0'
+        detail = self.failure()
+        for expected in ('mysqlclient', '2.1.1', '2.2.0'):
+            self.assertIn(expected, detail)
+
+    @unittest.expectedFailure
+    def test_a_different_mysqlclient_version_fails_although_the_pip_phase_is_skipped(self):
+        self.installed['mysqlclient'] = '2.2.0'
+        self.assertIn('2.2.0', self.failure(skip_pip=True))
+
+    @unittest.expectedFailure
+    def test_a_missing_mysqlclient_fails(self):
+        del self.installed['mysqlclient']
+        self.assertIn('not installed', self.failure())
+
+    @unittest.expectedFailure
+    def test_unset_requirements_are_a_controlled_failure_when_pip_check_fails(self):
+        self.write_conf(piprequirements=None)
+        self.procs.on('pip check', 1, self.PIP_PROBLEM)
+        self.assertIn('piprequirements', self.failure(skip_pip=True))
+
+    @unittest.expectedFailure
+    def test_unset_requirements_fail_even_when_pip_check_passes(self):
+        self.write_conf(piprequirements=None)
+        self.assertIn('piprequirements', self.failure(skip_pip=True))
+
+    @unittest.expectedFailure
+    def test_a_missing_requirements_file_is_a_controlled_failure(self):
+        missing = os.path.join(self.tmp, 'nope')
+        self.write_conf(piprequirements=missing)
+        self.procs.on('pip check', 1, self.PIP_PROBLEM)
+        self.assertIn(missing, self.failure(skip_pip=True))
+
+    @unittest.expectedFailure
+    def test_an_unreadable_requirements_file_is_a_controlled_failure(self):
+        real_open = open
+
+        def deny(path, *args, **kwargs):
+            if path == self.reqs:
+                raise PermissionError(13, 'Permission denied', path)
+            return real_open(path, *args, **kwargs)
+
+        self.procs.on('pip check', 1, self.PIP_PROBLEM)
+        with mock.patch('builtins.open', side_effect=deny):
+            self.assertIn(self.reqs, self.failure(skip_pip=True))
+
+    @unittest.expectedFailure
+    def test_malformed_requirements_are_reported_as_a_verify_failure(self):
+        self.touch(self.reqs, 'foo==1.0\n-r more.txt\n')
+        self.procs.on('pip check', 1, self.PIP_PROBLEM)
+        self.assertIn('line 2', self.failure(skip_pip=True))
 
 
 class VerifyPhaseTest(PreflightBase):

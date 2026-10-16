@@ -1934,7 +1934,6 @@ class BuildScriptTest(unittest.TestCase):
     CONFIGURE = 'pkg_build_py() {{ echo "configure --enable-shared {} --disable-test-modules" >> "$LOG"; }}\n'
     WITH_FLAG = CONFIGURE.format('--with-openssl=$PREFIX')
 
-    @unittest.expectedFailure
     def test_a_tools_tree_without_openssl_headers_builds_without_the_flag_that_names_it(self):
         # The flag makes Python's configure look for the headers in the tools tree; finding none it builds
         # without the ssl module and pip cannot reach any index. The image's own OpenSSL is used instead

@@ -89,6 +89,18 @@ command -v rsync >/dev/null || rsync() {
   for a; do case $a in -*) ;; *) if [ -z "$src" ]; then src=$a; else dst=$a; fi;; esac; done
   cp -a "$src" "$dst"
 }
+# A tools tree without OpenSSL headers makes `--with-openssl=$PREFIX` build a Python with no ssl module (pip then
+# reaches no index); the functions that pass the flag are redefined without it, so the image's own OpenSSL is used
+if [ ! -f "$PREFIX/include/openssl/ssl.h" ]; then
+  for p; do
+    body=$(declare -f "pkg_build_$p")
+    case $body in
+      *'--with-openssl=$PREFIX'*)
+        echo "note: pkg_build_$p runs without --with-openssl=\$PREFIX, $PREFIX has no OpenSSL headers"
+        eval "${body//--with-openssl=\$PREFIX/}";;
+    esac
+  done
+fi
 for p; do
   echo "==== pkg_build_$p"
   "pkg_build_$p" || { echo "ERROR: pkg_build_$p failed"; exit 1; }

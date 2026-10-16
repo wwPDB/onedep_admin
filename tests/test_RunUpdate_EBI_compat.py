@@ -4,6 +4,7 @@ Everything external (git, pip, databases, containers) is mocked at the subproces
 and configuration boundaries; nothing here touches a deployment.
 """
 import contextlib
+import gc
 import importlib
 import io
 import os
@@ -14,6 +15,7 @@ import sysconfig
 import tempfile
 import types
 import unittest
+import warnings
 from unittest import mock
 
 
@@ -1415,6 +1417,19 @@ class BuildPreflightTest(BuildBase):
         self.write_conf(buildupdates=None)
         self.runtimes.clear()
         self.assertEqual(self.problems(), '')
+
+    @unittest.expectedFailure
+    def test_the_build_functions_are_read_without_leaving_files_open(self):
+        # A ResourceWarning is raised while the unclosed file object is finalized, where an error cannot
+        # propagate and is reported as unraisable instead, so the hook is what makes it observable
+        unraisable = []
+        upd = self.make_update()
+        with mock.patch.object(sys, 'unraisablehook', unraisable.append), warnings.catch_warnings():
+            warnings.simplefilter('error', ResourceWarning)
+            problems, _ = self.quiet(upd._check_build_tree)
+            gc.collect()
+        self.assertEqual(problems, [])
+        self.assertEqual([str(u.exc_value) for u in unraisable], [])
 
 
 class DatabasePreflightTest(PreflightBase):

@@ -3,6 +3,7 @@
 """A script to ensure that status and da_internal DB have proper schema.  This is separate from update script as needs to load fresh if pip install mysqlclient updates version
 """
 
+import datetime
 import os
 import argparse
 import subprocess
@@ -509,6 +510,34 @@ class DbSchemaManager(object):
 
         mydb.closeConnection()
 
+
+    def checkprocedure(self):
+        """Checks that views are loaded and updated"""
+
+        print("")
+        print("Checking procedure in status DB")
+        mydb = MyConnectionBase()
+        mydb.setResource(resourceName="STATUS")
+        ok = mydb.openConnection()
+        if not ok:
+            print("ERROR: Could not open resource %s" % 'STATUS')
+            return
+
+        myq = MyDbQuery(dbcon=mydb._dbCon)
+        query = "SELECT ROUTINE_NAME, CREATED, LAST_ALTERED FROM INFORMATION_SCHEMA.ROUTINES WHERE ROUTINE_SCHEMA = 'status' AND ROUTINE_NAME = 'getAccession' AND ROUTINE_TYPE = 'PROCEDURE'"
+        rows = myq.selectRows(queryString=query)
+        if len(rows) == 0:
+            print("ERROR: You need to load the stored procedure with something like: mysql -uroot -pxxxx -hxxxx status < %s/sp_getAccession.sql" 
+                  % os.path.dirname(__file__))
+        else:
+            lastmod = rows[0][2]
+            if lastmod.date() < datetime.date(2026, 10, 30):
+                print("ERROR: The stored procedure might be out of date.  You can check the procedure or load the stored procedure with something like: mysql -uroot -pxxxx -hxxxx status < %s/sp_getAccession.sql" 
+                      % os.path.dirname(__file__))
+
+
+        mydb.closeConnection()
+
     def _notexists(self, dbconn, table, colname):
         """Checks if colname exists in table. Returns True if does not exist"""
         myq = MyDbQuery(dbcon=dbconn)
@@ -676,13 +705,13 @@ def main():
 
     dbs = DbSchemaManager(args.noop)
 
-
     if args.func == 'update':
        dbs.updateschema()
        dbs.updatewftasks()
        dbs.update_compat_wf_tasks()
-    elif args.func=='finalcheck':
+    elif args.func=='check':
         dbs.checkviews()
+        dbs.checkprocedure()
 
 if __name__ == '__main__':
     main()

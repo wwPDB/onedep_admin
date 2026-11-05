@@ -20,10 +20,35 @@ import sys
 import warnings
 import importlib.metadata
 from enum import Enum, Flag, auto
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 import xml.etree.ElementTree as ET
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon, ConfigInfoAppValidation
+
+
+def release_pins(reqfile):
+    """Reads the release pins that apply to this Python from a requirements file, in file order.
+
+    Comments, blank lines and requirements whose environment marker is false here are left out, and so is
+    mysqlclient: reinstalling it rebuilds the extension without the library path that the site relies on.
+    The environment marker is not part of the returned pins.
+    """
+    pins = []
+    with open(reqfile) as fin:
+        for line in fin:
+            line = line.split(' #')[0].strip()
+            if not line or line.startswith('#'):
+                continue
+            req = Requirement(line)
+            if req.marker is not None and not req.marker.evaluate():
+                continue
+            if canonicalize_name(req.name) == 'mysqlclient':
+                continue
+            req.marker = None
+            pins.append(str(req))
+    return pins
 
 
 class DbSchemaManager(object):
@@ -108,7 +133,7 @@ class UpdateManager(object):
             ret = os.getenv(variable)
         return ret
 
-    def updatepyenv(self, dev_build):
+    def updatepyenv(self, dev_build, pin_by_pin=False):
         cs_user = self.get_variable('CS_USER', environment='INSTALL_ENVIRONMENT')
         cs_pass = self.get_variable('CS_PW', environment='INSTALL_ENVIRONMENT')
         cs_url = self.get_variable('CS_URL', environment='INSTALL_ENVIRONMENT')
@@ -173,6 +198,8 @@ class UpdateManager(object):
                     self.__exec(command, working_directory=source_dir)
                     command = 'pip install {} --edit {}'.format(pip_extra_urls, repo)
                     self.__exec(command, working_directory=source_dir)
+        elif pin_by_pin:
+            self.installpins(reqfile, pip_extra_urls)
         else:
             command = 'pip install -U {} -r {}'.format(pip_extra_urls, reqfile)
             self.__exec(command)
@@ -181,6 +208,14 @@ class UpdateManager(object):
             command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U {} -r {}'.format(
                 cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, pip_extra_urls, opt_req)
             self.__exec(command)
+
+    def installpins(self, reqfile, pip_extra_urls):
+        """Installs the release pins one at a time, without their dependencies, and stops at the first failure."""
+        for pin in release_pins(reqfile):
+            command = 'pip install --no-deps {} "{}"'.format(pip_extra_urls, pin)
+            if self.__exec(command):
+                print('ERROR: pip install failed for {}; stopping'.format(pin))
+                sys.exit(1)
 
     def removepyenv(self):
         if not self.__cparser.has_option('DEFAULT', 'removepy'):
@@ -289,6 +324,16 @@ class UpdateManager(object):
     def updateschema(self):
         dbs = DbSchemaManager(self.__noop)
         dbs.updateschema()
+
+    def updatedjango(self):
+        """Applies the DepUI Django migrations, which updateschema does not cover."""
+        django = 'DJANGO_SETTINGS_MODULE={} python -m django migrate'.format(
+            os.getenv('DJANGO_SETTINGS_MODULE', 'wwpdb.apps.deposit.settings'))
+        self.__exec('{} --plan'.format(django))
+        if self.__exec('{} --noinput'.format(django)):
+            print('ERROR: DepUI migrations failed; stopping')
+            sys.exit(1)
+        self.__exec('{} --plan'.format(django))
 
     def postflightdbcheck(self):
         dbs = DbSchemaManager(self.__noop)
@@ -532,6 +577,9 @@ def main():
     parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
     parser.add_argument("--build-version", default='v-5200', help='Version of tools to build from')
     parser.add_argument("--build-dev", default=False, action='store_true', help='pip installs repos with edit param')
+    parser.add_argument("--pin-by-pin", default=False, action='store_true',
+                        help='Install the release pins one at a time without dependencies, skipping mysqlclient, stopping at the first failure')
+    parser.add_argument("--django-migrate", default=False, action='store_true', help='Apply the DepUI Django migrations after the DB schema update')
     parser.add_argument("--get-latest-version", default=False, action='store_true', help='get latest version number')
 
     args = parser.parse_args()
@@ -562,7 +610,7 @@ def main():
 
     # update python
     if not args.skip_pip:
-        um.updatepyenv(args.build_dev)
+        um.updatepyenv(args.build_dev, args.pin_by_pin)
 
     # update webfe
     if not args.skip_webfe:
@@ -575,6 +623,9 @@ def main():
     # update db schemas
     if not args.skip_schema:
         um.updateschema()
+
+    if args.django_migrate:
+        um.updatedjango()
 
     if args.build_tools:
         um.buildtools(args.build_version)

@@ -116,5 +116,53 @@ class UpdateManagerPinsAndMigrationsTest(unittest.TestCase):
         self.assertEqual(raised.exception.code, 1)
         self.assertEqual(len(self.commands(manager)), 2)
 
+
+class UpdateManagerFetchTagsTest(unittest.TestCase):
+    """Tests for the opt-in git fetch --tags of the resources and WebFE updates
+    """
+
+    def manager(self, root):
+        manager = UpdateManager.__new__(UpdateManager)
+        manager._UpdateManager__exec = MagicMock(return_value=0)
+        manager._UpdateManager__cparser = MagicMock()
+        manager._UpdateManager__cparser.get.return_value = 'v6.1'
+        manager._UpdateManager__resources_ro_path = root
+        manager._UpdateManager__resources_rw_path = None
+        manager._UpdateManager__web_apps_path = os.path.join(root, 'webapps')
+        return manager
+
+    def commands(self, manager):
+        return [call[0][0] for call in manager._UpdateManager__exec.call_args_list]
+
+    def test_updateresources_fetches_tags_before_checking_out_when_asked(self):
+        with tempfile.TemporaryDirectory() as root:
+            manager = self.manager(root)
+            manager.updateresources(fetch_tags=True)
+        command = self.commands(manager)[0]
+        self.assertIn('git fetch --tags', command)
+        self.assertLess(command.index('git fetch --tags'), command.index('git checkout v6.1'))
+
+    def test_updateresources_does_not_fetch_tags_by_default(self):
+        with tempfile.TemporaryDirectory() as root:
+            manager = self.manager(root)
+            manager.updateresources()
+        self.assertNotIn('git fetch', self.commands(manager)[0])
+
+    def test_updatewebfe_fetches_tags_before_checking_out_when_asked(self):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, 'webapps'))
+            manager = self.manager(root)
+            manager.updatewebfe(fetch_tags=True)
+        command = self.commands(manager)[0]
+        self.assertIn('git fetch --tags', command)
+        self.assertLess(command.index('git fetch --tags'), command.index('git checkout v6.1'))
+
+    def test_updatewebfe_does_not_fetch_tags_by_default(self):
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, 'webapps'))
+            manager = self.manager(root)
+            manager.updatewebfe()
+        self.assertNotIn('git fetch', self.commands(manager)[0])
+
 if __name__ == '__main__':
     unittest.main()

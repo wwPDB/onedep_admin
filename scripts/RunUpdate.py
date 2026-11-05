@@ -238,15 +238,16 @@ class UpdateManager(object):
             cmd = "pip uninstall -y {}".format(pname)
             self.__exec(cmd)
 
-    def updateresources(self):
+    def updateresources(self, fetch_tags=False):
         restag = self.__cparser.get('DEFAULT', 'resourcestag')
+        fetch = 'git fetch --tags; ' if fetch_tags else ''
         if self.__resources_ro_path:
             if not os.path.exists(self.__resources_ro_path):
                 command = 'git clone git@github.com:wwPDB/onedep-resources_ro.git {}'.format(self.__resources_ro_path)
                 self.__exec(command)
 
-            command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(
-                self.__resources_ro_path, restag, restag)
+            command = 'cd {}; git pull; git checkout master; git pull; {}git checkout {}; git pull origin {}'.format(
+                self.__resources_ro_path, fetch, restag, restag)
             self.__exec(command)
 
         if self.__resources_rw_path:
@@ -268,7 +269,7 @@ class UpdateManager(object):
         if ret:
             print("ERROR: check of webfe directory failed")
 
-    def updatewebfe(self):
+    def updatewebfe(self, fetch_tags=False):
 
         # Checking if source directory exist
         source_dir = os.path.abspath(os.path.join(self.__web_apps_path, '../..'))
@@ -284,8 +285,9 @@ class UpdateManager(object):
 
         webfetag = self.__cparser.get('DEFAULT', 'webfetag')
 
-        command = 'cd {}; git pull; git checkout {}; git pull origin {}; git submodule init; git submodule update'.format(
-            webfe_repo, webfetag, webfetag)
+        fetch = 'git fetch --tags; ' if fetch_tags else ''
+        command = 'cd {}; git pull; {}git checkout {}; git pull origin {}; git submodule init; git submodule update'.format(
+            webfe_repo, fetch, webfetag, webfetag)
         self.__exec(command)
 
         # Now check the results
@@ -579,6 +581,8 @@ def main():
     parser.add_argument("--build-dev", default=False, action='store_true', help='pip installs repos with edit param')
     parser.add_argument("--pin-by-pin", default=False, action='store_true',
                         help='Install the release pins one at a time without dependencies, skipping mysqlclient, stopping at the first failure')
+    parser.add_argument("--fetch-tags", default=False, action='store_true',
+                        help='Run git fetch --tags before checking out the resources and WebFE tags')
     parser.add_argument("--django-migrate", default=False, action='store_true', help='Apply the DepUI Django migrations after the DB schema update')
     parser.add_argument("--get-latest-version", default=False, action='store_true', help='get latest version number')
 
@@ -602,7 +606,7 @@ def main():
 
     # update resources_ro
     if not args.skip_resources:
-        um.updateresources()
+        um.updateresources(args.fetch_tags)
 
     # Remove obsolete python packages
     if not args.skip_remove:
@@ -614,7 +618,7 @@ def main():
 
     # update webfe
     if not args.skip_webfe:
-        um.updatewebfe()
+        um.updatewebfe(args.fetch_tags)
 
     # update taxonomy
     if not args.skip_taxdb:

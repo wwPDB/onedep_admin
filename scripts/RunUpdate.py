@@ -11,12 +11,18 @@ try:
 except ImportError:
     from urlparse import urlparse
 import argparse
+import contextlib
 import fnmatch
+import io
 import json
 import os
 import os.path
+import shlex
+import shutil
 import subprocess
 import sys
+import sysconfig
+import tempfile
 import warnings
 import importlib.metadata
 from enum import Enum, Flag, auto
@@ -24,6 +30,49 @@ import xml.etree.ElementTree as ET
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon, ConfigInfoAppValidation
+
+
+# The release option that pins the bundle a pkg_build_ function produces, as checktoolvers reads it
+BUNDLE_PIN_OPTIONS = {'annotation_pack': 'annotver', 'chem_comp_pack': 'cctoolsver', 'sf_valid': 'sfvalidver',
+                      'mapfix': 'mapfixver', 'findgeo': 'findgeover', 'metalcoord': 'metalcoordvers'}
+
+
+def bundle_pin_option(package):
+    """Returns the name of the release option that pins the bundle of a pkg_build_ function, or None"""
+    if package.startswith('phenix'):
+        return 'phenixver'
+    return BUNDLE_PIN_OPTIONS.get(package)
+
+
+def release_pins(reqfile, skipped=None):
+    """Reads the release pins that apply to this Python from a requirements file, in file order.
+
+    Comments, blank lines and requirements whose environment marker is false here are left out, and so is
+    mysqlclient: reinstalling it rebuilds the extension without the library path that the site relies on.
+    The environment marker is not part of the returned pins. The pins that are left out are added to skipped, if given.
+    """
+    # Only read here, so that an update without --pin-by-pin does not need packaging
+    from packaging.requirements import Requirement
+    from packaging.utils import canonicalize_name
+
+    pins = []
+    with open(reqfile) as fin:
+        for line in fin:
+            line = line.split(' #')[0].strip()
+            if not line or line.startswith('#'):
+                continue
+            req = Requirement(line)
+            if req.marker is not None and not req.marker.evaluate():
+                if skipped is not None:
+                    skipped.append('{} (its environment marker is false here)'.format(line.split(';')[0].strip()))
+                continue
+            if canonicalize_name(req.name) == 'mysqlclient':
+                if skipped is not None:
+                    skipped.append('{} (it is never reinstalled)'.format(line.split(';')[0].strip()))
+                continue
+            req.marker = None
+            pins.append(str(req))
+    return pins
 
 
 class DbSchemaManager(object):
@@ -108,7 +157,7 @@ class UpdateManager(object):
             ret = os.getenv(variable)
         return ret
 
-    def updatepyenv(self, dev_build):
+    def updatepyenv(self, dev_build, pin_by_pin=False):
         cs_user = self.get_variable('CS_USER', environment='INSTALL_ENVIRONMENT')
         cs_pass = self.get_variable('CS_PW', environment='INSTALL_ENVIRONMENT')
         cs_url = self.get_variable('CS_URL', environment='INSTALL_ENVIRONMENT')
@@ -173,6 +222,8 @@ class UpdateManager(object):
                     self.__exec(command, working_directory=source_dir)
                     command = 'pip install {} --edit {}'.format(pip_extra_urls, repo)
                     self.__exec(command, working_directory=source_dir)
+        elif pin_by_pin:
+            self.installpins(reqfile, pip_extra_urls)
         else:
             command = 'pip install -U {} -r {}'.format(pip_extra_urls, reqfile)
             self.__exec(command)
@@ -181,6 +232,18 @@ class UpdateManager(object):
             command = 'export CS_USER={}; export CS_PW={}; export CS_URL={}; export URL_NETLOC={}; export URL_PATH={}; pip install -U {} -r {}'.format(
                 cs_user, cs_pass, cs_url, urlreq.netloc, urlreq.path, pip_extra_urls, opt_req)
             self.__exec(command)
+
+    def installpins(self, reqfile, pip_extra_urls):
+        """Installs the release pins one at a time, without their dependencies, and stops at the first failure."""
+        skipped = []
+        pins = release_pins(reqfile, skipped)
+        for pin in skipped:
+            print('skipping {}'.format(pin))
+        for pin in pins:
+            command = 'pip install --no-deps {} {}'.format(pip_extra_urls, shlex.quote(pin))
+            if self.__exec(command):
+                print('ERROR: pip install failed for {}; stopping'.format(pin))
+                sys.exit(1)
 
     def removepyenv(self):
         if not self.__cparser.has_option('DEFAULT', 'removepy'):
@@ -203,15 +266,16 @@ class UpdateManager(object):
             cmd = "pip uninstall -y {}".format(pname)
             self.__exec(cmd)
 
-    def updateresources(self):
+    def updateresources(self, fetch_tags=False):
         restag = self.__cparser.get('DEFAULT', 'resourcestag')
+        fetch = 'git fetch --tags; ' if fetch_tags else ''
         if self.__resources_ro_path:
             if not os.path.exists(self.__resources_ro_path):
                 command = 'git clone git@github.com:wwPDB/onedep-resources_ro.git {}'.format(self.__resources_ro_path)
                 self.__exec(command)
 
-            command = 'cd {}; git pull; git checkout master; git pull; git checkout {}; git pull origin {}'.format(
-                self.__resources_ro_path, restag, restag)
+            command = 'cd {}; git pull; git checkout master; git pull; {}git checkout {}; git pull origin {}'.format(
+                self.__resources_ro_path, fetch, restag, restag)
             self.__exec(command)
 
         if self.__resources_rw_path:
@@ -233,7 +297,7 @@ class UpdateManager(object):
         if ret:
             print("ERROR: check of webfe directory failed")
 
-    def updatewebfe(self):
+    def updatewebfe(self, fetch_tags=False):
 
         # Checking if source directory exist
         source_dir = os.path.abspath(os.path.join(self.__web_apps_path, '../..'))
@@ -249,8 +313,9 @@ class UpdateManager(object):
 
         webfetag = self.__cparser.get('DEFAULT', 'webfetag')
 
-        command = 'cd {}; git pull; git checkout {}; git pull origin {}; git submodule init; git submodule update'.format(
-            webfe_repo, webfetag, webfetag)
+        fetch = 'git fetch --tags; ' if fetch_tags else ''
+        command = 'cd {}; git pull; {}git checkout {}; git pull origin {}; git submodule init; git submodule update'.format(
+            webfe_repo, fetch, webfetag, webfetag)
         self.__exec(command)
 
         # Now check the results
@@ -289,6 +354,16 @@ class UpdateManager(object):
     def updateschema(self):
         dbs = DbSchemaManager(self.__noop)
         dbs.updateschema()
+
+    def updatedjango(self):
+        """Applies the DepUI Django migrations, which updateschema does not cover."""
+        django = 'DJANGO_SETTINGS_MODULE={} python -m django migrate'.format(
+            os.getenv('DJANGO_SETTINGS_MODULE', 'wwpdb.apps.deposit.settings'))
+        self.__exec('{} --plan'.format(django))
+        if self.__exec('{} --noinput'.format(django)):
+            print('ERROR: DepUI migrations failed; stopping')
+            sys.exit(1)
+        self.__exec('{} --plan'.format(django))
 
     def postflightdbcheck(self):
         dbs = DbSchemaManager(self.__noop)
@@ -433,7 +508,11 @@ class UpdateManager(object):
         return vstr
 
 
-    def buildtools(self, build_version='v-5200'):
+    def buildtools(self, build_version='v-5200', build_container=None, build_bind=None, force_build=False):
+        if build_container:
+            self.buildtoolsincontainer(build_version, build_container, build_bind, force_build)
+            return
+
         curdir = os.path.dirname(__file__)
         buildscript = os.path.join(curdir, 'BuildTools.py')
 
@@ -443,6 +522,110 @@ class UpdateManager(object):
         if ret:
             print("ERROR: buildtools failed")
         pass
+
+    def buildtoolsincontainer(self, build_version, build_container, build_bind=None, force_build=False):
+        """Builds the release's tools with the onedep-build functions inside the Rocky 8 build container
+
+        A package whose bundle is already at its pin is left out unless force_build is set: the tools tree is shared,
+        and a release's buildupdates can list packages built for an earlier release or not buildable in place.
+        """
+        command, site = self.containercommand(build_container, build_bind)
+
+        if not self.__cparser.has_option('DEFAULT', 'buildupdates'):
+            return
+        packages = self.__cparser.get('DEFAULT', 'buildupdates').split()
+        if not packages:
+            return
+        if not force_build:
+            todo = []
+            for package in packages:
+                option = bundle_pin_option(package)
+                if option and self.__cparser.has_option('DEFAULT', option) and self.bundleatpin(option):
+                    print('skipping pkg_build_{}: its bundle is already at its pin ({}); --force-build builds it'.format(
+                        package, option))
+                else:
+                    todo.append(package)
+            packages = todo
+        if not packages:
+            print('nothing to build: every package is already at its pin')
+            return
+
+        command.extend([os.path.join(site['TOP_WWPDB_SITE_CONFIG_DIR'], 'init', 'env.sh'),
+                        site['WWPDB_SITE_ID'], site['WWPDB_SITE_LOC'], site['WWPDB_ONEDEP_BUILD'],
+                        build_version] + packages)
+
+        if self.__exec(' '.join(shlex.quote(part) for part in command)):
+            print('ERROR: buildtools failed')
+            sys.exit(1)
+
+    def containercommand(self, build_container, build_bind=None):
+        """Returns the command that starts the build script in the container, without its arguments, and the site values"""
+        runtime = shutil.which('apptainer') or shutil.which('singularity')
+        if not runtime:
+            print('ERROR: neither apptainer nor singularity is on PATH; load the module that provides one')
+            sys.exit(1)
+        names = ['TOP_WWPDB_SITE_CONFIG_DIR', 'TOOLS_PATH', 'WWPDB_ONEDEP_BUILD', 'WWPDB_SITE_ID', 'WWPDB_SITE_LOC']
+        site = dict((name, self.get_variable(name)) for name in names)
+        missing = [name for name in names if not site[name]]
+        if missing:
+            print('ERROR: not set in the site configuration: {}'.format(', '.join(missing)))
+            sys.exit(1)
+
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        binds = []
+        for path in [os.path.dirname(curdir), site['TOP_WWPDB_SITE_CONFIG_DIR'], site['TOOLS_PATH'],
+                     site['WWPDB_ONEDEP_BUILD'], sys.prefix] + list(build_bind or []):
+            if path not in binds:
+                binds.append(path)
+
+        command = [runtime, 'exec']
+        for path in binds:
+            command.extend(['--bind', path])
+        # The site environment scripts in the container need the deployment's pure Python packages
+        command.extend(['--env', 'PYTHONPATH=' + sysconfig.get_paths()['purelib'], build_container,
+                        'bash', '--noprofile', '--norc', os.path.join(curdir, 'BuildToolsInContainer.sh')])
+        return command, site
+
+    def checkbuildcontainer(self, build_version, build_container, build_bind=None):
+        """Stops before anything is updated if the build container cannot build: the build runs last"""
+        command, site = self.containercommand(build_container, build_bind)
+        problems = []
+        if not os.path.isfile(build_container):
+            problems.append('--build-container is not a file: {}'.format(build_container))
+        problems.extend('--build-bind is not a directory: {}'.format(path)
+                        for path in build_bind or [] if not os.path.isdir(path))
+        if not os.path.isdir(site['WWPDB_ONEDEP_BUILD']):
+            problems.append('WWPDB_ONEDEP_BUILD is not a directory: {}'.format(site['WWPDB_ONEDEP_BUILD']))
+        env_script = os.path.join(site['TOP_WWPDB_SITE_CONFIG_DIR'], 'init', 'env.sh')
+        if not os.path.isfile(env_script):
+            problems.append('the site environment script is not a file: {}'.format(env_script))
+        if problems:
+            for problem in problems:
+                print('ERROR: {}'.format(problem))
+            sys.exit(1)
+
+        # Read-only, so it also runs under --noop
+        command.extend(['--check-epoch', build_version])
+        if self.__exec(' '.join(shlex.quote(part) for part in command), overridenoop=True):
+            print('ERROR: the build container check failed')
+            sys.exit(1)
+
+    def bundleatpin(self, option):
+        """Tells if checktoolvers, run for this one pin of the release, finds the installed bundle at it"""
+        pin = self.__cparser.get('DEFAULT', option)
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp:
+            single = os.path.join(tmp, 'pin.conf')
+            with open(single, 'w') as fout:
+                fout.write('[DEFAULT]\n{} = {}\n'.format(option, pin.replace('%', '%%')))
+            try:
+                with warnings.catch_warnings(), contextlib.redirect_stdout(output):
+                    warnings.simplefilter("ignore")
+                    UpdateManager(single, self.__noop).checktoolvers()
+            except Exception:
+                # A check that cannot run proves nothing about the bundle
+                return False
+        return 'Version mismatch' not in output.getvalue() and 'Tool out of date' not in output.getvalue()
 
     def checkoelicense(self):
         try:
@@ -532,9 +715,29 @@ def main():
     parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
     parser.add_argument("--build-version", default='v-5200', help='Version of tools to build from')
     parser.add_argument("--build-dev", default=False, action='store_true', help='pip installs repos with edit param')
+    parser.add_argument("--build-container", default=None, metavar='PATH',
+                        help='Build the tools with the onedep-build functions inside this Rocky 8 Singularity/Apptainer image '
+                             'instead of BuildTools.py; use --build-version v-6000')
+    parser.add_argument("--force-build", default=False, action='store_true',
+                        help='With --build-container, also build the packages whose bundle is already at its pin')
+    parser.add_argument("--build-bind", action='append', metavar='PATH',
+                        help='Directory to bind into the --build-container besides the admin, site-config, tools, build and '
+                             'virtual environment directories (may be repeated)')
+    parser.add_argument("--pin-by-pin", default=False, action='store_true',
+                        help='Install the release pins one at a time without dependencies, skipping mysqlclient, stopping at the first failure')
+    parser.add_argument("--fetch-tags", default=False, action='store_true',
+                        help='Run git fetch --tags before checking out the resources and WebFE tags')
+    parser.add_argument("--django-migrate", default=False, action='store_true', help='Apply the DepUI Django migrations after the DB schema update')
     parser.add_argument("--get-latest-version", default=False, action='store_true', help='get latest version number')
 
     args = parser.parse_args()
+
+    if args.build_container and not args.build_tools:
+        parser.error('--build-container requires --build-tools')
+    if args.build_bind and not args.build_container:
+        parser.error('--build-bind requires --build-container')
+    if args.force_build and not args.build_container:
+        parser.error('--force-build requires --build-container')
 
     config_version = args.config
     
@@ -552,9 +755,13 @@ def main():
 
     um = UpdateManager(config_version, args.noop)
 
+    # The container build runs last, so a container that cannot build must stop the run before it changes anything
+    if args.build_tools and args.build_container:
+        um.checkbuildcontainer(args.build_version, args.build_container, args.build_bind)
+
     # update resources_ro
     if not args.skip_resources:
-        um.updateresources()
+        um.updateresources(args.fetch_tags)
 
     # Remove obsolete python packages
     if not args.skip_remove:
@@ -562,11 +769,11 @@ def main():
 
     # update python
     if not args.skip_pip:
-        um.updatepyenv(args.build_dev)
+        um.updatepyenv(args.build_dev, args.pin_by_pin)
 
     # update webfe
     if not args.skip_webfe:
-        um.updatewebfe()
+        um.updatewebfe(args.fetch_tags)
 
     # update taxonomy
     if not args.skip_taxdb:
@@ -576,8 +783,11 @@ def main():
     if not args.skip_schema:
         um.updateschema()
 
+    if args.django_migrate:
+        um.updatedjango()
+
     if args.build_tools:
-        um.buildtools(args.build_version)
+        um.buildtools(args.build_version, args.build_container, args.build_bind, args.force_build)
 
     if not args.skip_toolvers:
         with warnings.catch_warnings():

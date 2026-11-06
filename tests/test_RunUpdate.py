@@ -309,6 +309,22 @@ class BuildToolsInContainerScriptTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout)
         self.assertEqual(self.built(), ['build one 5200'])
 
+    def run_check(self, epoch):
+        env = {'PATH': os.environ['PATH'], 'LOG': self.log, 'OS_RELEASE': self.os_release}
+        return subprocess.run([shutil.which('bash'), '--noprofile', '--norc', BUILD_SCRIPT, '--check-epoch', epoch],
+                              env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+
+    def test_check_epoch_succeeds_for_the_epoch_of_the_container_and_touches_nothing(self):
+        result = self.run_check('v-6000')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.logged(), [])
+        self.assertEqual(os.listdir(self.distrib), ['cached.tar.gz'])
+
+    def test_check_epoch_refuses_another_epoch(self):
+        result = self.run_check('v-5200')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('pass --build-version v-6000', result.stdout)
+
     def test_refuses_an_unknown_distribution(self):
         self.write(self.os_release, 'ID="ubuntu"\nVERSION_ID="22.04"\n')
         result = self.run_script(['one'])
@@ -539,6 +555,88 @@ class UpdateManagerBundleAtPinTest(unittest.TestCase):
         self.assertFalse(self.at_pin(self.manager(raises=KeyError('Version'))))
 
 
+class UpdateManagerCheckBuildContainerTest(BuildToolsTestBase):
+    """Tests for checking, before anything is updated, that the container can build
+    """
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.site = {'TOP_WWPDB_SITE_CONFIG_DIR': os.path.join(self.root, 'site-config'),
+                     'TOOLS_PATH': os.path.join(self.root, 'tools'),
+                     'WWPDB_ONEDEP_BUILD': os.path.join(self.root, 'onedep-build'),
+                     'WWPDB_SITE_ID': 'SITE_ID', 'WWPDB_SITE_LOC': 'loc'}
+        os.makedirs(os.path.join(self.site['TOP_WWPDB_SITE_CONFIG_DIR'], 'init'))
+        os.makedirs(self.site['WWPDB_ONEDEP_BUILD'])
+        os.makedirs(self.site['TOOLS_PATH'])
+        self.env_sh = os.path.join(self.site['TOP_WWPDB_SITE_CONFIG_DIR'], 'init', 'env.sh')
+        self.image = os.path.join(self.root, 'builder.sif')
+        self.extra = os.path.join(self.root, 'extra')
+        os.makedirs(self.extra)
+        for path in (self.env_sh, self.image):
+            open(path, 'w').close()
+
+    def tearDown(self):
+        shutil.rmtree(self.root)
+
+    def check(self, manager, **kwargs):
+        kwargs.setdefault('build_container', self.image)
+        with patch('scripts.RunUpdate.shutil.which',
+                   side_effect=lambda name: '/usr/bin/' + name if name == 'apptainer' else None):
+            manager.checkbuildcontainer('v-6000', **kwargs)
+
+    def test_runs_the_container_once_in_check_only_mode_even_under_noop(self):
+        manager = self.manager(site=self.site)
+        self.check(manager, build_bind=[self.extra])
+        self.assertEqual(manager._UpdateManager__exec.call_count, 1)
+        command = self.commands(manager)[0]
+        self.assertTrue(command.startswith('/usr/bin/apptainer exec '))
+        self.assertIn('--bind {} '.format(self.extra), command)
+        script = os.path.abspath(os.path.join(os.path.dirname(RunUpdate.__file__), 'BuildToolsInContainer.sh'))
+        self.assertIn(' {} bash '.format(self.image), command)
+        self.assertTrue(command.endswith(' bash --noprofile --norc {} --check-epoch v-6000'.format(script)))
+        self.assertTrue(manager._UpdateManager__exec.call_args[1].get('overridenoop'))
+
+    def test_stops_when_the_container_check_fails(self):
+        manager = self.manager(site=self.site, result=1)
+        with self.assertRaises(SystemExit) as raised:
+            self.check(manager)
+        self.assertEqual(raised.exception.code, 1)
+
+    def stops_without_running_the_container(self, manager, **kwargs):
+        with self.assertRaises(SystemExit) as raised:
+            self.check(manager, **kwargs)
+        self.assertEqual(raised.exception.code, 1)
+        self.assertEqual(self.commands(manager), [])
+
+    def test_stops_when_there_is_no_container_runtime(self):
+        manager = self.manager(site=self.site)
+        with patch('scripts.RunUpdate.shutil.which', return_value=None):
+            with self.assertRaises(SystemExit) as raised:
+                manager.checkbuildcontainer('v-6000', self.image)
+        self.assertEqual(raised.exception.code, 1)
+        self.assertEqual(self.commands(manager), [])
+
+    def test_stops_when_the_site_configuration_lacks_a_value(self):
+        for name in self.site:
+            site = dict(self.site)
+            del site[name]
+            self.stops_without_running_the_container(self.manager(site=site))
+
+    def test_stops_when_the_image_is_not_a_file(self):
+        self.stops_without_running_the_container(self.manager(site=self.site), build_container=self.root)
+
+    def test_stops_when_a_bind_is_not_a_directory(self):
+        self.stops_without_running_the_container(self.manager(site=self.site), build_bind=[self.image])
+
+    def test_stops_when_the_build_tree_is_not_a_directory(self):
+        os.rmdir(self.site['WWPDB_ONEDEP_BUILD'])
+        self.stops_without_running_the_container(self.manager(site=self.site))
+
+    def test_stops_when_the_site_environment_script_is_missing(self):
+        os.remove(self.env_sh)
+        self.stops_without_running_the_container(self.manager(site=self.site))
+
+
 class MainBuildContainerOptionsTest(unittest.TestCase):
     """Tests for the container options of the command line
     """
@@ -564,6 +662,18 @@ class MainBuildContainerOptionsTest(unittest.TestCase):
         with self.assertRaises(SystemExit) as raised:
             self.run_main('--build-container', '/images/b.sif')
         self.assertEqual(raised.exception.code, 2)
+
+    def test_the_container_is_checked_before_anything_is_updated(self):
+        manager = self.run_main('--build-tools', '--build-version', 'v-6000', '--build-container', '/images/b.sif',
+                                '--build-bind', '/a')
+        manager.checkbuildcontainer.assert_called_once_with('v-6000', '/images/b.sif', ['/a'])
+        names = [call[0] for call in manager.method_calls]
+        self.assertEqual(names[0], 'checkbuildcontainer')
+        self.assertLess(names.index('checkbuildcontainer'), names.index('updateresources'))
+
+    def test_no_container_check_without_a_container_build(self):
+        manager = self.run_main('--build-tools')
+        manager.checkbuildcontainer.assert_not_called()
 
     def test_force_build_is_passed_to_buildtools(self):
         manager = self.run_main('--build-tools', '--build-container', '/images/b.sif', '--force-build')

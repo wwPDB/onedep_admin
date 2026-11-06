@@ -106,6 +106,21 @@ class UpdateManagerPinsAndMigrationsTest(unittest.TestCase):
                                             universal_newlines=True) for command in self.commands(manager)]
         self.assertEqual(received, expected)
 
+    def test_installpins_names_the_pins_it_leaves_out(self):
+        manager = self.manager([0])
+        with tempfile.NamedTemporaryFile('w', suffix='.txt', delete=False) as fout:
+            fout.write('asgiref==3.8.1\nmysqlclient==2.2.7\ncffi==1.17.1 ; python_version < "3"\n')
+        output = io.StringIO()
+        try:
+            with contextlib.redirect_stdout(output):
+                manager.installpins(fout.name, '-c constraints.txt')
+        finally:
+            os.remove(fout.name)
+        self.assertEqual(self.commands(manager), ['pip install --no-deps -c constraints.txt asgiref==3.8.1'])
+        self.assertIn('skipping mysqlclient==2.2.7', output.getvalue())
+        self.assertIn('skipping cffi==1.17.1', output.getvalue())
+        self.assertNotIn('skipping asgiref', output.getvalue())
+
     def test_installpins_stops_at_the_first_failure(self):
         manager = self.manager([0, 1, 0])
         with tempfile.NamedTemporaryFile('w', suffix='.txt', delete=False) as fout:

@@ -91,6 +91,21 @@ class UpdateManagerPinsAndMigrationsTest(unittest.TestCase):
         self.assertEqual(self.commands(manager), ['pip install --no-deps -c constraints.txt "asgiref==3.8.1"',
                                                   'pip install --no-deps -c constraints.txt "bcrypt==5.0.0"'])
 
+    def test_installpins_hands_each_pin_to_the_shell_unchanged(self):
+        text = "tool>=1.0,<2\nlocal @ https://example.org/local-1.0.whl?token=$HOME\n"
+        manager = self.manager([0, 0])
+        with tempfile.NamedTemporaryFile('w', suffix='.txt', delete=False) as fout:
+            fout.write(text)
+        try:
+            manager.installpins(fout.name, '-c constraints.txt')
+            expected = release_pins(fout.name)
+        finally:
+            os.remove(fout.name)
+        # pip is replaced by a function that prints its last argument, as the shell hands it over
+        received = [subprocess.check_output(['bash', '-c', 'pip() { printf %s "${@: -1}"; }; ' + command],
+                                            universal_newlines=True) for command in self.commands(manager)]
+        self.assertEqual(received, expected)
+
     def test_installpins_stops_at_the_first_failure(self):
         manager = self.manager([0, 1, 0])
         with tempfile.NamedTemporaryFile('w', suffix='.txt', delete=False) as fout:

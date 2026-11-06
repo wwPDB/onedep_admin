@@ -11,7 +11,9 @@ try:
 except ImportError:
     from urlparse import urlparse
 import argparse
+import contextlib
 import fnmatch
+import io
 import json
 import os
 import os.path
@@ -20,6 +22,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+import tempfile
 import warnings
 import importlib.metadata
 from enum import Enum, Flag, auto
@@ -29,6 +32,18 @@ import xml.etree.ElementTree as ET
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
 from wwpdb.utils.config.ConfigInfoApp import ConfigInfoAppCommon, ConfigInfoAppValidation
+
+
+# The release option that pins the bundle a pkg_build_ function produces, as checktoolvers reads it
+BUNDLE_PIN_OPTIONS = {'annotation_pack': 'annotver', 'chem_comp_pack': 'cctoolsver', 'sf_valid': 'sfvalidver',
+                      'mapfix': 'mapfixver', 'findgeo': 'findgeover', 'metalcoord': 'metalcoordvers'}
+
+
+def bundle_pin_option(package):
+    """Returns the name of the release option that pins the bundle of a pkg_build_ function, or None"""
+    if package.startswith('phenix'):
+        return 'phenixver'
+    return BUNDLE_PIN_OPTIONS.get(package)
 
 
 def release_pins(reqfile):
@@ -483,9 +498,9 @@ class UpdateManager(object):
         return vstr
 
 
-    def buildtools(self, build_version='v-5200', build_container=None, build_bind=None):
+    def buildtools(self, build_version='v-5200', build_container=None, build_bind=None, force_build=False):
         if build_container:
-            self.buildtoolsincontainer(build_version, build_container, build_bind)
+            self.buildtoolsincontainer(build_version, build_container, build_bind, force_build)
             return
 
         curdir = os.path.dirname(__file__)
@@ -498,8 +513,12 @@ class UpdateManager(object):
             print("ERROR: buildtools failed")
         pass
 
-    def buildtoolsincontainer(self, build_version, build_container, build_bind=None):
-        """Builds the release's tools with the onedep-build functions inside the Rocky 8 build container"""
+    def buildtoolsincontainer(self, build_version, build_container, build_bind=None, force_build=False):
+        """Builds the release's tools with the onedep-build functions inside the Rocky 8 build container
+
+        A package whose bundle is already at its pin is left out unless force_build is set: the tools tree is shared,
+        and a release's buildupdates can list packages built for an earlier release or not buildable in place.
+        """
         runtime = shutil.which('apptainer') or shutil.which('singularity')
         if not runtime:
             print('ERROR: neither apptainer nor singularity is on PATH; load the module that provides one')
@@ -515,6 +534,19 @@ class UpdateManager(object):
             return
         packages = self.__cparser.get('DEFAULT', 'buildupdates').split()
         if not packages:
+            return
+        if not force_build:
+            todo = []
+            for package in packages:
+                option = bundle_pin_option(package)
+                if option and self.__cparser.has_option('DEFAULT', option) and self.bundleatpin(option):
+                    print('skipping pkg_build_{}: its bundle is already at its pin ({}); --force-build builds it'.format(
+                        package, option))
+                else:
+                    todo.append(package)
+            packages = todo
+        if not packages:
+            print('nothing to build: every package is already at its pin')
             return
 
         curdir = os.path.dirname(os.path.abspath(__file__))
@@ -537,6 +569,23 @@ class UpdateManager(object):
         if self.__exec(' '.join(shlex.quote(part) for part in command)):
             print('ERROR: buildtools failed')
             sys.exit(1)
+
+    def bundleatpin(self, option):
+        """Tells if checktoolvers, run for this one pin of the release, finds the installed bundle at it"""
+        pin = self.__cparser.get('DEFAULT', option)
+        output = io.StringIO()
+        with tempfile.TemporaryDirectory() as tmp:
+            single = os.path.join(tmp, 'pin.conf')
+            with open(single, 'w') as fout:
+                fout.write('[DEFAULT]\n{} = {}\n'.format(option, pin.replace('%', '%%')))
+            try:
+                with warnings.catch_warnings(), contextlib.redirect_stdout(output):
+                    warnings.simplefilter("ignore")
+                    UpdateManager(single, self.__noop).checktoolvers()
+            except Exception:
+                # A check that cannot run proves nothing about the bundle
+                return False
+        return 'Version mismatch' not in output.getvalue() and 'Tool out of date' not in output.getvalue()
 
     def checkoelicense(self):
         try:
@@ -629,6 +678,8 @@ def main():
     parser.add_argument("--build-container", default=None, metavar='PATH',
                         help='Build the tools with the onedep-build functions inside this Rocky 8 Singularity/Apptainer image '
                              'instead of BuildTools.py; use --build-version v-6000')
+    parser.add_argument("--force-build", default=False, action='store_true',
+                        help='With --build-container, also build the packages whose bundle is already at its pin')
     parser.add_argument("--build-bind", action='append', metavar='PATH',
                         help='Directory to bind into the --build-container besides the admin, site-config, tools, build and '
                              'virtual environment directories (may be repeated)')
@@ -645,6 +696,8 @@ def main():
         parser.error('--build-container requires --build-tools')
     if args.build_bind and not args.build_container:
         parser.error('--build-bind requires --build-container')
+    if args.force_build and not args.build_container:
+        parser.error('--force-build requires --build-container')
 
     config_version = args.config
     
@@ -690,7 +743,7 @@ def main():
         um.updatedjango()
 
     if args.build_tools:
-        um.buildtools(args.build_version, args.build_container, args.build_bind)
+        um.buildtools(args.build_version, args.build_container, args.build_bind, args.force_build)
 
     if not args.skip_toolvers:
         with warnings.catch_warnings():

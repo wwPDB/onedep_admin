@@ -15,8 +15,11 @@ import fnmatch
 import json
 import os
 import os.path
+import shlex
+import shutil
 import subprocess
 import sys
+import sysconfig
 import warnings
 import importlib.metadata
 from enum import Enum, Flag, auto
@@ -480,7 +483,11 @@ class UpdateManager(object):
         return vstr
 
 
-    def buildtools(self, build_version='v-5200'):
+    def buildtools(self, build_version='v-5200', build_container=None, build_bind=None):
+        if build_container:
+            self.buildtoolsincontainer(build_version, build_container, build_bind)
+            return
+
         curdir = os.path.dirname(__file__)
         buildscript = os.path.join(curdir, 'BuildTools.py')
 
@@ -490,6 +497,46 @@ class UpdateManager(object):
         if ret:
             print("ERROR: buildtools failed")
         pass
+
+    def buildtoolsincontainer(self, build_version, build_container, build_bind=None):
+        """Builds the release's tools with the onedep-build functions inside the Rocky 8 build container"""
+        runtime = shutil.which('apptainer') or shutil.which('singularity')
+        if not runtime:
+            print('ERROR: neither apptainer nor singularity is on PATH; load the module that provides one')
+            sys.exit(1)
+        names = ['TOP_WWPDB_SITE_CONFIG_DIR', 'TOOLS_PATH', 'WWPDB_ONEDEP_BUILD', 'WWPDB_SITE_ID', 'WWPDB_SITE_LOC']
+        site = dict((name, self.get_variable(name)) for name in names)
+        missing = [name for name in names if not site[name]]
+        if missing:
+            print('ERROR: not set in the site configuration: {}'.format(', '.join(missing)))
+            sys.exit(1)
+
+        if not self.__cparser.has_option('DEFAULT', 'buildupdates'):
+            return
+        packages = self.__cparser.get('DEFAULT', 'buildupdates').split()
+        if not packages:
+            return
+
+        curdir = os.path.dirname(os.path.abspath(__file__))
+        binds = []
+        for path in [os.path.dirname(curdir), site['TOP_WWPDB_SITE_CONFIG_DIR'], site['TOOLS_PATH'],
+                     site['WWPDB_ONEDEP_BUILD'], sys.prefix] + list(build_bind or []):
+            if path not in binds:
+                binds.append(path)
+
+        command = [runtime, 'exec']
+        for path in binds:
+            command.extend(['--bind', path])
+        # The site environment scripts in the container need the deployment's pure Python packages
+        command.extend(['--env', 'PYTHONPATH=' + sysconfig.get_paths()['purelib'], build_container,
+                        'bash', '--noprofile', '--norc', os.path.join(curdir, 'BuildToolsInContainer.sh'),
+                        os.path.join(site['TOP_WWPDB_SITE_CONFIG_DIR'], 'init', 'env.sh'),
+                        site['WWPDB_SITE_ID'], site['WWPDB_SITE_LOC'], site['WWPDB_ONEDEP_BUILD'],
+                        build_version] + packages)
+
+        if self.__exec(' '.join(shlex.quote(part) for part in command)):
+            print('ERROR: buildtools failed')
+            sys.exit(1)
 
     def checkoelicense(self):
         try:
@@ -579,6 +626,12 @@ def main():
     parser.add_argument("--build-tools", default=False, action='store_true', help='Build tools that have been updated')
     parser.add_argument("--build-version", default='v-5200', help='Version of tools to build from')
     parser.add_argument("--build-dev", default=False, action='store_true', help='pip installs repos with edit param')
+    parser.add_argument("--build-container", default=None, metavar='PATH',
+                        help='Build the tools with the onedep-build functions inside this Rocky 8 Singularity/Apptainer image '
+                             'instead of BuildTools.py; use --build-version v-6000')
+    parser.add_argument("--build-bind", action='append', metavar='PATH',
+                        help='Directory to bind into the --build-container besides the admin, site-config, tools, build and '
+                             'virtual environment directories (may be repeated)')
     parser.add_argument("--pin-by-pin", default=False, action='store_true',
                         help='Install the release pins one at a time without dependencies, skipping mysqlclient, stopping at the first failure')
     parser.add_argument("--fetch-tags", default=False, action='store_true',
@@ -587,6 +640,11 @@ def main():
     parser.add_argument("--get-latest-version", default=False, action='store_true', help='get latest version number')
 
     args = parser.parse_args()
+
+    if args.build_container and not args.build_tools:
+        parser.error('--build-container requires --build-tools')
+    if args.build_bind and not args.build_container:
+        parser.error('--build-bind requires --build-container')
 
     config_version = args.config
     
@@ -632,7 +690,7 @@ def main():
         um.updatedjango()
 
     if args.build_tools:
-        um.buildtools(args.build_version)
+        um.buildtools(args.build_version, args.build_container, args.build_bind)
 
     if not args.skip_toolvers:
         with warnings.catch_warnings():

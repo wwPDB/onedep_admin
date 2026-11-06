@@ -1,10 +1,13 @@
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 sys.modules['wwpdb.utils.config.ConfigInfo'] = MagicMock()
+from scripts import RunUpdate
 from scripts.RunUpdate import UpdateManager, get_latest_version_filepath, release_pins
 
 class RunUpdateTest(unittest.TestCase):
@@ -163,6 +166,289 @@ class UpdateManagerFetchTagsTest(unittest.TestCase):
             manager = self.manager(root)
             manager.updatewebfe()
         self.assertNotIn('git fetch', self.commands(manager)[0])
+
+BUILD_SCRIPT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'scripts', 'BuildToolsInContainer.sh')
+
+STUB_FUNCTIONS = r"""
+pkg_build_one() { echo "build one FORCE=$FORCE_REBUILD PYTHONPATH=${PYTHONPATH-unset}" >> "$LOG"; }
+pkg_build_two() { echo "build two" >> "$LOG"; }
+pkg_build_bad() { echo "build bad" >> "$LOG"; return 1; }
+pkg_build_copy() { mkdir -p "$WORK" && cd "$WORK" && rsync -av "$SOURCE/Dir" . >> "$LOG" 2>&1; }
+pkg_build_ssl() { echo "configure --with-openssl=$PREFIX --disable-x" >> "$LOG"; }
+"""
+
+
+class BuildToolsInContainerScriptTest(unittest.TestCase):
+    """Tests for the script that runs the onedep-build functions inside the build container, against a stub build tree
+    """
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp()
+        self.log = os.path.join(self.root, 'log.txt')
+        self.tree = os.path.join(self.root, 'onedep-build')
+        self.prefix = os.path.join(self.root, 'tools')
+        self.distrib = os.path.join(self.root, 'distrib')
+        self.source = os.path.join(self.root, 'staged')
+        for path in (os.path.join(self.tree, 'utils'), os.path.join(self.tree, 'v-6000', 'packages'), self.prefix,
+                     self.distrib, os.path.join(self.source, 'Dir')):
+            os.makedirs(path)
+        with open(os.path.join(self.source, 'Dir', 'file.txt'), 'w') as fout:
+            fout.write('staged')
+        with open(os.path.join(self.distrib, 'cached.tar.gz'), 'w') as fout:
+            fout.write('cached')
+        self.env_sh = os.path.join(self.root, 'env.sh')
+        self.write(self.env_sh, 'echo "env.sh $*" >> "$LOG"\necho "env.sh PYTHONPATH=${PYTHONPATH-unset}" >> "$LOG"\n')
+        self.write(os.path.join(self.tree, 'utils', 'pkg-utils-v2.sh'),
+                   'get_environment() {\n  export PREFIX="%s" DISTRIB_DIR="%s"\n  echo get_environment >> "$LOG"\n}\n'
+                   % (self.prefix, self.distrib))
+        self.write(os.path.join(self.tree, 'v-6000', 'packages', 'all-packages.sh'), STUB_FUNCTIONS)
+        self.os_release = os.path.join(self.root, 'os-release')
+        self.write(self.os_release, 'ID="rocky"\nVERSION_ID="8.10"\n')
+
+    def tearDown(self):
+        shutil.rmtree(self.root)
+
+    def write(self, path, text):
+        with open(path, 'w') as fout:
+            fout.write(text)
+
+    def logged(self):
+        if not os.path.exists(self.log):
+            return []
+        with open(self.log) as fin:
+            return fin.read().splitlines()
+
+    def built(self):
+        return [line for line in self.logged() if line.startswith('build')]
+
+    def run_script(self, packages, epoch='v-6000', path=None):
+        env = {'PATH': path or os.environ['PATH'], 'LOG': self.log, 'WORK': os.path.join(self.root, 'work'),
+               'SOURCE': self.source, 'OS_RELEASE': self.os_release, 'PYTHONPATH': '/venv/site-packages'}
+        return subprocess.run([shutil.which('bash'), '--noprofile', '--norc', BUILD_SCRIPT, self.env_sh, 'SITE_ID', 'loc',
+                               self.tree, epoch] + packages, env=env, stdout=subprocess.PIPE,
+                              stderr=subprocess.STDOUT, universal_newlines=True)
+
+    def path_without_rsync(self):
+        """A PATH with the few programs the script itself needs and no rsync"""
+        bin_dir = os.path.join(self.root, 'bin')
+        os.makedirs(bin_dir)
+        for name in ('mv', 'find', 'mkdir', 'date', 'cp', 'cat'):
+            os.symlink(shutil.which(name), os.path.join(bin_dir, name))
+        return bin_dir
+
+    def test_sources_the_site_environment_and_builds_the_packages_in_order(self):
+        result = self.run_script(['one', 'two'])
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.logged()[0], 'env.sh --siteid SITE_ID --locid loc --nocache')
+        self.assertEqual(self.built(), ['build one FORCE=YES PYTHONPATH=unset', 'build two'])
+
+    def test_unsets_pythonpath_after_the_site_environment_and_before_the_first_build(self):
+        self.run_script(['one'])
+        lines = self.logged()
+        self.assertIn('env.sh PYTHONPATH=/venv/site-packages', lines)
+        self.assertIn('build one FORCE=YES PYTHONPATH=unset', lines)
+
+    def test_stops_at_the_first_package_that_fails(self):
+        result = self.run_script(['one', 'bad', 'two'])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.built(), ['build one FORCE=YES PYTHONPATH=unset', 'build bad'])
+        self.assertIn('ERROR: pkg_build_bad failed', result.stdout)
+
+    def test_builds_nothing_when_a_function_is_not_defined(self):
+        result = self.run_script(['one', 'missing'])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.built(), [])
+        self.assertIn('pkg_build_missing is not defined', result.stdout)
+
+    def test_moves_the_download_cache_aside_instead_of_deleting_it(self):
+        self.run_script(['one'])
+        self.assertEqual(os.listdir(self.distrib), [])
+        asides = [name for name in os.listdir(self.root) if name.startswith('distrib.aside.')]
+        self.assertEqual(len(asides), 1)
+        self.assertTrue(os.path.exists(os.path.join(self.root, asides[0], 'cached.tar.gz')))
+
+    def test_copies_with_cp_when_rsync_is_not_installed(self):
+        result = self.run_script(['copy'], path=self.path_without_rsync())
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertTrue(os.path.exists(os.path.join(self.root, 'work', 'Dir', 'file.txt')))
+
+    def test_uses_rsync_when_it_is_installed(self):
+        bin_dir = self.path_without_rsync()
+        self.write(os.path.join(bin_dir, 'rsync'), '#!/bin/sh\necho real-rsync >> "$LOG"\n')
+        os.chmod(os.path.join(bin_dir, 'rsync'), 0o755)
+        self.run_script(['copy'], path=bin_dir)
+        self.assertIn('real-rsync', self.logged())
+        self.assertFalse(os.path.exists(os.path.join(self.root, 'work', 'Dir')))
+
+    def test_leaves_out_with_openssl_when_the_tools_tree_has_no_openssl_headers(self):
+        result = self.run_script(['ssl', 'one'])
+        self.assertIn('configure  --disable-x', self.logged())
+        self.assertIn('note: pkg_build_ssl runs without --with-openssl=$PREFIX', result.stdout)
+        self.assertNotIn('pkg_build_one runs without', result.stdout)
+
+    def test_keeps_with_openssl_when_the_tools_tree_has_openssl_headers(self):
+        os.makedirs(os.path.join(self.prefix, 'include', 'openssl'))
+        self.write(os.path.join(self.prefix, 'include', 'openssl', 'ssl.h'), '')
+        self.run_script(['ssl'])
+        self.assertIn('configure --with-openssl=%s --disable-x' % self.prefix, self.logged())
+
+    def test_refuses_an_epoch_that_does_not_match_the_container_distribution(self):
+        result = self.run_script(['one'], epoch='v-5200')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('pass --build-version v-6000', result.stdout)
+        self.assertEqual(self.built(), [])
+
+    def test_accepts_the_epoch_of_a_centos_container(self):
+        os.makedirs(os.path.join(self.tree, 'v-5200', 'packages'))
+        self.write(os.path.join(self.tree, 'v-5200', 'packages', 'all-packages.sh'),
+                   'pkg_build_one() { echo "build one 5200" >> "$LOG"; }\n')
+        self.write(self.os_release, 'ID="centos"\nVERSION_ID="7"\n')
+        result = self.run_script(['one'], epoch='v-5200')
+        self.assertEqual(result.returncode, 0, result.stdout)
+        self.assertEqual(self.built(), ['build one 5200'])
+
+    def test_refuses_an_unknown_distribution(self):
+        self.write(self.os_release, 'ID="ubuntu"\nVERSION_ID="22.04"\n')
+        result = self.run_script(['one'])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(self.built(), [])
+
+
+class UpdateManagerBuildToolsTest(unittest.TestCase):
+    """Tests for building the release's tools, in the build container when asked
+    """
+
+    SITE = {'TOP_WWPDB_SITE_CONFIG_DIR': '/site-config', 'TOOLS_PATH': '/tools', 'WWPDB_ONEDEP_BUILD': '/onedep-build',
+            'WWPDB_SITE_ID': 'SITE_ID', 'WWPDB_SITE_LOC': 'loc'}
+
+    def manager(self, site=None, buildupdates='annotation_pack chem_comp_pack', result=0):
+        values = dict(self.SITE if site is None else site)
+        manager = UpdateManager.__new__(UpdateManager)
+        manager._UpdateManager__exec = MagicMock(return_value=result)
+        manager._UpdateManager__configfile = '/admin/V6.1/V61rel.conf'
+        manager._UpdateManager__noop = False
+        manager._UpdateManager__cparser = MagicMock()
+        manager._UpdateManager__cparser.has_option.return_value = buildupdates is not None
+        manager._UpdateManager__cparser.get.return_value = buildupdates
+        manager.get_variable = lambda name, environment=None: values.get(name)
+        return manager
+
+    def commands(self, manager):
+        return [call[0][0] for call in manager._UpdateManager__exec.call_args_list]
+
+    def build_in_container(self, manager, **kwargs):
+        with patch('scripts.RunUpdate.shutil.which',
+                   side_effect=lambda name: '/usr/bin/' + name if name == 'apptainer' else None):
+            manager.buildtools('v-6000', '/images/builder.sif', **kwargs)
+
+    def test_buildtools_without_a_container_runs_buildtools_py_as_before(self):
+        manager = self.manager()
+        manager.buildtools('v-5200')
+        commands = self.commands(manager)
+        self.assertEqual(len(commands), 1)
+        self.assertTrue(commands[0].startswith('python '))
+        self.assertTrue(commands[0].endswith('BuildTools.py --config /admin/V6.1/V61rel.conf --build-version v-5200'))
+
+    def test_buildtools_in_a_container_runs_the_script_once_with_the_packages_in_release_order(self):
+        manager = self.manager()
+        self.build_in_container(manager)
+        commands = self.commands(manager)
+        self.assertEqual(len(commands), 1)
+        command = commands[0]
+        self.assertTrue(command.startswith('/usr/bin/apptainer exec '))
+        script = os.path.abspath(os.path.join(os.path.dirname(RunUpdate.__file__), 'BuildToolsInContainer.sh'))
+        self.assertIn('/images/builder.sif bash --noprofile --norc {}'.format(script), command)
+        self.assertTrue(command.endswith(
+            ' /site-config/init/env.sh SITE_ID loc /onedep-build v-6000 annotation_pack chem_comp_pack'))
+
+    def test_buildtools_in_a_container_binds_what_the_build_needs(self):
+        manager = self.manager()
+        self.build_in_container(manager, build_bind=['/extra', '/tools'])
+        command = self.commands(manager)[0]
+        admin = os.path.abspath(os.path.join(os.path.dirname(RunUpdate.__file__), '..'))
+        for path in (admin, '/site-config', '/tools', '/onedep-build', sys.prefix, '/extra'):
+            self.assertIn('--bind {} '.format(path), command)
+        self.assertEqual(command.count('--bind /tools '), 1)
+
+    def test_buildtools_in_a_container_gives_the_site_environment_the_deployment_site_packages(self):
+        import sysconfig
+        manager = self.manager()
+        self.build_in_container(manager)
+        self.assertIn('--env PYTHONPATH={} '.format(sysconfig.get_paths()['purelib']), self.commands(manager)[0])
+
+    def test_buildtools_in_a_container_uses_singularity_when_there_is_no_apptainer(self):
+        manager = self.manager()
+        with patch('scripts.RunUpdate.shutil.which',
+                   side_effect=lambda name: '/usr/bin/singularity' if name == 'singularity' else None):
+            manager.buildtools('v-6000', '/images/builder.sif')
+        self.assertTrue(self.commands(manager)[0].startswith('/usr/bin/singularity exec '))
+
+    def test_buildtools_in_a_container_stops_when_there_is_no_container_runtime(self):
+        manager = self.manager()
+        with patch('scripts.RunUpdate.shutil.which', return_value=None):
+            with self.assertRaises(SystemExit) as raised:
+                manager.buildtools('v-6000', '/images/builder.sif')
+        self.assertEqual(raised.exception.code, 1)
+        self.assertEqual(self.commands(manager), [])
+
+    def test_buildtools_in_a_container_stops_when_the_site_configuration_lacks_a_value(self):
+        for name in self.SITE:
+            site = dict(self.SITE)
+            del site[name]
+            manager = self.manager(site=site)
+            with self.assertRaises(SystemExit, msg=name) as raised:
+                self.build_in_container(manager)
+            self.assertEqual(raised.exception.code, 1)
+            self.assertEqual(self.commands(manager), [])
+
+    def test_buildtools_in_a_container_stops_when_the_container_run_fails(self):
+        manager = self.manager(result=1)
+        with self.assertRaises(SystemExit) as raised:
+            self.build_in_container(manager)
+        self.assertEqual(raised.exception.code, 1)
+
+    def test_buildtools_in_a_container_has_nothing_to_do_without_buildupdates(self):
+        for buildupdates in (None, '  '):
+            manager = self.manager(buildupdates=buildupdates)
+            self.build_in_container(manager)
+            self.assertEqual(self.commands(manager), [])
+
+    def test_buildtools_in_a_container_quotes_paths_for_the_shell(self):
+        manager = self.manager()
+        self.build_in_container(manager, build_bind=['/with space'])
+        self.assertIn("--bind '/with space' ", self.commands(manager)[0])
+
+
+class MainBuildContainerOptionsTest(unittest.TestCase):
+    """Tests for the container options of the command line
+    """
+
+    def run_main(self, *args):
+        config = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'base_packages', 'constraints.txt')
+        manager = MagicMock()
+        with patch.object(RunUpdate, 'UpdateManager', return_value=manager), \
+                patch.object(sys, 'argv', ['RunUpdate.py', '--config', config] + list(args)):
+            RunUpdate.main()
+        return manager
+
+    def test_the_container_and_binds_are_passed_to_buildtools(self):
+        manager = self.run_main('--build-tools', '--build-version', 'v-6000', '--build-container', '/images/b.sif',
+                                '--build-bind', '/a', '--build-bind', '/b')
+        manager.buildtools.assert_called_once_with('v-6000', '/images/b.sif', ['/a', '/b'])
+
+    def test_buildtools_is_called_without_a_container_by_default(self):
+        manager = self.run_main('--build-tools')
+        manager.buildtools.assert_called_once_with('v-5200', None, None)
+
+    def test_a_container_without_build_tools_is_an_error(self):
+        with self.assertRaises(SystemExit) as raised:
+            self.run_main('--build-container', '/images/b.sif')
+        self.assertEqual(raised.exception.code, 2)
+
+    def test_a_bind_without_a_container_is_an_error(self):
+        with self.assertRaises(SystemExit) as raised:
+            self.run_main('--build-tools', '--build-bind', '/a')
+        self.assertEqual(raised.exception.code, 2)
 
 if __name__ == '__main__':
     unittest.main()

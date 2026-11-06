@@ -26,8 +26,6 @@ import tempfile
 import warnings
 import importlib.metadata
 from enum import Enum, Flag, auto
-from packaging.requirements import Requirement
-from packaging.utils import canonicalize_name
 import xml.etree.ElementTree as ET
 
 from wwpdb.utils.config.ConfigInfo import ConfigInfo
@@ -53,6 +51,10 @@ def release_pins(reqfile):
     mysqlclient: reinstalling it rebuilds the extension without the library path that the site relies on.
     The environment marker is not part of the returned pins.
     """
+    # Only read here, so that an update without --pin-by-pin does not need packaging
+    from packaging.requirements import Requirement
+    from packaging.utils import canonicalize_name
+
     pins = []
     with open(reqfile) as fin:
         for line in fin:

@@ -519,16 +519,7 @@ class UpdateManager(object):
         A package whose bundle is already at its pin is left out unless force_build is set: the tools tree is shared,
         and a release's buildupdates can list packages built for an earlier release or not buildable in place.
         """
-        runtime = shutil.which('apptainer') or shutil.which('singularity')
-        if not runtime:
-            print('ERROR: neither apptainer nor singularity is on PATH; load the module that provides one')
-            sys.exit(1)
-        names = ['TOP_WWPDB_SITE_CONFIG_DIR', 'TOOLS_PATH', 'WWPDB_ONEDEP_BUILD', 'WWPDB_SITE_ID', 'WWPDB_SITE_LOC']
-        site = dict((name, self.get_variable(name)) for name in names)
-        missing = [name for name in names if not site[name]]
-        if missing:
-            print('ERROR: not set in the site configuration: {}'.format(', '.join(missing)))
-            sys.exit(1)
+        command, site = self.containercommand(build_container, build_bind)
 
         if not self.__cparser.has_option('DEFAULT', 'buildupdates'):
             return
@@ -549,6 +540,27 @@ class UpdateManager(object):
             print('nothing to build: every package is already at its pin')
             return
 
+        command.extend([os.path.join(site['TOP_WWPDB_SITE_CONFIG_DIR'], 'init', 'env.sh'),
+                        site['WWPDB_SITE_ID'], site['WWPDB_SITE_LOC'], site['WWPDB_ONEDEP_BUILD'],
+                        build_version] + packages)
+
+        if self.__exec(' '.join(shlex.quote(part) for part in command)):
+            print('ERROR: buildtools failed')
+            sys.exit(1)
+
+    def containercommand(self, build_container, build_bind=None):
+        """Returns the command that starts the build script in the container, without its arguments, and the site values"""
+        runtime = shutil.which('apptainer') or shutil.which('singularity')
+        if not runtime:
+            print('ERROR: neither apptainer nor singularity is on PATH; load the module that provides one')
+            sys.exit(1)
+        names = ['TOP_WWPDB_SITE_CONFIG_DIR', 'TOOLS_PATH', 'WWPDB_ONEDEP_BUILD', 'WWPDB_SITE_ID', 'WWPDB_SITE_LOC']
+        site = dict((name, self.get_variable(name)) for name in names)
+        missing = [name for name in names if not site[name]]
+        if missing:
+            print('ERROR: not set in the site configuration: {}'.format(', '.join(missing)))
+            sys.exit(1)
+
         curdir = os.path.dirname(os.path.abspath(__file__))
         binds = []
         for path in [os.path.dirname(curdir), site['TOP_WWPDB_SITE_CONFIG_DIR'], site['TOOLS_PATH'],
@@ -561,13 +573,31 @@ class UpdateManager(object):
             command.extend(['--bind', path])
         # The site environment scripts in the container need the deployment's pure Python packages
         command.extend(['--env', 'PYTHONPATH=' + sysconfig.get_paths()['purelib'], build_container,
-                        'bash', '--noprofile', '--norc', os.path.join(curdir, 'BuildToolsInContainer.sh'),
-                        os.path.join(site['TOP_WWPDB_SITE_CONFIG_DIR'], 'init', 'env.sh'),
-                        site['WWPDB_SITE_ID'], site['WWPDB_SITE_LOC'], site['WWPDB_ONEDEP_BUILD'],
-                        build_version] + packages)
+                        'bash', '--noprofile', '--norc', os.path.join(curdir, 'BuildToolsInContainer.sh')])
+        return command, site
 
-        if self.__exec(' '.join(shlex.quote(part) for part in command)):
-            print('ERROR: buildtools failed')
+    def checkbuildcontainer(self, build_version, build_container, build_bind=None):
+        """Stops before anything is updated if the build container cannot build: the build runs last"""
+        command, site = self.containercommand(build_container, build_bind)
+        problems = []
+        if not os.path.isfile(build_container):
+            problems.append('--build-container is not a file: {}'.format(build_container))
+        problems.extend('--build-bind is not a directory: {}'.format(path)
+                        for path in build_bind or [] if not os.path.isdir(path))
+        if not os.path.isdir(site['WWPDB_ONEDEP_BUILD']):
+            problems.append('WWPDB_ONEDEP_BUILD is not a directory: {}'.format(site['WWPDB_ONEDEP_BUILD']))
+        env_script = os.path.join(site['TOP_WWPDB_SITE_CONFIG_DIR'], 'init', 'env.sh')
+        if not os.path.isfile(env_script):
+            problems.append('the site environment script is not a file: {}'.format(env_script))
+        if problems:
+            for problem in problems:
+                print('ERROR: {}'.format(problem))
+            sys.exit(1)
+
+        # Read-only, so it also runs under --noop
+        command.extend(['--check-epoch', build_version])
+        if self.__exec(' '.join(shlex.quote(part) for part in command), overridenoop=True):
+            print('ERROR: the build container check failed')
             sys.exit(1)
 
     def bundleatpin(self, option):
@@ -714,6 +744,10 @@ def main():
         sys.exit(1)
 
     um = UpdateManager(config_version, args.noop)
+
+    # The container build runs last, so a container that cannot build must stop the run before it changes anything
+    if args.build_tools and args.build_container:
+        um.checkbuildcontainer(args.build_version, args.build_container, args.build_bind)
 
     # update resources_ro
     if not args.skip_resources:

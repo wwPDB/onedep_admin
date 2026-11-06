@@ -4,9 +4,32 @@
 # package, which cannot find the build tree through the site configuration from inside the container.
 #
 # usage: BuildToolsInContainer.sh ENV_SCRIPT SITE_ID LOCATION_ID BUILD_TREE EPOCH PACKAGE...
+#        BuildToolsInContainer.sh --check-epoch EPOCH
+#
+# --check-epoch only checks that EPOCH is the one of the container's distribution, and builds nothing.
 #
 # PYTHONPATH has to name the deployment's site-packages when this starts: the container's own Python is
 # otherwise too bare to run the site environment scripts.
+
+# The epoch has to be the one of the container's distribution (as get_build_ver in install_onedep.sh)
+check_epoch() {
+  local epoch=$1 distro want
+  distro=$(. "${OS_RELEASE:-/etc/os-release}" && echo "$ID")
+  case $distro in
+    rocky|almalinux) want=v-6000;;
+    centos) want=v-5200;;
+    *) echo "ERROR: cannot choose a build epoch for a '$distro' container"; exit 1;;
+  esac
+  if [ "$epoch" != "$want" ]; then
+    echo "ERROR: a $distro container builds with $want, not $epoch; pass --build-version $want"
+    exit 1
+  fi
+}
+
+if [ "$1" = "--check-epoch" ]; then
+  check_epoch "$2"
+  exit 0
+fi
 
 env_script=$1
 site_id=$2
@@ -15,17 +38,7 @@ build_tree=$4
 epoch=$5
 shift 5
 
-# The epoch has to be the one of the container's distribution (as get_build_ver in install_onedep.sh)
-distro=$(. "${OS_RELEASE:-/etc/os-release}" && echo "$ID")
-case $distro in
-  rocky|almalinux) want=v-6000;;
-  centos) want=v-5200;;
-  *) echo "ERROR: cannot choose a build epoch for a '$distro' container"; exit 1;;
-esac
-if [ "$epoch" != "$want" ]; then
-  echo "ERROR: a $distro container builds with $want, not $epoch; pass --build-version $want"
-  exit 1
-fi
+check_epoch "$epoch"
 
 . "$env_script" --siteid "$site_id" --locid "$location_id" --nocache || exit 1
 export WWPDB_ONEDEP_BUILD=$build_tree

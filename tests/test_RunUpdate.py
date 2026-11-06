@@ -1,3 +1,5 @@
+import contextlib
+import io
 import os
 import shutil
 import subprocess
@@ -314,23 +316,25 @@ class BuildToolsInContainerScriptTest(unittest.TestCase):
         self.assertEqual(self.built(), [])
 
 
-class UpdateManagerBuildToolsTest(unittest.TestCase):
-    """Tests for building the release's tools, in the build container when asked
+class BuildToolsTestBase(unittest.TestCase):
+    """What the tests of the tool build share
     """
 
     SITE = {'TOP_WWPDB_SITE_CONFIG_DIR': '/site-config', 'TOOLS_PATH': '/tools', 'WWPDB_ONEDEP_BUILD': '/onedep-build',
             'WWPDB_SITE_ID': 'SITE_ID', 'WWPDB_SITE_LOC': 'loc'}
 
-    def manager(self, site=None, buildupdates='annotation_pack chem_comp_pack', result=0):
+    def manager(self, site=None, buildupdates='annotation_pack chem_comp_pack', result=0, **pins):
         values = dict(self.SITE if site is None else site)
+        options = dict(pins, buildupdates=buildupdates)
         manager = UpdateManager.__new__(UpdateManager)
         manager._UpdateManager__exec = MagicMock(return_value=result)
         manager._UpdateManager__configfile = '/admin/V6.1/V61rel.conf'
         manager._UpdateManager__noop = False
         manager._UpdateManager__cparser = MagicMock()
-        manager._UpdateManager__cparser.has_option.return_value = buildupdates is not None
-        manager._UpdateManager__cparser.get.return_value = buildupdates
+        manager._UpdateManager__cparser.has_option.side_effect = lambda section, name: options.get(name) is not None
+        manager._UpdateManager__cparser.get.side_effect = lambda section, name: options[name]
         manager.get_variable = lambda name, environment=None: values.get(name)
+        manager.bundleatpin = MagicMock(return_value=False)
         return manager
 
     def commands(self, manager):
@@ -340,6 +344,11 @@ class UpdateManagerBuildToolsTest(unittest.TestCase):
         with patch('scripts.RunUpdate.shutil.which',
                    side_effect=lambda name: '/usr/bin/' + name if name == 'apptainer' else None):
             manager.buildtools('v-6000', '/images/builder.sif', **kwargs)
+
+
+class UpdateManagerBuildToolsTest(BuildToolsTestBase):
+    """Tests for building the release's tools, in the build container when asked
+    """
 
     def test_buildtools_without_a_container_runs_buildtools_py_as_before(self):
         manager = self.manager()
@@ -419,6 +428,117 @@ class UpdateManagerBuildToolsTest(unittest.TestCase):
         self.assertIn("--bind '/with space' ", self.commands(manager)[0])
 
 
+class UpdateManagerBuildSkipTest(BuildToolsTestBase):
+    """Tests for leaving out the packages whose bundle is already at its pin
+    """
+
+    PINS = dict(annotver='2026-08-30:13-25', cctoolsver='2026-08-31:20-58', mapfixver='2024-08-07:07-14',
+                phenixver='2.2-6143')
+
+    def build(self, manager, **kwargs):
+        stdout = io.StringIO()
+        with contextlib.redirect_stdout(stdout):
+            self.build_in_container(manager, **kwargs)
+        return stdout.getvalue()
+
+    def packages(self, manager):
+        return self.commands(manager)[0].split(' v-6000 ')[1].split()
+
+    def test_packages_at_their_pin_are_left_out(self):
+        manager = self.manager(buildupdates='annotation_pack chem_comp_pack mapfix', **self.PINS)
+        manager.bundleatpin.side_effect = lambda option: option in ('annotver', 'cctoolsver')
+        output = self.build(manager)
+        self.assertEqual(self.packages(manager), ['mapfix'])
+        self.assertIn('skipping pkg_build_annotation_pack', output)
+        self.assertIn('skipping pkg_build_chem_comp_pack', output)
+        self.assertNotIn('skipping pkg_build_mapfix', output)
+
+    def test_nothing_is_run_when_every_package_is_at_its_pin(self):
+        manager = self.manager(buildupdates='annotation_pack chem_comp_pack', **self.PINS)
+        manager.bundleatpin.return_value = True
+        output = self.build(manager)
+        self.assertEqual(self.commands(manager), [])
+        self.assertIn('nothing to build', output)
+
+    def test_force_build_builds_every_package_without_looking_at_the_bundles(self):
+        manager = self.manager(buildupdates='annotation_pack chem_comp_pack', **self.PINS)
+        manager.bundleatpin.return_value = True
+        self.build(manager, force_build=True)
+        self.assertEqual(self.packages(manager), ['annotation_pack', 'chem_comp_pack'])
+        manager.bundleatpin.assert_not_called()
+
+    def test_each_package_is_judged_by_the_pin_the_release_gives_its_bundle(self):
+        manager = self.manager(buildupdates='annotation_pack chem_comp_pack sf_valid mapfix findgeo metalcoord phenix_22',
+                               annotver='a', cctoolsver='c', sfvalidver='s', mapfixver='m', findgeover='f',
+                               metalcoordvers='mc', phenixver='p')
+        self.build(manager)
+        self.assertEqual([call[0][0] for call in manager.bundleatpin.call_args_list],
+                         ['annotver', 'cctoolsver', 'sfvalidver', 'mapfixver', 'findgeover', 'metalcoordvers', 'phenixver'])
+
+    def test_a_package_the_check_does_not_know_is_built(self):
+        manager = self.manager(buildupdates='annotation_pack other_pack', **self.PINS)
+        manager.bundleatpin.return_value = True
+        self.build(manager)
+        self.assertEqual(self.packages(manager), ['other_pack'])
+
+    def test_a_package_without_a_pin_in_the_release_is_built(self):
+        manager = self.manager(buildupdates='annotation_pack mapfix', annotver='a')
+        manager.bundleatpin.return_value = True
+        self.build(manager)
+        self.assertEqual(self.packages(manager), ['mapfix'])
+
+
+class UpdateManagerBundleAtPinTest(unittest.TestCase):
+    """Tests for judging one bundle by the stock tool version check, run for its single pin
+    """
+
+    def manager(self, prints=None, raises=None):
+        manager = UpdateManager.__new__(UpdateManager)
+        manager._UpdateManager__noop = False
+        manager._UpdateManager__cparser = MagicMock()
+        manager._UpdateManager__cparser.get.return_value = '2026-08-30:13-25 100%'
+        self.seen = []
+
+        def checktoolvers():
+            if raises:
+                raise raises
+            if prints:
+                print(prints)
+
+        def single(config_file, noop):
+            with open(config_file) as fin:
+                self.seen.append(fin.read())
+            instance = MagicMock()
+            instance.checktoolvers = checktoolvers
+            return instance
+
+        self.single = single
+        return manager
+
+    def at_pin(self, manager):
+        stdout = io.StringIO()
+        with patch('scripts.RunUpdate.UpdateManager', side_effect=self.single), contextlib.redirect_stdout(stdout):
+            result = manager.bundleatpin('annotver')
+        self.assertEqual(stdout.getvalue(), '')
+        return result
+
+    def test_a_check_that_prints_nothing_means_the_bundle_is_at_its_pin(self):
+        self.assertTrue(self.at_pin(self.manager()))
+
+    def test_the_check_is_run_for_that_one_pin_only(self):
+        self.at_pin(self.manager())
+        self.assertEqual(self.seen, ['[DEFAULT]\nannotver = 2026-08-30:13-25 100%%\n'])
+
+    def test_a_version_mismatch_means_the_bundle_is_not_at_its_pin(self):
+        self.assertFalse(self.at_pin(self.manager(prints='***ERROR: Version mismatch a != b in /x')))
+
+    def test_a_missing_bundle_means_the_bundle_is_not_at_its_pin(self):
+        self.assertFalse(self.at_pin(self.manager(prints='WARNING: Tool out of date. /x not found')))
+
+    def test_a_check_that_cannot_run_means_the_bundle_is_not_at_its_pin(self):
+        self.assertFalse(self.at_pin(self.manager(raises=KeyError('Version'))))
+
+
 class MainBuildContainerOptionsTest(unittest.TestCase):
     """Tests for the container options of the command line
     """
@@ -434,15 +554,24 @@ class MainBuildContainerOptionsTest(unittest.TestCase):
     def test_the_container_and_binds_are_passed_to_buildtools(self):
         manager = self.run_main('--build-tools', '--build-version', 'v-6000', '--build-container', '/images/b.sif',
                                 '--build-bind', '/a', '--build-bind', '/b')
-        manager.buildtools.assert_called_once_with('v-6000', '/images/b.sif', ['/a', '/b'])
+        manager.buildtools.assert_called_once_with('v-6000', '/images/b.sif', ['/a', '/b'], False)
 
     def test_buildtools_is_called_without_a_container_by_default(self):
         manager = self.run_main('--build-tools')
-        manager.buildtools.assert_called_once_with('v-5200', None, None)
+        manager.buildtools.assert_called_once_with('v-5200', None, None, False)
 
     def test_a_container_without_build_tools_is_an_error(self):
         with self.assertRaises(SystemExit) as raised:
             self.run_main('--build-container', '/images/b.sif')
+        self.assertEqual(raised.exception.code, 2)
+
+    def test_force_build_is_passed_to_buildtools(self):
+        manager = self.run_main('--build-tools', '--build-container', '/images/b.sif', '--force-build')
+        manager.buildtools.assert_called_once_with('v-5200', '/images/b.sif', None, True)
+
+    def test_force_build_without_a_container_is_an_error(self):
+        with self.assertRaises(SystemExit) as raised:
+            self.run_main('--build-tools', '--force-build')
         self.assertEqual(raised.exception.code, 2)
 
     def test_a_bind_without_a_container_is_an_error(self):

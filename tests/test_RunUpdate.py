@@ -88,8 +88,8 @@ class UpdateManagerPinsAndMigrationsTest(unittest.TestCase):
             manager.installpins(fout.name, '-c constraints.txt')
         finally:
             os.remove(fout.name)
-        self.assertEqual(self.commands(manager), ['pip install --no-deps -c constraints.txt "asgiref==3.8.1"',
-                                                  'pip install --no-deps -c constraints.txt "bcrypt==5.0.0"'])
+        self.assertEqual(self.commands(manager), ['pip install --no-deps -c constraints.txt asgiref==3.8.1',
+                                                  'pip install --no-deps -c constraints.txt bcrypt==5.0.0'])
 
     def test_installpins_hands_each_pin_to_the_shell_unchanged(self):
         text = "tool>=1.0,<2\nlocal @ https://example.org/local-1.0.whl?token=$HOME\n"

@@ -232,7 +232,7 @@ class UpdateManager(object):
     def installpins(self, reqfile, pip_extra_urls):
         """Installs the release pins one at a time, without their dependencies, and stops at the first failure."""
         for pin in release_pins(reqfile):
-            command = 'pip install --no-deps {} "{}"'.format(pip_extra_urls, pin)
+            command = 'pip install --no-deps {} {}'.format(pip_extra_urls, shlex.quote(pin))
             if self.__exec(command):
                 print('ERROR: pip install failed for {}; stopping'.format(pin))
                 sys.exit(1)

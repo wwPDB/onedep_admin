@@ -691,3 +691,17 @@ class MainBuildContainerOptionsTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+class ImportWithoutPackagingTest(unittest.TestCase):
+    """RunUpdate is imported by every update, so it must not need packaging until a pin file is read
+    """
+
+    def test_import_does_not_need_packaging(self):
+        root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        code = ("import sys\nfrom unittest.mock import MagicMock\n"
+                "sys.modules['wwpdb.utils.config.ConfigInfo'] = MagicMock()\n"
+                "sys.modules['packaging'] = None\n"
+                "from scripts import RunUpdate\n")
+        result = subprocess.run([sys.executable, '-c', code], cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                universal_newlines=True)
+        self.assertEqual(result.returncode, 0, result.stdout)

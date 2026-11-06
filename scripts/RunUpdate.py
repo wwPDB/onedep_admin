@@ -44,12 +44,12 @@ def bundle_pin_option(package):
     return BUNDLE_PIN_OPTIONS.get(package)
 
 
-def release_pins(reqfile):
+def release_pins(reqfile, skipped=None):
     """Reads the release pins that apply to this Python from a requirements file, in file order.
 
     Comments, blank lines and requirements whose environment marker is false here are left out, and so is
     mysqlclient: reinstalling it rebuilds the extension without the library path that the site relies on.
-    The environment marker is not part of the returned pins.
+    The environment marker is not part of the returned pins. The pins that are left out are added to skipped, if given.
     """
     # Only read here, so that an update without --pin-by-pin does not need packaging
     from packaging.requirements import Requirement
@@ -63,8 +63,12 @@ def release_pins(reqfile):
                 continue
             req = Requirement(line)
             if req.marker is not None and not req.marker.evaluate():
+                if skipped is not None:
+                    skipped.append('{} (its environment marker is false here)'.format(line.split(';')[0].strip()))
                 continue
             if canonicalize_name(req.name) == 'mysqlclient':
+                if skipped is not None:
+                    skipped.append('{} (it is never reinstalled)'.format(line.split(';')[0].strip()))
                 continue
             req.marker = None
             pins.append(str(req))
@@ -231,7 +235,11 @@ class UpdateManager(object):
 
     def installpins(self, reqfile, pip_extra_urls):
         """Installs the release pins one at a time, without their dependencies, and stops at the first failure."""
-        for pin in release_pins(reqfile):
+        skipped = []
+        pins = release_pins(reqfile, skipped)
+        for pin in skipped:
+            print('skipping {}'.format(pin))
+        for pin in pins:
             command = 'pip install --no-deps {} {}'.format(pip_extra_urls, shlex.quote(pin))
             if self.__exec(command):
                 print('ERROR: pip install failed for {}; stopping'.format(pin))
